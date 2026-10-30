@@ -1042,10 +1042,185 @@ const statsFor = (c, days) => {
     phys: tally(recs.flatMap(([, r]) => r.phys)).slice(0, 2),
   };
 };
+// Wrap annuel : proposé (notification + envoi Discord) à partir du 26 décembre.
+let simulateWrapDay = false;   // aperçu secret de Nono : simuler le 26 décembre
+// Surprise : avant le 26 décembre, rien ne laisse deviner le wrap. Seul l'aperçu secret
+// (lien terminé par #apercu-wrap) permet à Nono de le tester.
+const wrapVisible = () => wrapReady() || (me === 'corentin' && (() => { try { return location.hash === '#apercu-wrap'; } catch { return false; } })());
+const wrapReady = () => simulateWrapDay || (rpDay.getMonth() === 11 && rpDay.getDate() >= 26);
+const wrapBanner = (onClick) => wrapReady() ? `<div class="wrap-banner">${icon('star')}<div><b>Et si on revivait cette année ?</b>
+  <span>Les wraps ${rpDay.getFullYear()} sont prêts et ont été envoyés sur Discord.</span></div>${onClick}</div>` : '';
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const fmtDay = d => `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 const listOf = pairs => pairs.length ? pairs.map(([k, n]) => `${esc(k)} <small>×${n}</small>`).join(', ') : '—';
 
+// ---------- Wrap : statistiques amusantes ----------
+const DIST = { // distances « éorzéennes » entre régions, en km (estimation fantaisiste)
+  'eorzea-ilsabard':1500, 'eorzea-othard':6000, 'eorzea-thavnair':4000, 'eorzea-tural':8000,
+  'ilsabard-othard':5000, 'ilsabard-thavnair':3500, 'ilsabard-tural':9000,
+  'othard-thavnair':4500, 'othard-tural':7000, 'thavnair-tural':9000 };
+const distOf = (a, b) => !a || !b ? 0 : a === b ? 300 : DIST[a + '-' + b] || DIST[b + '-' + a] || 2000;
+const STOP = new Set(['mais', 'avec', 'pour', 'dans', 'plus', 'très', 'tout', 'bien', 'après', 'cette', 'entre', 'encore']);
+const MOOD_COLORS = { Serein:'#7fb3a6', Joyeux:'#e7c35a', "Plein d'entrain":'#f0a35c', Tendre:'#e38fa8', Apaisé:'#8fc3d8', Pensif:'#9a9cc9',
+  Nostalgique:'#a98bbf', Déterminé:'#c96f4a', Tendu:'#b86060', Irritable:'#c0504d', Inquiet:'#8a7f9e', Mélancolique:'#6f7fa6',
+  'Fatigué mais satisfait':'#b5a37c', 'Agacé par la météo':'#7d8b8f' };
+const SEASONS = ['hiver', 'hiver', 'printemps', 'printemps', 'printemps', 'été', 'été', 'été', 'automne', 'automne', 'automne', 'hiver'];
+const pct = (a, b) => b ? Math.round(a * 100 / b) : 0;
+const wrapExtras = (c, y) => {
+  const fem = c.player === 'elle', e = fem ? 'e' : '';
+  const days = Array.from({ length:366 }, (_, i) => new Date(y, 0, 1 + i)).filter(d => d.getFullYear() === y && d <= rpDay);
+  const recs = days.map(d => [d, dayRecord(c, d)]);
+  const filled = recs.filter(([, r]) => r);
+  // série la plus longue
+  let best = 0, run = 0; recs.forEach(([, r]) => { run = r ? run + 1 : 0; best = Math.max(best, run); });
+  // mot de l'année
+  const words = tally(filled.flatMap(([, r]) => (r.mood || '').toLowerCase().match(/[a-zàâçéèêëîïôûùüÿœ']{4,}/g) || []).filter(w => !STOP.has(w)));
+  // périodes de la journée
+  const slotIds = filled.flatMap(([, r]) => Object.values(r.slots || {}).flat());
+  const late = slotIds.filter(x => x === 'soir' || x === 'nuit').length, early = slotIds.filter(x => x === 'aube' || x === 'matin').length;
+  // mois et saison
+  const byMonth = tally(filled.map(([d]) => d.getMonth()));
+  const bestMonth = byMonth.length ? +byMonth[0][0] : null;
+  const seasons = tally(filled.map(([d]) => SEASONS[d.getMonth()]));
+  // voyages
+  const trips = filled.filter(([, r]) => r.tripInfo).map(([, r]) => r.tripInfo);
+  const km = trips.reduce((a, t) => a + distOf(t.from, t.to), 0);
+  const modes = tally(trips.flatMap(t => t.modes));
+  const regions = new Set(filled.map(([, r]) => r.region).filter(Boolean));
+  trips.forEach(t => { regions.add(t.from); regions.add(t.to); });
+  const zones = new Set(filled.map(([, r]) => ZONE_OF[r.place] || PLACE_REGION[r.place]).filter(Boolean));
+  const homeDays = filled.filter(([, r]) => !r.region || r.region === homeRegion(c.id)).length;
+  // météo
+  const withCond = filled.filter(([, r]) => r.cond);
+  const rain = withCond.filter(([, r]) => ['Pluie', 'Orages'].includes(r.cond.label)).length;
+  const snow = withCond.filter(([, r]) => ['Neige', 'Blizzard'].includes(r.cond.label)).length;
+  const hot = withCond.reduce((a, [d, r]) => !a || r.cond.tp.max > a.t ? { t:r.cond.tp.max, d, where:r.place } : a, null);
+  // liens
+  const names = tally(filled.flatMap(([, r]) => r.acts.flatMap(a => (a.match(/(?:avec|de|à) ([A-ZÉ][\wéèï'-]+)/g) || []).map(m => m.replace(/^(avec|de|à) /, '')))
+    .filter(n => !['Rhalgr', 'Werlyt', 'Bazar', 'Gridania', 'Ala', 'Rocasternes', 'Khurdans', 'Ul', 'La'].includes(n))));
+  const nightsByMonth = tally(filled.filter(([, r]) => r.hot).map(([d]) => d.getMonth()));
+  // fêtes et jours spéciaux
+  const fests = new Set(filled.map(([d, r]) => festivalFor(c, d, r)?.name).filter(Boolean));
+  const bdays = filled.filter(([d]) => birthdaysOn(c.id, d).length).length;
+  const khurdan = filled.flatMap(([d]) => khurdanDays(c, d));
+  // humour
+  const physAll = filled.flatMap(([, r]) => r.phys);
+  const drunk = physAll.filter(x => x === 'Ivresse').length, hurt = physAll.filter(x => x === 'Blessure').length;
+  const curfew = c.groups.includes('Khurdans') && !(EVENTS[0].except || []).includes(c.id) ? filled.filter(([d]) => d >= new Date(y, 9, 1)).length : 0;
+  const actCount = tally(filled.flatMap(([, r]) => r.acts));
+  const neglected = allActs(c).filter(a => !actCount.some(([k]) => k === a));
+  const low = actCount.length && actCount[actCount.length - 1][1] <= actCount[0][1] / 4 ? actCount[actCount.length - 1] : null;
+  const least = neglected.length ? [neglected[0], 0] : low;
+  // frise des humeurs : humeur dominante de chaque mois
+  const frieze = Array.from({ length:12 }, (_, m) => { const t = tally(filled.filter(([d]) => d.getMonth() === m).map(([, r]) => r.mood).filter(Boolean)); return t[0]?.[0] || null; });
+  // titre de l'année
+  const ratioHome = pct(homeDays, filled.length);
+  const signature = { eoor:'Le Diplomate', tamachag:'Le Khan infatigable', davaajav:"L'Archéologue", khopses:'La Reine du boudoir', ankhbayar:'Le Chasseur exilé' };
+  const title = drunk >= 8 ? (fem ? 'La Fêtarde' : 'Le Fêtard')
+    : trips.length >= 6 ? (fem ? "L'Aventurière" : "L'Aventurier")
+    : ratioHome >= 85 ? (fem ? 'La Casanière' : 'Le Casanier')
+    : signature[c.id] || "L'Insaisissable";
+  const partner = pairOf(c.id)?.find(x => x !== c.id) || null;
+  return { fem, filled, best, word: words[0]?.[0] || null, late, early, slotsTotal: slotIds.length,
+    first: filled[0], last: filled[filled.length - 1], bestMonth, season: seasons[0]?.[0],
+    trips, km, mode: modes[0]?.[0], regions, zones, ratioHome, rain, snow, hot,
+    duo: names[0] || null, nightsMonth: nightsByMonth[0] ? [+nightsByMonth[0][0], nightsByMonth[0][1]] : null,
+    fests, bdays, khurdan, drunk, hurt, curfew, least, frieze, title, partner };
+};
+// Duo le plus chaud de l'année, toutes paires confondues.
+const hotDuoCache = {};
+const hottestDuo = y => hotDuoCache[y] ||= PAIRS.map(p => {
+  const days = Array.from({ length:366 }, (_, i) => new Date(y, 0, 1 + i)).filter(d => d.getFullYear() === y && d <= rpDay);
+  const n = days.filter(d => p.some(id => { const r = dayRecord(C.find(c => c.id === id), d); return r?.hot && (!r.with || p.includes(r.with)); })).length;   // nuits passées ensemble
+  return { pair:p, n };
+}).sort((a, b) => b.n - a.n)[0];
+// Duel sous les draps (wrap de Taiga) : qui a passé le plus de nuits chaudes avec elle ?
+const nightPartners = (c, x) => [...new Set(x.filled.filter(([, r]) => r.hot).map(([, r]) => r.with || partnerOf(c.id)).filter(w => w && w !== 'client'))];
+const battleHtml = (c, x) => {
+  const fem = isFem(c.id), hotDays = x.filled.filter(([, r]) => r.hot);
+  // Rivaux : toutes les personnes indiquées dans « La nuit » au fil de l'année.
+  const rivals = nightPartners(c, x);
+  const counts = rivals.map(id => ({ id, n: hotDays.filter(([, r]) => (r.with || partnerOf(c.id)) === id).length,
+    rough: hotDays.filter(([, r]) => (r.with || partnerOf(c.id)) === id && r.phys.includes('Éprouvé de la nuit')).length }));
+  const [ra, rb] = [...counts].sort((p, q) => q.rough - p.rough);
+  const total = counts.reduce((a, b) => a + b.n, 0) || 1;
+  const [a, b] = [...counts].sort((p, q) => q.n - p.n);
+  const tie = a.n === b.n;
+  // Genre des rivaux : celui de la fiche pour un personnage, sinon le sexe opposé au personnage (amantes / amants).
+  const L = k => esc(whoLabel(k.id)), F = k => isChar(k.id) ? isFem(k.id) : !fem;
+  const de = n => (/^[aeiouéèh]/i.test(n) ? "d'" : 'de ') + n;
+  return `<h3 class="wrap-sec">Duel sous les draps</h3>
+    <div class="battle">
+      ${counts.map(k => `<div class="battle-row ${!tie && k.id === a.id ? 'win' : ''}"><span>${L(k)}</span>
+        <div class="bar"><i style="width:${Math.round(k.n * 100 / total)}%"></i></div><b>${k.n}</b></div>`).join('')}
+      ${tie ? `<p class="battle-joke">Égalité parfaite. ${c.name} ne choisit pas : ${fem ? 'elle' : 'il'} collectionne.</p>` : `
+      <p class="battle-joke">${L(a)} remporte la couche haut la main : avec ${F(a) ? 'elle' : 'lui'}, les nuits ${de(c.name)} ont tourné au brasier.</p>
+      <p class="battle-joke">${a.n >= b.n * 2 ? 'On voit vite qui lui offrait les meilleurs orgasmes…' : `${L(b)} talonne de près : la course aux orgasmes reste ouverte…`}</p>`}
+      <h4 class="battle-sub">Lendemains éprouvants</h4>
+      ${counts.map(k => `<div class="battle-row ${ra.rough > rb.rough && k.id === ra.id ? 'win' : ''}"><span>${L(k)}</span>
+        <div class="bar"><i style="width:${Math.round(k.rough * 100 / Math.max(1, ra.rough))}%"></i></div><b>${k.rough}</b></div>`).join('')}
+      <p class="battle-joke">${ra.rough === rb.rough ? `Personne ne ${fem ? 'la' : 'le'} ménage plus que l'autre : match nul, et des courbatures pour tout le monde.`
+        : `Mention spéciale à ${L(ra)}, ${F(ra) ? 'celle' : 'celui'} ${fem ? 'qui lui a le plus fait trembler les jambes' : 'qui a le plus vidé ses réserves'} : ${ra.rough} réveil${ra.rough > 1 ? 's' : ''} « ${physLabel(c.id, 'Éprouvé de la nuit').toLowerCase()} ».${ra.n < a.n ? ' Moins souvent, mais plus fort.' : ''}`}</p>
+    </div>`;
+};
+const faceStats = (c, y) => { const x = wrapExtras(c, y); return { name:c.name, days:x.filled.length, trips:x.trips.length, km:x.km, nights:x.filled.filter(([, r]) => r.hot).length, top: tally(x.filled.flatMap(([, r]) => r.acts))[0]?.[0] || '—' }; };
+const wrapExtrasHtml = (c, y) => {
+  const x = wrapExtras(c, y), lateRatio = pct(x.late, x.late + x.early);
+  const card = (label, value, small = '') => `<div class="fx"><span class="fx-label">${label}</span><b>${value}</b>${small ? `<small>${small}</small>` : ''}</div>`;
+  const p = x.partner && C.find(k => k.id === x.partner);
+  const ps = p ? faceStats(p, y) : null, me = p ? faceStats(c, y) : null;
+  return `
+    <div class="wrap-title"><span>Titre de l'année</span><b>${x.title}</b></div>
+    <h3 class="wrap-sec">Records</h3>
+    <div class="fx-grid">
+      ${card('Plus longue série', x.best + ' jours', "d'affilée")}
+      ${x.word ? card("Mot de l'année", '« ' + esc(x.word) + ' »') : ''}
+      ${x.slotsTotal ? card(lateRatio >= 50 ? 'Oiseau de nuit' : 'Lève-tôt', (lateRatio >= 50 ? lateRatio : 100 - lateRatio) + ' %', lateRatio >= 50 ? 'de ses activités le soir ou la nuit' : "de ses activités à l'aube ou le matin") : ''}
+      ${x.bestMonth !== null ? card('Mois le plus rempli', MONTHS[x.bestMonth], 'saison préférée : ' + x.season) : ''}
+    </div>
+    ${x.first ? `<div class="mood-pair"><div><span>Premier mood</span><q>${esc(x.first[1].mood)}</q><small>${fmtDay(x.first[0])}</small></div>
+      <div><span>Dernier mood</span><q>${esc(x.last[1].mood)}</q><small>${fmtDay(x.last[0])}</small></div></div>` : ''}
+    <h3 class="wrap-sec">Voyages et météo</h3>
+    <div class="fx-grid">
+      ${card('Distance parcourue', x.km.toLocaleString('fr-FR') + ' km', x.mode ? 'surtout en ' + x.mode.toLowerCase() : 'sans quitter sa région')}
+      ${card('Régions visitées', x.regions.size, x.zones.size + ' zones et lieux distincts')}
+      ${card('Chez soi', x.ratioHome + ' %', 'des journées dans sa région')}
+      ${card('Sous la pluie', x.rain + ' jours', x.snow ? x.snow + ' jours de neige' : '')}
+      ${x.hot ? card('Plus grosse chaleur', deg(x.hot.t), `le ${fmtDay(x.hot.d)}${x.hot.where ? ' à ' + esc(x.hot.where) : ''}`) : ''}
+    </div>
+    <h3 class="wrap-sec">Liens et fêtes</h3>
+    <div class="fx-grid">
+      ${x.duo ? card("Duo de l'année", esc(x.duo[0]), x.duo[1] + ' moments partagés') : ''}
+      ${(h => h && h.n && h.pair.includes(c.id) ? `<div class="fx hot-duo">${icon('lips')}<span class="fx-label">Duo le plus chaud de l'année</span><b>${h.pair.map(nameOf).join(' & ')}</b><small>${h.n} nuits torrides, record toutes fiches confondues</small><em class="cheer">Bravo les petits coquins</em></div>` : '')(hottestDuo(y))}
+      ${x.nightsMonth ? card('Mois le plus torride', MONTHS[x.nightsMonth[0]], x.nightsMonth[1] + ' nuits chaudes') : ''}
+      ${x.fests.size ? card('Fêtes vécues', x.fests.size, [...x.fests].slice(0, 3).join(', ')) : ''}
+      ${x.bdays ? card('Anniversaires fêtés', x.bdays) : ''}
+      ${x.khurdan.length ? card('Grands jours khurdans', x.khurdan.length + ' jours', [...new Set(x.khurdan.map(k => k.startsWith('Départ') ? 'transhumances' : k))].join(', ')) : ''}
+    </div>
+    ${nightPartners(c, x).length >= 2 ? battleHtml(c, x) : ''}
+    ${huntYearHtml(c, x)}
+    <h3 class="wrap-sec">Météo intérieure</h3>
+    <div class="frieze">${x.frieze.map((mo, i) => `<span style="background:${mo ? MOOD_COLORS[mo] || MOOD_COLORS[MOOD_MASC[mo]] || '#888' : 'transparent'}" title="${MONTHS[i]} : ${mo ? esc(mo) : '—'}"><i>${MONTHS[i][0].toUpperCase()}</i></span>`).join('')}</div>
+    <p class="reserved frieze-legend">${x.frieze.map((mo, i) => mo ? `${MONTHS[i].slice(0, 4)}. ${esc(mo).toLowerCase()}` : '').filter(Boolean).slice(0, 4).join(' · ')}…</p>
+    <h3 class="wrap-sec">Mosaïque</h3>
+    <div class="mosaic">${MONTHS.map((mo, i) => `<span><i>${mo.slice(0, 3)}.</i></span>`).join('')}</div>
+    <p class="reserved">Dans l'appli, chaque case affichera une capture du mois.</p>
+    ${ps ? `<h3 class="wrap-sec">Face-à-face</h3>
+      <table class="duel"><thead><tr><th></th><th>${esc(me.name)}</th><th>${esc(ps.name)}</th></tr></thead><tbody>
+        <tr><th>Journées</th><td>${me.days}</td><td>${ps.days}</td></tr>
+        <tr><th>Voyages</th><td>${me.trips}</td><td>${ps.trips}</td></tr>
+        <tr><th>Kilomètres</th><td>${me.km.toLocaleString('fr-FR')}</td><td>${ps.km.toLocaleString('fr-FR')}</td></tr>
+        <tr><th>Activité phare</th><td>${esc(me.top)}</td><td>${esc(ps.top)}</td></tr></tbody></table>` : ''}
+    <h3 class="wrap-sec">Les petites hontes</h3>
+    <ul class="shames">
+      ${x.drunk ? `<li>A fini ivre ${x.drunk} fois.</li>` : `<li>Pas une seule ivresse. Exemplaire, ou très discret${x.fem ? 'e' : ''}.</li>`}
+      ${x.hurt ? `<li>${x.hurt} blessure${x.hurt > 1 ? 's' : ''} au compteur.</li>` : ''}
+      ${x.curfew ? `<li>${x.curfew} jours de couvre-feu subis à l'Iloh.</li>` : ''}
+      ${x.least ? `<li>Activité la plus négligée : « ${esc(x.least[0])} », ${x.least[1]} fois. ${c.name}, voyons.</li>` : ''}
+    </ul>`;
+};
+
+// ---------- Onglets de la fiche : Journée / Historique ----------
 const tabsHtml = id => `<div class="tabs" role="tablist">
   <button type="button" role="tab" data-view="day" aria-selected="${state[id].view !== 'history'}">Journée</button>
   <button type="button" role="tab" data-view="history" aria-selected="${state[id].view === 'history'}">Historique</button></div>`;
@@ -1053,6 +1228,7 @@ const bindTabs = id => document.querySelectorAll('[data-view]').forEach(b => b.a
   state[id].view = b.dataset.view; renderChar(id); window.scrollTo({ top:0 });
 }));
 
+const b4wrap = () => { const b = document.querySelector('.wrap-btn'); if (b) { b.disabled = true; b.textContent = "Chargement de l’année…"; } };
 function renderHistory(id) {
   const c = C.find(x => x.id === id), t = THEMES[c.theme], s = state[id];
   root.className = t.cls;
@@ -1064,6 +1240,37 @@ function renderHistory(id) {
   const sel = s.calSel && s.calSel.getMonth() === m && s.calSel.getFullYear() === y ? s.calSel : null;
   const selRec = sel && dayRecord(c, sel);
   const st = statsFor(c, days);
+  const wrapOn = s.wrap;
+  const yearDays = Array.from({ length: 366 }, (_, i) => new Date(y, 0, 1 + i)).filter(d => d.getFullYear() === y);
+  const ws = wrapOn ? statsFor(c, yearDays) : null;
+  const doneArcs = arcsOf(id).filter(a => a.done);
+  const firstSnow = wrapOn && defaultCity(id) ? yearDays.find(d => d <= rpDay && snowCoverOn(defaultCity(id), d)) : null;
+
+  const wrapSection = () => `
+    <section>
+      ${wrapBanner('')}
+      <button type="button" class="btn wrap-btn" id="wrap-${id}">${wrapOn ? 'Masquer le wrap' : wrapReady() ? 'Revivre ' + y : 'Aperçu du wrap ' + y}</button>
+      ${wrapReady() ? '' : `<p class="reserved">Aperçu secret : invisible pour tous jusqu'au 26 décembre. <button type="button" class="link" id="simwrap-${id}">Simuler le 26 décembre</button></p>`}
+      ${wrapOn ? `<article class="wrap">
+        <p class="kicker">L'année ${y} de</p>
+        <h2 class="wrap-name">${c.name}</h2>
+        <div class="wrap-big"><div><b>${ws.filled}</b><span>journées racontées</span></div>
+          <div><b>${ws.nights}</b><span>nuits chaudes</span></div>
+          <div><b>${ws.trips}</b><span>voyages</span></div>
+          <div><b>${doneArcs.length}</b><span>arcs bouclés</span></div></div>
+        <dl class="stats-list">
+          <div><dt>Ce qui l'a occupé</dt><dd>${listOf(ws.acts)}</dd></div>
+          <div><dt>Là où on l'a vu</dt><dd>${listOf(ws.places)}</dd></div>
+          <div><dt>Humeur de l'année</dt><dd>${listOf(ws.moods)}</dd></div>
+          ${ws.hottest ? `<div><dt>Jour le plus chaud</dt><dd>${deg(ws.hottest.max)} le ${fmtDay(ws.hottest.d)}</dd></div>
+          <div><dt>Jour le plus froid</dt><dd>${deg(ws.coldest.min)} le ${fmtDay(ws.coldest.d)}</dd></div>` : ''}
+          ${firstSnow ? `<div><dt>Premier sol enneigé</dt><dd>${fmtDay(firstSnow)}</dd></div>` : ''}
+          ${(ms => ms.length ? `<div><dt>Moments marquants</dt><dd>${ms.map(m => `${esc(m.type)}${m.with ? ' avec ' + esc(whoLabel(m.with)) : ''} (${fmtDay(new Date(...m.key.split('-').map((v, i) => i === 1 ? v - 1 : +v)))})`).join(', ')}</dd></div>` : '')(milestonesOf(id).filter(m => m.key.startsWith(y + '-')))}
+          ${doneArcs.length ? `<div><dt>Arcs bouclés</dt><dd>${doneArcs.map(a => esc(a.title)).join(', ')}</dd></div>` : ''}
+        </dl>
+        ${wrapExtrasHtml(c, y)}
+      </article>` : ''}
+    </section>`;
   document.getElementById('view').innerHTML = `
     ${tabsHtml(id)}
     <header><p class="kicker">${t.glyph} ${c.groups.join(' · ')}</p><h1>${c.name}${c.surname ? `<small>${c.surname}</small>` : ''}</h1></header>
@@ -1107,11 +1314,14 @@ function renderHistory(id) {
         ${st.trips ? `<div><dt>Voyages</dt><dd>${st.trips}</dd></div>` : ''}
       </dl>
     </section>
-`;
+
+    ${wrapVisible() ? wrapSection() : ''}`;
   bindTabs(id);
   document.getElementById('cal-prev').addEventListener('click', () => { cur.m--; if (cur.m < 0) { cur.m = 11; cur.y--; } s.calSel = null; renderChar(id); });
   document.getElementById('cal-next').addEventListener('click', () => { cur.m++; if (cur.m > 11) { cur.m = 0; cur.y++; } s.calSel = null; renderChar(id); });
   document.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { s.calSel = new Date(y, m, +b.dataset.day); renderChar(id); }));
+  document.getElementById('wrap-' + id)?.addEventListener('click', async () => { s.wrap = !s.wrap; if (s.wrap && window.RP_SYNC) { b4wrap(); await RP_SYNC.loadYear(y); Object.keys(hotDuoCache).forEach(k => delete hotDuoCache[k]); } renderChar(id); });
+  document.getElementById('simwrap-' + id)?.addEventListener('click', async () => { simulateWrapDay = true; s.wrap = true; if (window.RP_SYNC) { b4wrap(); await RP_SYNC.loadYear(y); Object.keys(hotDuoCache).forEach(k => delete hotDuoCache[k]); } renderChar(id); });
 }
 
 // ---------- Sections de la journée : état physique, capture, arcs ----------
@@ -1185,6 +1395,28 @@ const KHURDAN_HUNT = {
 const HUNTS = Object.fromEntries(['ankhbayar', 'taiga', 'tamachag', 'khokkutsai', 'javkhaanhun', 'khubunjin'].map(id => [id, KHURDAN_HUNT]));
 // Ankhbayar, chasseur de métier : plus doué que les autres.
 HUNTS.ankhbayar = { ...KHURDAN_HUNT, odds: { solo: .9, group: .95 } };
+// Tableau de chasse de l'année (wrap).
+const huntYear = (c, x) => {
+  const outs = x.filled.flatMap(([d, r]) => r.acts.filter(a => HUNTS[c.id]?.acts[a]).map(a => huntFor(c.id, a, d)));
+  if (!outs.length) return null;
+  const wins = outs.filter(h => h.catches.length);
+  const all = wins.flatMap(h => h.catches);
+  const byName = tally(all.flatMap(k => Array(k.qty).fill(k.name)));
+  const rarest = byName.map(([n]) => HUNTS[c.id].game.find(g => g.name === n)).sort((a, b) => a.weight - b.weight)[0];
+  const rarestSolo = rarest && outs.some(h => h.mode === 'solo' && h.catches.some(k => k.name === rarest.name)) && rarest.soloWeight !== undefined;
+  return { outs: outs.length, solo: outs.filter(h => h.mode === 'solo').length, group: outs.filter(h => h.mode === 'group').length,
+    wins: wins.length, empty: outs.length - wins.length, total: byName.reduce((a, [, n]) => a + n, 0), byName, rarest, rarestSolo };
+};
+const huntYearHtml = (c, x) => {
+  const h = huntYear(c, x); if (!h) return '';
+  return `<h3 class="wrap-sec">Tableau de chasse de l'année</h3>
+    <div class="fx-grid">
+      <div class="fx"><span class="fx-label">Prises</span><b>${h.total}</b><small>en ${h.outs} sorties (${h.solo} en solo, ${h.group} en groupe)</small></div>
+      <div class="fx"><span class="fx-label">Réussite</span><b>${pct(h.wins, h.outs)} %</b><small>${h.empty} retour${h.empty > 1 ? 's' : ''} bredouille</small></div>
+      ${h.rarest ? `<div class="fx"><span class="fx-label">Plus belle prise</span><b>${esc(h.rarest.name)}</b><small>${h.rarestSolo ? 'abattue en solo, exploit !' : 'prise de l\'année'}</small></div>` : ''}
+    </div>
+    ${h.byName.length ? `<table class="duel hunt-table"><thead><tr><th>Gibier</th><th>Nombre</th></tr></thead><tbody>${h.byName.map(([n, q]) => `<tr><th>${esc(n)}</th><td>${q}</td></tr>`).join('')}</tbody></table>` : ''}`;
+};
 const huntFor = (id, label, day = rpDay) => {
   const h = HUNTS[id], mode = h?.acts[label]; if (!mode) return null;
   const k = keyOf(day) + ':' + id + ':' + label;
@@ -1294,6 +1526,7 @@ function renderHome() {
     ${(list => list.length ? `<section class="news"><h2>${icon('bell')}Nouvelles${list.some(n => !n.read) ? ` <span class="badge">${list.filter(n => !n.read).length}</span>` : ''}</h2>
       <ul>${list.slice(0, 8).map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
       ${list.some(n => !n.read) ? `<button type="button" class="link" id="news-read">Tout marquer comme lu</button>` : ''}</section>` : '')(myNews())}
+    ${wrapBanner('<span class="wrap-hint">Ouvre une fiche, onglet Historique.</span>')}
     <div class="grid">
       ${visible.map(c => { const t = THEMES[c.theme]; const s = state[c.id];
         return `<button type="button" class="card" id="card-${c.id}" style="${vars(t)}" data-go="${c.id}">

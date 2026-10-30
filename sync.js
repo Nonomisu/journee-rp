@@ -67,6 +67,8 @@ window.RP_SYNC = {
   dropNews: keys => { if (!started) return; keys.forEach(k => { base?.news.delete(k); deleteDoc(newsRef(k)).catch(report); }); },
   hasMonth: (y, m) => loaded.has(ymOf(y, m)),
   loadMonth: (y, m) => loadMonth(ymOf(y, m)),
+  // Toute l'année (pour le wrap) : douze mois, tous personnages.
+  loadYear: y => Promise.all(Array.from({ length: 12 }, (_, m) => ymOf(y, m)).filter(ym => ym <= A.ym).map(loadMonth)),
 };
 
 // ---------------------------------------------------------------- chargement
