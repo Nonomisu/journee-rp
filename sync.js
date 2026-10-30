@@ -67,6 +67,9 @@ window.RP_SYNC = {
   dropNews: keys => { if (!started) return; keys.forEach(k => { base?.news.delete(k); deleteDoc(newsRef(k)).catch(report); }); },
   hasMonth: (y, m) => loaded.has(ymOf(y, m)),
   loadMonth: (y, m) => loadMonth(ymOf(y, m)),
+  save: () => schedule(),
+  // Webhook Discord : rangé dans Firestore (lisible par les deux joueurs seulement), jamais dans le code.
+  setWebhook: url => setDoc(doc(db, 'shared', 'discord'), { webhook: url }, { merge: true }),
   // Toute l'année (pour le wrap) : douze mois, tous personnages.
   loadYear: y => Promise.all(Array.from({ length: 12 }, (_, m) => ymOf(y, m)).filter(ym => ym <= A.ym).map(loadMonth)),
 };
@@ -85,10 +88,12 @@ async function loadMonth(ym) {
 
 async function boot() {
   A.setMe(me);
-  const [g, d, cs, ns] = await Promise.all([
+  const [g, d, cs, ns, dc] = await Promise.all([
     getDoc(gRef), getDoc(dRef), getDocs(collection(db, 'characters')),
     getDocs(query(collection(db, 'news'), where('to', '==', me))),
+    getDoc(doc(db, 'shared', 'discord')),
   ]);
+  if (window.RP_DISCORD) window.RP_DISCORD.webhook = dc.data()?.webhook || null;
   if (!g.exists()) await setDoc(gRef, {});
   if (!d.exists()) await setDoc(dRef, {});
   const chars = {};
