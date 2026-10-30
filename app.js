@@ -445,11 +445,8 @@ const checkRisk = id => {
   if (!unsafe) return;
   const key = 'risk:' + keyOf(rpDay) + ':' + woman + ':' + man;
   if (NEWS.some(x => x.key === key)) return;
-  // PNJ désigné par un article (« Le livreur ») : on évite « de Le livreur » / « Un petit Le livreur », et minuscule en milieu de phrase.
-  const m = whoLabel(man), art = /^(Le|La|Les) /.test(m);
-  const lines = art ? RISK_LINES.filter(fn => !/(de|petit) \$\{m\}/.test(fn.toString())) : RISK_LINES;
-  let text = pickLine(lines, key)(nameOf(woman), m);
-  if (art) text = text.replace(new RegExp('([a-zà-ÿ,] )' + m, 'g'), (_, p) => p + m[0].toLowerCase() + m.slice(1));
+  // Pour Jynette, une seule phrase, claire : « X ne s'est pas protégé. Y est-elle enceinte ? »
+  const text = `${whoLabel(man)} ne s'est pas protégé. ${nameOf(woman)} est-elle enceinte ?`;
   NEWS.unshift({ to: JYNETTE, text, charId: woman, key, read: false });
 };
 const MS_NEWS = {
@@ -1047,9 +1044,11 @@ let simulateWrapDay = false;   // aperçu secret de Nono : simuler le 26 décemb
 // Surprise : avant le 26 décembre, rien ne laisse deviner le wrap. Seul l'aperçu secret
 // (lien terminé par #apercu-wrap) permet à Nono de le tester.
 const wrapVisible = () => wrapReady() || (me === 'corentin' && (() => { try { return location.hash === '#apercu-wrap'; } catch { return false; } })());
-const wrapReady = () => simulateWrapDay || (rpDay.getMonth() === 11 && rpDay.getDate() >= 26);
+// Le wrap est disponible du 26 décembre au 9 janvier ; en janvier, il porte sur l'année écoulée.
+const wrapReady = () => simulateWrapDay || (rpDay.getMonth() === 11 && rpDay.getDate() >= 26) || (rpDay.getMonth() === 0 && rpDay.getDate() <= 9);
+const wrapYear = () => rpDay.getMonth() === 0 ? rpDay.getFullYear() - 1 : rpDay.getFullYear();
 const wrapBanner = (onClick) => wrapReady() ? `<div class="wrap-banner">${icon('star')}<div><b>Et si on revivait cette année ?</b>
-  <span>Les wraps ${rpDay.getFullYear()} sont prêts et ont été envoyés sur Discord.</span></div>${onClick}</div>` : '';
+  <span>Les wraps ${wrapYear()} sont prêts et ont été envoyés sur Discord.</span></div>${onClick}</div>` : '';
 const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
 const fmtDay = d => `${d.getDate()} ${MONTHS[d.getMonth()]}`;
 const listOf = pairs => pairs.length ? pairs.map(([k, n]) => `${esc(k)} <small>×${n}</small>`).join(', ') : '—';
@@ -1241,7 +1240,8 @@ function renderHistory(id) {
   const selRec = sel && dayRecord(c, sel);
   const st = statsFor(c, days);
   const wrapOn = s.wrap;
-  const yearDays = Array.from({ length: 366 }, (_, i) => new Date(y, 0, 1 + i)).filter(d => d.getFullYear() === y);
+  const wy = wrapYear();   // année du wrap (l'année écoulée en janvier)
+  const yearDays = Array.from({ length: 366 }, (_, i) => new Date(wy, 0, 1 + i)).filter(d => d.getFullYear() === wy);
   const ws = wrapOn ? statsFor(c, yearDays) : null;
   const doneArcs = arcsOf(id).filter(a => a.done);
   const firstSnow = wrapOn && defaultCity(id) ? yearDays.find(d => d <= rpDay && snowCoverOn(defaultCity(id), d)) : null;
@@ -1249,10 +1249,10 @@ function renderHistory(id) {
   const wrapSection = () => `
     <section>
       ${wrapBanner('')}
-      <button type="button" class="btn wrap-btn" id="wrap-${id}">${wrapOn ? 'Masquer le wrap' : wrapReady() ? 'Revivre ' + y : 'Aperçu du wrap ' + y}</button>
+      <button type="button" class="btn wrap-btn" id="wrap-${id}">${wrapOn ? 'Masquer le wrap' : wrapReady() ? 'Revivre ' + wy : 'Aperçu du wrap ' + wy}</button>
       ${wrapReady() ? '' : `<p class="reserved">Aperçu secret : invisible pour tous jusqu'au 26 décembre. <button type="button" class="link" id="simwrap-${id}">Simuler le 26 décembre</button></p>`}
       ${wrapOn ? `<article class="wrap">
-        <p class="kicker">L'année ${y} de</p>
+        <p class="kicker">L'année ${wy} de</p>
         <h2 class="wrap-name">${c.name}</h2>
         <div class="wrap-big"><div><b>${ws.filled}</b><span>journées racontées</span></div>
           <div><b>${ws.nights}</b><span>nuits chaudes</span></div>
@@ -1268,7 +1268,7 @@ function renderHistory(id) {
           ${(ms => ms.length ? `<div><dt>Moments marquants</dt><dd>${ms.map(m => `${esc(m.type)}${m.with ? ' avec ' + esc(whoLabel(m.with)) : ''} (${fmtDay(new Date(...m.key.split('-').map((v, i) => i === 1 ? v - 1 : +v)))})`).join(', ')}</dd></div>` : '')(milestonesOf(id).filter(m => m.key.startsWith(y + '-')))}
           ${doneArcs.length ? `<div><dt>Arcs bouclés</dt><dd>${doneArcs.map(a => esc(a.title)).join(', ')}</dd></div>` : ''}
         </dl>
-        ${wrapExtrasHtml(c, y)}
+        ${wrapExtrasHtml(c, wy)}
       </article>` : ''}
     </section>`;
   document.getElementById('view').innerHTML = `
@@ -1320,8 +1320,8 @@ function renderHistory(id) {
   document.getElementById('cal-prev').addEventListener('click', () => { cur.m--; if (cur.m < 0) { cur.m = 11; cur.y--; } s.calSel = null; renderChar(id); });
   document.getElementById('cal-next').addEventListener('click', () => { cur.m++; if (cur.m > 11) { cur.m = 0; cur.y++; } s.calSel = null; renderChar(id); });
   document.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { s.calSel = new Date(y, m, +b.dataset.day); renderChar(id); }));
-  document.getElementById('wrap-' + id)?.addEventListener('click', async () => { s.wrap = !s.wrap; if (s.wrap && window.RP_SYNC) { b4wrap(); await RP_SYNC.loadYear(y); Object.keys(hotDuoCache).forEach(k => delete hotDuoCache[k]); } renderChar(id); });
-  document.getElementById('simwrap-' + id)?.addEventListener('click', async () => { simulateWrapDay = true; s.wrap = true; if (window.RP_SYNC) { b4wrap(); await RP_SYNC.loadYear(y); Object.keys(hotDuoCache).forEach(k => delete hotDuoCache[k]); } renderChar(id); });
+  document.getElementById('wrap-' + id)?.addEventListener('click', async () => { s.wrap = !s.wrap; if (s.wrap && window.RP_SYNC) { b4wrap(); await RP_SYNC.loadYear(wrapYear()); Object.keys(hotDuoCache).forEach(k => delete hotDuoCache[k]); } renderChar(id); });
+  document.getElementById('simwrap-' + id)?.addEventListener('click', async () => { simulateWrapDay = true; s.wrap = true; if (window.RP_SYNC) { b4wrap(); await RP_SYNC.loadYear(wrapYear()); Object.keys(hotDuoCache).forEach(k => delete hotDuoCache[k]); } renderChar(id); });
 }
 
 // ---------- Sections de la journée : état physique, capture, arcs ----------
@@ -1526,7 +1526,7 @@ function renderHome() {
     ${(list => list.length ? `<section class="news"><h2>${icon('bell')}Nouvelles${list.some(n => !n.read) ? ` <span class="badge">${list.filter(n => !n.read).length}</span>` : ''}</h2>
       <ul>${list.slice(0, 8).map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
       ${list.some(n => !n.read) ? `<button type="button" class="link" id="news-read">Tout marquer comme lu</button>` : ''}</section>` : '')(myNews())}
-    ${wrapBanner('<span class="wrap-hint">Ouvre une fiche, onglet Historique.</span>')}
+    ${wrapBanner(`<div class="wrap-open">${C.filter(c => c.player === me).map(c => `<button type="button" class="btn" data-wrap-open="${c.id}">${c.name}</button>`).join('')}</div>`)}
     <div class="grid">
       ${visible.map(c => { const t = THEMES[c.theme]; const s = state[c.id];
         return `<button type="button" class="card" id="card-${c.id}" style="${vars(t)}" data-go="${c.id}">
@@ -1883,6 +1883,13 @@ function renderChar(id) {
 
 function go(id) { current = id; renderNav(); id === 'home' ? renderHome() : renderChar(id); window.scrollTo({ top:0 }); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
+document.addEventListener('click', async e => {
+  const b = e.target.closest('[data-wrap-open]'); if (!b) return;
+  const id = b.dataset.wrapOpen; Object.assign(state[id], { view: 'history', wrap: true });
+  b.disabled = true;
+  if (window.RP_SYNC) { await RP_SYNC.loadYear(wrapYear()); Object.keys(hotDuoCache).forEach(k => delete hotDuoCache[k]); }
+  go(id);
+});
 document.addEventListener('click', e => { if (e.target.closest('#signout')) window.RP_SYNC?.signOut(); });
 document.addEventListener('click', e => {
   if (e.target.closest('#news-read')) { myNews().forEach(n => n.read = true); go(current); return; }
