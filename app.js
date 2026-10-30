@@ -158,7 +158,7 @@ const playerOf = id => C.find(c => c.id === id)?.player;
 const notify = (from, to, text, key) => {
   if (!isChar(to) || playerOf(from) === playerOf(to)) return;          // seulement d'un joueur à l'autre
   if (NEWS.some(n => n.key === key)) return;
-  NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false });
+  NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false, src: from });
 };
 // Phrases tirées au sort (la même pour une même nuit).
 const queName = n => (/^[aeiouéèh]/i.test(n) ? "qu'" : 'que ') + n;
@@ -183,7 +183,7 @@ const NIGHT_LINES_KHURDAN = [
 ];
 // Nuits de Khopses avec un client : Viggo reçoit une nouvelle, et une autre si elle l'appelle.
 const CLIENT_PARTNER = { khopses:'viggo' };
-const pushNews = (to, text, key) => { if (!NEWS.some(n => n.key === key)) NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false }); };
+const pushNews = (to, text, key, src) => { if (!NEWS.some(n => n.key === key)) NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false, src }); };
 const CLIENT_LINES = [
   (f, m) => `${f} a passé la nuit avec un client.`,
   (f, m) => `Nuit de travail pour ${f} : un client a réservé ses charmes.`,
@@ -447,7 +447,7 @@ const checkRisk = id => {
   if (NEWS.some(x => x.key === key)) return;
   // Pour Jynette, une seule phrase, claire : « X ne s'est pas protégé. Y est-elle enceinte ? »
   const text = `${whoLabel(man)} ne s'est pas protégé. ${nameOf(woman)} est-elle enceinte ?`;
-  NEWS.unshift({ to: JYNETTE, text, charId: woman, key, read: false });
+  NEWS.unshift({ to: JYNETTE, text, charId: woman, key, read: false, src: id });
 };
 const MS_NEWS = {
   'Rencontre':   (a, b) => `${a} et ${b} se sont rencontrés !`,
@@ -457,7 +457,9 @@ const MS_NEWS = {
   'Naissance':   (a, b) => `Une naissance chez ${a} et ${b} !`,
   'Séparation':  (a, b) => `${a} et ${b} se sont séparés…`,
 };
-const myNews = () => NEWS.filter(n => n.to === me);
+// Nuits, clients et protection : la nouvelle ne part qu'une fois la fiche qui l'a déclenchée validée.
+const newsReady = n => !n.src || !!state[n.src]?.done;
+const myNews = () => NEWS.filter(n => n.to === me && newsReady(n));
 const canEdit = id => C.find(c => c.id === id)?.player === me;
 const shown = c => (filter === 'all' || c.player === filter) && (groupFilter === 'all' || c.groups.includes(groupFilter));
 const root = document.documentElement;
@@ -834,7 +836,7 @@ const setNight = (id, hot, w) => {
   if (CLIENT_PARTNER[id]) {
     if (hot && nw === 'client') {
       const k = 'client:' + keyOf(rpDay) + ':' + id;
-      pushNews(CLIENT_PARTNER[id], pickLine(CLIENT_LINES, k)(nameOf(id), nameOf(CLIENT_PARTNER[id])), k);
+      pushNews(CLIENT_PARTNER[id], pickLine(CLIENT_LINES, k)(nameOf(id), nameOf(CLIENT_PARTNER[id])), k, id);
     } else { state[id].callPartner = false; state[id].returnHour = null; }
   }
   if (state[id] && (!hot || nightsBy[id].with !== old)) state[id].shell = false;
@@ -1802,7 +1804,7 @@ function renderChar(id) {
   document.getElementById('return-'+id)?.addEventListener('change', e => { state[id].returnHour = e.target.value === '' ? null : +e.target.value; renderChar(id); });
   document.getElementById('call-partner-'+id)?.addEventListener('change', e => {
     state[id].callPartner = e.target.checked;
-    if (e.target.checked) { const k = 'call:' + keyOf(rpDay) + ':' + id; pushNews(CLIENT_PARTNER[id], pickLine(CALL_LINES, k)(nameOf(id), nameOf(CLIENT_PARTNER[id])), k); }
+    if (e.target.checked) { const k = 'call:' + keyOf(rpDay) + ':' + id; pushNews(CLIENT_PARTNER[id], pickLine(CALL_LINES, k)(nameOf(id), nameOf(CLIENT_PARTNER[id])), k, id); }
     else dropNews(['call:' + keyOf(rpDay) + ':' + id]);
   });
   const djReset = () => { if (!s.setLate) { const p = DJ.partner; setDoor(p, null); dropNews(['rale:' + keyOf(rpDay)]); state[p].wait = null; } };
@@ -2032,7 +2034,7 @@ window.RP_APP = {
       entries: Object.fromEntries(mine.map(c => [c.id, entryOf(c.id)])),
       chars: Object.fromEntries(mine.map(c => [c.id, charDocOf(c)])),
       today: Object.fromEntries(mine.map(c => [c.id, todayOf(c.id)])),
-      news: NEWS.map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read })),
+      news: NEWS.filter(newsReady).map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read })),
     };
   },
   rerender,
