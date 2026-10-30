@@ -1529,7 +1529,6 @@ function renderHome() {
   const visible = C.filter(shown);
   document.getElementById('view').innerHTML = `
     <p class="session">Connecté : ${PLAYER_NAME[me]} · <button type="button" class="link" id="signout">Se déconnecter</button></p>
-    ${me === 'corentin' && window.RP_DISCORD ? RP_DISCORD.settingsHtml() : ''}
     <header><p class="kicker">Journée RP</p><h1>Aujourd'hui</h1><p class="date">${today}<br>${eorzeaDate}</p>${(f => f ? `<p class="fest home-fest">${icon('star')}En Eorzea : ${f.name}</p>` : '')(festivalOn(rpDay))}</header>
     ${(list => list.length ? `<section class="news"><h2>${icon('bell')}Nouvelles${list.some(n => !n.read) ? ` <span class="badge">${list.filter(n => !n.read).length}</span>` : ''}</h2>
       <ul>${list.slice(0, 8).map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
@@ -1543,7 +1542,8 @@ function renderHome() {
           ${alerts[c.id] ? `<span class="card-alert">${icon('warn')}${esc(alerts[c.id])}</span>` : ''}
           <span class="state ${s.done?'done':''}">${s.done ? '✓ Terminé' : (s.mood || s.checked.size ? 'En cours' : 'À remplir')}</span></button>`; }).join('')}
       ${filter !== 'elle' ? SOON.map(n => `<div class="card soon" style="${vars(THEMES.alamhigo)}"><span class="grp">À venir</span><span class="name">${n}</span></div>`).join('') : ''}
-    </div>`;
+    </div>
+    ${me === 'corentin' && window.RP_DISCORD ? RP_DISCORD.settingsHtml() : ''}`;
 }
 
 function renderChar(id) {
