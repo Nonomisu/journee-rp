@@ -6,7 +6,7 @@ import { initializeApp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebas
 import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, onAuthStateChanged, signOut }
   from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-auth.js';
 import { initializeFirestore, doc, getDoc, getDocs, setDoc, updateDoc, deleteDoc, collection, query, where, onSnapshot,
-  FieldPath, deleteField, serverTimestamp } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
+  FieldPath, deleteField, serverTimestamp, runTransaction } from 'https://www.gstatic.com/firebasejs/13.1.0/firebase-firestore.js';
 
 void FIREBASE_SDK;
 // Empreinte SHA-256 de l'adresse de Nono (l'adresse elle-même ne figure pas dans le code public).
@@ -30,6 +30,7 @@ const dRef = doc(db, 'shared', 'day-' + A.iso);
 const monthRef = (id, ym) => doc(db, 'days', id, 'months', ym);
 const charRef = id => doc(db, 'characters', id);
 const todayRef = id => doc(db, 'today', id);
+const wrapsRef = y => doc(db, 'shared', 'wraps-' + y);
 const newsRef = key => doc(db, 'news', String(key).replace(/\//g, '_'));
 
 let me = null, started = false, timer = null, base = null;
@@ -72,6 +73,17 @@ window.RP_SYNC = {
   setWebhook: url => setDoc(doc(db, 'shared', 'discord'), { webhook: url }, { merge: true }),
   // Toute l'année (pour le wrap) : douze mois, tous personnages.
   loadYear: y => Promise.all(Array.from({ length: 12 }, (_, m) => ymOf(y, m)).filter(ym => ym <= A.ym).map(loadMonth)),
+  // Wraps du 26 décembre : verrou partagé (shared/wraps-AAAA) pour qu'un seul appareil les envoie.
+  // Renvoie null si c'est déjà fait ou en cours ailleurs ; sinon, les personnages déjà envoyés (reprise).
+  wrapClaim: y => runTransaction(db, async tx => {
+    const ref = wrapsRef(y), s = await tx.get(ref), d = s.data() || {};
+    if (d.done) return null;
+    if (d.claimedAt && Date.now() - d.claimedAt < 10 * 60e3) return null;   // envoi en cours sur l'autre appareil
+    tx.set(ref, { claimedBy: me, claimedAt: Date.now() }, { merge: true });
+    return d.sent || {};
+  }),
+  wrapSent: (y, id, msg) => setDoc(wrapsRef(y), { sent: { [id]: msg } }, { merge: true }),
+  wrapDone: y => setDoc(wrapsRef(y), { done: true, doneAt: Date.now() }, { merge: true }),
 };
 
 // ---------------------------------------------------------------- chargement
@@ -117,6 +129,7 @@ async function boot() {
   started = true;
   $('login').hidden = true;
   A.start();
+  setTimeout(() => window.RP_DISCORD?.autoWraps?.(), 2000);   // à partir du 26 décembre : envoi des wraps (une seule fois)
   listen();
   ['click', 'change', 'input'].forEach(t => document.addEventListener(t, schedule, true));
   document.addEventListener('visibilitychange', () => {

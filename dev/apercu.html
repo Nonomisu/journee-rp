@@ -1851,7 +1851,7 @@ function renderHistory(id) {
           ${ws.hottest ? `<div><dt>Jour le plus chaud</dt><dd>${deg(ws.hottest.max)} le ${fmtDay(ws.hottest.d)}</dd></div>
           <div><dt>Jour le plus froid</dt><dd>${deg(ws.coldest.min)} le ${fmtDay(ws.coldest.d)}</dd></div>` : ''}
           ${firstSnow ? `<div><dt>Premier sol enneigé</dt><dd>${fmtDay(firstSnow)}</dd></div>` : ''}
-          ${(ms => ms.length ? `<div><dt>Moments marquants</dt><dd>${ms.map(m => `${esc(m.type)}${m.with ? ' avec ' + esc(whoLabel(m.with)) : ''} (${fmtDay(new Date(...m.key.split('-').map((v, i) => i === 1 ? v - 1 : +v)))})`).join(', ')}</dd></div>` : '')(milestonesOf(id).filter(m => m.key.startsWith(y + '-')))}
+          ${(ms => ms.length ? `<div><dt>Moments marquants</dt><dd>${ms.map(m => `${esc(m.type)}${m.with ? ' avec ' + esc(whoLabel(m.with)) : ''} (${fmtDay(new Date(...m.key.split('-').map((v, i) => i === 1 ? v - 1 : +v)))})`).join(', ')}</dd></div>` : '')(milestonesOf(id).filter(m => m.key.startsWith(wy + '-')))}
           ${doneArcs.length ? `<div><dt>Arcs bouclés</dt><dd>${doneArcs.map(a => esc(a.title)).join(', ')}</dd></div>` : ''}
         </dl>
         ${wrapExtrasHtml(c, wy)}

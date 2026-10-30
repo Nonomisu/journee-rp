@@ -108,3 +108,110 @@ const openFromLink = () => {
     go(id); return true;
   } catch { return false; }
 };
+
+// ---------- Wraps de l'année : envoyés une seule fois, à la première ouverture de l'appli à partir du 26 décembre ----------
+// Chaque wrap est affiché comme dans l'onglet Historique, converti en image et posté sur le webhook du salon.
+// Un verrou dans Firestore (shared/wraps-AAAA) empêche les deux appareils de les envoyer en double ;
+// s'il est interrompu (appli fermée), le prochain lancement reprend où il s'était arrêté, 10 minutes plus tard.
+// Test : avec l'aperçu secret (#apercu-wrap), Nono peut les envoyer sur un autre salon, sans toucher au verrou.
+const wrapDayReal = () => (rpDay.getMonth() === 11 && rpDay.getDate() >= 26) || (rpDay.getMonth() === 0 && rpDay.getDate() <= 9);
+const pause = ms => new Promise(r => setTimeout(r, ms));
+const secretPreview = () => { try { return location.hash === '#apercu-wrap'; } catch { return false; } };
+const HOOK_RE = /^https:\/\/(canary\.|ptb\.)?discord(app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/;
+
+// Écran affiché pendant l'envoi (les fiches défilent derrière pour être photographiées).
+const wrapOverlay = txt => {
+  let o = document.getElementById('wrap-sending');
+  if (txt == null) { o?.remove(); return; }
+  if (!o) {
+    o = document.createElement('div'); o.id = 'wrap-sending';
+    o.style.cssText = 'position:fixed;inset:0;z-index:9999;display:grid;place-items:center;padding:2rem;text-align:center;background:#14161c;color:#d4af6a;font:500 1.05rem/1.5 Georgia,serif';
+    document.body.appendChild(o);
+  }
+  o.textContent = txt;
+};
+const wrapBlob = async ratio => {
+  const card = document.querySelector('#view article.wrap'); if (!card) throw new Error('wrap introuvable');
+  const h2i = await loadH2I(); await document.fonts.ready;
+  const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#111';
+  return h2i.toBlob(card, { pixelRatio: ratio, backgroundColor: bg, cacheBust: true });
+};
+// Envoi d'un message avec image ; respecte la limite de débit de Discord (code 429).
+const postHook = async (hook, payload, blob, name) => {
+  for (let i = 0; i < 5; i++) {
+    const f = new FormData(); f.append('payload_json', JSON.stringify(payload)); f.append('files[0]', blob, name);
+    const res = await fetch(`${hook}?wait=true`, { method: 'POST', body: f });
+    if (res.status === 429) { const j = await res.json().catch(() => ({})); await pause((j.retry_after || 2) * 1000 + 300); continue; }
+    if (!res.ok) throw new Error('Discord ' + res.status);
+    return (await res.json().catch(() => null))?.id || 'ok';
+  }
+  throw new Error('Discord : trop de requêtes');
+};
+
+const sendWraps = async ({ hook, sent = {}, test = false }) => {
+  const y = wrapYear(), back = { current, sim: simulateWrapDay, st: {} };
+  const label = test ? 'Test des wraps' : `Les wraps ${y} partent sur Discord`;
+  wrapOverlay(label + '…');
+  try {
+    if (window.RP_SYNC) await RP_SYNC.loadYear(y);
+    Object.keys(hotDuoCache).forEach(k => delete hotDuoCache[k]);
+    const days = Array.from({ length: 366 }, (_, i) => new Date(y, 0, 1 + i)).filter(d => d.getFullYear() === y);
+    const list = C.filter(c => statsFor(c, days).filled > 0);   // seulement les personnages qui ont vécu cette année
+    simulateWrapDay = true;                                     // le test peut avoir lieu avant le 26 décembre
+    let n = 0;
+    for (const c of list) {
+      n++;
+      if (sent[c.id]) continue;
+      wrapOverlay(`${label}… ${n} / ${list.length}`);
+      back.st[c.id] = { view: state[c.id].view, wrap: state[c.id].wrap };
+      Object.assign(state[c.id], { view: 'history', wrap: true });
+      go(c.id); await pause(600);
+      let blob = await wrapBlob(2);
+      if (blob.size > 9.5e6) blob = await wrapBlob(1.2);          // limite de Discord : 10 Mo par fichier
+      const payload = { username: `${c.name} · Journée RP`, avatar_url: APP_URL + 'icon-512.png',
+        embeds: [{ title: `${test ? '[Test] ' : ''}${glyphText(THEMES[c.theme])} ${c.name}${c.surname ? ' ' + c.surname : ''} — L'année ${y}`,
+          url: `${APP_URL}?fiche=${c.id}`, color: PLAYER_COLOR[c.player], image: { url: 'attachment://wrap.png' } }],
+        attachments: [{ id: 0, filename: 'wrap.png' }] };
+      const msg = await postHook(hook, payload, blob, 'wrap.png');
+      if (!test) await RP_SYNC.wrapSent(y, c.id, msg);
+      await pause(1200);
+    }
+    return list.length;
+  } finally {
+    simulateWrapDay = back.sim;
+    Object.entries(back.st).forEach(([id, v]) => Object.assign(state[id], v));
+    go(back.current); wrapOverlay(null);
+  }
+};
+
+let wrapsRunning = false;
+const autoWraps = async () => {
+  const hook = window.RP_DISCORD.webhook;
+  if (wrapsRunning || !hook || !wrapDayReal() || !window.RP_SYNC?.wrapClaim) return;
+  wrapsRunning = true;
+  try {
+    const y = wrapYear(), sent = await RP_SYNC.wrapClaim(y);
+    if (!sent) return;                       // déjà envoyés, ou envoi en cours sur l'autre appareil
+    await sendWraps({ hook, sent });
+    await RP_SYNC.wrapDone(y);
+  } catch (e) { console.error('Wraps :', e); }
+  finally { wrapsRunning = false; }
+};
+window.RP_DISCORD.autoWraps = autoWraps;
+
+// Aperçu secret seulement : bouton de test dans le réglage Discord (en bas de l'accueil).
+const baseSettings = window.RP_DISCORD.settingsHtml;
+window.RP_DISCORD.settingsHtml = () => !secretPreview() ? baseSettings() : baseSettings().replace(/<\/details>$/, `
+    <p class="reserved">Aperçu secret — tester l'envoi des wraps sur un <b>autre</b> salon, que Jynette ne voit pas :</p>
+    <div class="special-row"><input type="url" id="wrap-test-hook" placeholder="Webhook du salon de test">
+    <button type="button" class="btn" id="wrap-test-go">Tester</button></div>
+    <p class="reserved" id="wrap-test-msg"></p></details>`);
+document.addEventListener('click', async e => {
+  if (!e.target.closest('#wrap-test-go')) return;
+  const v = document.getElementById('wrap-test-hook').value.trim();
+  const say = t => { document.querySelector('.discord-set')?.setAttribute('open', ''); const m = document.getElementById('wrap-test-msg'); if (m) m.textContent = t; };
+  if (!HOOK_RE.test(v)) return say('Cette adresse ne ressemble pas à un webhook Discord.');
+  if (v === window.RP_DISCORD.webhook) return say('C\'est le webhook du salon principal : utilise un salon de test, sinon la surprise est gâchée.');
+  try { const n = await sendWraps({ hook: v, test: true }); say(`Test terminé : ${n} wrap${n > 1 ? 's' : ''} envoyé${n > 1 ? 's' : ''} sur le salon de test.`); }
+  catch (err) { console.error(err); say('Échec du test : ' + err.message); }
+});
