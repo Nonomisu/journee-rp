@@ -2050,25 +2050,16 @@ const discordState = {};   // id → 'sending' | 'sent' | 'error'
 const SLOT_ORDER = ['aube', 'matin', 'midi', 'aprem', 'soir', 'nuit'];
 const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
 
-// Texte court et vivant : humeur, lieux, activités et état ; tout le reste est dans l'image.
-const SLOT_EMOJI = { aube:'🌅', matin:'☀️', midi:'🌞', aprem:'🌤️', soir:'🌆', nuit:'🌙' };
+// Embed : le nom du personnage et la date en titre (lien vers la fiche), puis l'image du récap.
+// Bande de couleur : rose pour les personnages de Jynette, bleu pour ceux de Nono.
+const PLAYER_COLOR = { elle: 0xe38fa8, corentin: 0x4f8fd6 };
 const embedFor = id => {
-  const c = C.find(x => x.id === id), t = THEMES[c.theme], s = state[id];
-  const lines = [];
-  if (s.mood) lines.push(`💭 *« ${s.mood} »*`);
-  const place = s.trip ? `🧭 Voyage : ${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}`
-    : (p => p ? `📍 ${p}` : '')([...s.places].join(', ') || (s.zone && zoneOf(s)?.label) || (s.region ? REGIONS[s.region].label : ''));
-  if (place) lines.push(place);
-  const acts = [...s.checked].map(a => ({ a, sp: spanOf(s.slots[a] || []) })).sort((x, y) => x.sp.order - y.sp.order);
-  if (acts.length) lines.push(acts.map(({ a, sp }) => `${SLOT_EMOJI[(s.slots[a] || [])[0]] || '✨'} ${dispLabelOf(id, a)}`).join('\n'));
-  if (s.phys?.size) lines.push(`💫 ${[...s.phys].map(p => physLabel(id, p)).join(', ')}${s.physNote ? ` — ${s.physNote}` : ''}`);
+  const c = C.find(x => x.id === id), t = THEMES[c.theme];
   return {
     title: `${glyphText(t)} ${c.name}${c.surname ? ' ' + c.surname : ''} — ${today}`,
     url: `${APP_URL}?fiche=${id}&jour=${isoDay(rpDay)}`,
-    color: parseInt((t.gold || '#c9a45c').replace('#', ''), 16),
-    description: lines.length ? clip(lines.join('\n\n'), 4000) : undefined,
+    color: PLAYER_COLOR[c.player],
     image: { url: 'attachment://recap.png' },
-    footer: { text: `${eorzeaDate} · Journée RP` },
   };
 };
 // Libellé d'activité avec ses précisions (chasse, contrat, visite…), comme dans le résumé.
