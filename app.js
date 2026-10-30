@@ -1,4 +1,4 @@
-// Journée RP — logique de l'appli (générée depuis l'aperçu, voir build.py hors dépôt).
+// Journée RP — logique de l'appli (générée depuis l'aperçu, voir dev/build.py).
 const THEMES = {
   alamhigo: { cls: '', bg:'#1c1412', gold:'#c9a45c', text:'#e9dcc4', dim:'#a8977d', rule:'rgba(201,164,92,.35)', display:'"Cinzel", serif', glyph:'<svg class="eg-svg" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="7.4" r="6.4" fill="none" stroke="currentColor" stroke-width=".8" stroke-opacity=".6"/><circle cx="10" cy="5" r="1.9" fill="currentColor"/><path fill="currentColor" d="M10 7.4c-1.7 0-2.6 1.2-2.8 2.8l-.4 3.2-2.6 1.6c-.6.4-.4 1.3.3 1.3h4.2L10 15l1.3 1.3h4.2c.7 0 .9-.9.3-1.3l-2.6-1.6-.4-3.2C12.6 8.6 11.7 7.4 10 7.4z"/><path d="M4 18.4h12" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-opacity=".7"/></svg>' },   // Eoor : méditant et halo
   khurdan:  { cls: 't-khurdan', bg:'#111a2a', gold:'#c9ae8f', text:'#ece3d6', dim:'#a2988c', rule:'rgba(201,174,143,.32)', display:'"Alegreya SC", serif', glyph:'▼' },
