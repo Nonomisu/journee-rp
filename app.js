@@ -389,7 +389,7 @@ const setDoor = (id, door) => {
   dropNews(['door:' + d + ':lingerie', 'door:' + d + ':occupee']);
   if (s.door === 'occupee' && door !== 'occupee' && nightOf(id).with === DELIVERY_GUY) setNight(id, false);
   s.door = door;
-  if (DOOR_LINES[door]) { const k = 'door:' + d + ':' + door; pushNews(DJ.dj, pickLine(DOOR_LINES[door], k)(nameOf(id), nameOf(DJ.dj)), k); }
+  if (DOOR_LINES[door]) { const k = 'door:' + d + ':' + door; pushNews(DJ.dj, pickLine(DOOR_LINES[door], k)(nameOf(id), nameOf(DJ.dj)), k, id); }
   if (door === 'occupee') setNight(id, true, DELIVERY_GUY);
 };
 const djBlock = id => {
@@ -457,7 +457,7 @@ const MS_NEWS = {
   'Naissance':   (a, b) => `Une naissance chez ${a} et ${b} !`,
   'Séparation':  (a, b) => `${a} et ${b} se sont séparés…`,
 };
-// Nuits, clients et protection : la nouvelle ne part qu'une fois la fiche qui l'a déclenchée validée.
+// Toutes les nouvelles ne partent qu'une fois validée la fiche qui les a déclenchées.
 const newsReady = n => !n.src || !!state[n.src]?.done;
 const myNews = () => NEWS.filter(n => n.to === me && newsReady(n));
 const canEdit = id => C.find(c => c.id === id)?.player === me;
@@ -1812,7 +1812,7 @@ function renderChar(id) {
   document.getElementById('dj-late-'+id)?.addEventListener('change', e => { s.setLate = e.target.checked; s.lateAt = Date.now(); djReset(); renderChar(id); });
   document.querySelectorAll('[data-wait]').forEach(r => r.addEventListener('change', () => {
     const k = 'rale:' + keyOf(rpDay); setDoor(id, null); s.wait = r.dataset.wait;
-    if (s.wait === 'rale') pushNews(DJ.dj, pickLine(RALE_LINES, k)(nameOf(id), nameOf(DJ.dj)), k); else dropNews([k]);
+    if (s.wait === 'rale') pushNews(DJ.dj, pickLine(RALE_LINES, k)(nameOf(id), nameOf(DJ.dj)), k, id); else dropNews([k]);
     renderChar(id); }));
   document.querySelectorAll('[data-contract]').forEach(i => i.addEventListener('change', () => {
     const f = i.dataset.contract, v = i.value.trim(), k = CONTRACTS[id] ||= { start: isoDay(rpDay) };
