@@ -144,15 +144,15 @@ js = one(js, "const dropNews = keys => { for (let i = NEWS.length - 1; i >= 0; i
 
 # Démarrage : c'est sync.js qui lance l'appli une fois connecté et les données chargées
 js = one(js, "initPlaces();\ntry { window.addEventListener('hashchange', () => go(current)); } catch {}\ngo('home');",
-  "initPlaces();\n" + pathlib.Path(__file__).with_name('persist.js').read_text() + pathlib.Path(__file__).with_name('discord-part.js').read_text())
+  "initPlaces();\n" + pathlib.Path(__file__).with_name('persist.js').read_text() + pathlib.Path(__file__).with_name('discord-part.js').read_text() + pathlib.Path(__file__).with_name('push-part.js').read_text())
 # Discord : envoi à la validation, état d'envoi dans le pied du récap, réglage du webhook (Nono)
 js = one(js, "document.getElementById('done-'+id).addEventListener('click', () => { s.done = true; s.doneAt ??= Date.now(); renderNav(); renderChar(id); });",
   "document.getElementById('done-'+id).addEventListener('click', () => { s.done = true; s.doneAt ??= Date.now(); renderNav(); renderChar(id); window.RP_DISCORD?.send(id); });")
 js = one(js, '<footer class="recap-foot"><span>✓ Journée validée</span>', '<footer class="recap-foot"><span>✓ Journée validée${window.RP_DISCORD ? RP_DISCORD.status(id) : \'\'}</span>')
 # Réglage Discord (Nono) : discret, tout en bas de l'accueil
 js = re.sub(r"(SOON\.map\(n => `<div class=\"card soon\".*?\.join\(''\) : ''\}\n    </div>)`;",
-  lambda m: m.group(1) + "\n    ${me === 'corentin' && window.RP_DISCORD ? RP_DISCORD.settingsHtml() : ''}`;", js, count=1, flags=re.S)
-assert "RP_DISCORD.settingsHtml()" in js
+  lambda m: m.group(1) + "\n    ${window.RP_PUSH ? RP_PUSH.html() : ''}\n    ${me === 'corentin' && window.RP_DISCORD ? RP_DISCORD.settingsHtml() : ''}`;", js, count=1, flags=re.S)
+assert "RP_DISCORD.settingsHtml()" in js and "RP_PUSH.html()" in js
 
 assert 'preview-note' not in js, 'reste d\'aperçu'
 

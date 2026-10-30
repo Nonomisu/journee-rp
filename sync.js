@@ -30,6 +30,12 @@ const dRef = doc(db, 'shared', 'day-' + A.iso);
 const monthRef = (id, ym) => doc(db, 'days', id, 'months', ym);
 const charRef = id => doc(db, 'characters', id);
 const todayRef = id => doc(db, 'today', id);
+// Notifications push : clé publique VAPID du service du VPS (la clé privée reste sur le VPS).
+const VAPID_PUBLIC = 'BDWmfd7sxa4xDshLy0Y0xPOCeT2D3uD1bAuzL4wVcJXIDoqUtqa4tRUBqgeH1klC_GZCBsCY1KbLtL6JCd04cHc';
+const pushSupported = () => 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+const swReg = pushSupported() ? navigator.serviceWorker.register('sw.js').catch(e => { console.error(e); return null; }) : Promise.resolve(null);
+const b64u = s => { const b = atob((s + '='.repeat((4 - s.length % 4) % 4)).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from(b, c => c.charCodeAt(0)); };
+const subRef = async endpoint => doc(db, 'pushSubs', me, 'subs', (await sha256(endpoint)).slice(0, 40));
 const wrapsRef = y => doc(db, 'shared', 'wraps-' + y);
 const newsRef = key => doc(db, 'news', String(key).replace(/\//g, '_'));
 
@@ -83,6 +89,27 @@ window.RP_SYNC = {
     return d.sent || {};
   }),
   wrapSent: (y, id, msg) => setDoc(wrapsRef(y), { sent: { [id]: msg } }, { merge: true }),
+  // Notifications push sur cet appareil : 'unsupported' | 'denied' | 'off' | 'on'
+  pushState: async () => {
+    if (!pushSupported()) return 'unsupported';
+    if (Notification.permission === 'denied') return 'denied';
+    const reg = await swReg; if (!reg) return 'unsupported';
+    return Notification.permission === 'granted' && await reg.pushManager.getSubscription() ? 'on' : 'off';
+  },
+  enablePush: async () => {
+    const perm = await Notification.requestPermission();      // doit partir pendant le geste (iOS)
+    if (perm !== 'granted') throw new Error('autorisation refusée');
+    const reg = await swReg; if (!reg) throw new Error('service worker indisponible');
+    await navigator.serviceWorker.ready;
+    const sub = await reg.pushManager.getSubscription() || await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64u(VAPID_PUBLIC) });
+    const j = sub.toJSON();
+    await setDoc(await subRef(j.endpoint), { endpoint: j.endpoint, keys: j.keys, device: navigator.userAgent.slice(0, 200), createdAt: serverTimestamp() });
+  },
+  disablePush: async () => {
+    const reg = await swReg, sub = await reg?.pushManager.getSubscription(); if (!sub) return;
+    await deleteDoc(await subRef(sub.endpoint)).catch(report);
+    await sub.unsubscribe();
+  },
   wrapDone: y => setDoc(wrapsRef(y), { done: true, doneAt: Date.now() }, { merge: true }),
 };
 
@@ -129,6 +156,7 @@ async function boot() {
   started = true;
   $('login').hidden = true;
   A.start();
+  window.RP_PUSH?.refresh();
   setTimeout(() => window.RP_DISCORD?.autoWraps?.(), 2000);   // à partir du 26 décembre : envoi des wraps (une seule fois)
   listen();
   ['click', 'change', 'input'].forEach(t => document.addEventListener(t, schedule, true));
