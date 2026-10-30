@@ -2050,29 +2050,23 @@ const discordState = {};   // id → 'sending' | 'sent' | 'error'
 const SLOT_ORDER = ['aube', 'matin', 'midi', 'aprem', 'soir', 'nuit'];
 const clip = (s, n) => s.length > n ? s.slice(0, n - 1) + '…' : s;
 
+// Texte court et vivant : humeur, lieux, activités et état ; tout le reste est dans l'image.
+const SLOT_EMOJI = { aube:'🌅', matin:'☀️', midi:'🌞', aprem:'🌤️', soir:'🌆', nuit:'🌙' };
 const embedFor = id => {
   const c = C.find(x => x.id === id), t = THEMES[c.theme], s = state[id];
-  const w = weatherFor(id);
-  const fields = [];
-  if (w) fields.push({ name: 'Météo', value: `${w.label}${w.tp ? ` · ${deg(w.tp.max)} / ${deg(w.tp.min)}` : ''}${w.where ? ` · ${w.where}` : ''}`, inline: true });
-  const place = s.trip ? `${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}` : [...s.places].join(', ') || (s.region ? REGIONS[s.region].label : '');
-  if (place) fields.push({ name: s.trip ? 'Voyage' : 'Lieu', value: clip(place, 1000), inline: true });
-  const acts = [...s.checked];
-  if (acts.length) {
-    const bySlot = acts.map(a => { const sp = spanOf(s.slots[a] || []); return { a, sp }; })
-      .sort((x, y) => x.sp.order - y.sp.order);
-    fields.push({ name: 'Activités', value: clip(bySlot.map(({ a, sp }) => `• ${sp.label && sp.label !== 'Sans heure' ? `*${sp.label}* — ` : ''}${dispLabelOf(id, a)}`).join('\n'), 1024) });
-  }
-  if (s.phys?.size) fields.push({ name: 'État', value: [...s.phys].map(p => physLabel(id, p)).join(', ') + (s.physNote ? ` — ${s.physNote}` : ''), inline: true });
-  const night = nightLine(id).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
-  if (night) fields.push({ name: 'La nuit', value: night, inline: true });
-  const color = parseInt((t.gold || '#c9a45c').replace('#', ''), 16);
+  const lines = [];
+  if (s.mood) lines.push(`💭 *« ${s.mood} »*`);
+  const place = s.trip ? `🧭 Voyage : ${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}`
+    : (p => p ? `📍 ${p}` : '')([...s.places].join(', ') || (s.zone && zoneOf(s)?.label) || (s.region ? REGIONS[s.region].label : ''));
+  if (place) lines.push(place);
+  const acts = [...s.checked].map(a => ({ a, sp: spanOf(s.slots[a] || []) })).sort((x, y) => x.sp.order - y.sp.order);
+  if (acts.length) lines.push(acts.map(({ a, sp }) => `${SLOT_EMOJI[(s.slots[a] || [])[0]] || '✨'} ${dispLabelOf(id, a)}`).join('\n'));
+  if (s.phys?.size) lines.push(`💫 ${[...s.phys].map(p => physLabel(id, p)).join(', ')}${s.physNote ? ` — ${s.physNote}` : ''}`);
   return {
     title: `${glyphText(t)} ${c.name}${c.surname ? ' ' + c.surname : ''} — ${today}`,
     url: `${APP_URL}?fiche=${id}&jour=${isoDay(rpDay)}`,
-    color,
-    description: s.mood ? clip(`*« ${s.mood} »*`, 4000) : undefined,
-    fields,
+    color: parseInt((t.gold || '#c9a45c').replace('#', ''), 16),
+    description: lines.length ? clip(lines.join('\n\n'), 4000) : undefined,
     image: { url: 'attachment://recap.png' },
     footer: { text: `${eorzeaDate} · Journée RP` },
   };
