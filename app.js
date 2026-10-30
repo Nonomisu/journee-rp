@@ -1,0 +1,1792 @@
+// Journée RP — logique de l'appli (générée depuis l'aperçu, voir build.py hors dépôt).
+const THEMES = {
+  alamhigo: { cls: '', bg:'#1c1412', gold:'#c9a45c', text:'#e9dcc4', dim:'#a8977d', rule:'rgba(201,164,92,.35)', display:'"Cinzel", serif', glyph:'<svg class="eg-svg" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="7.4" r="6.4" fill="none" stroke="currentColor" stroke-width=".8" stroke-opacity=".6"/><circle cx="10" cy="5" r="1.9" fill="currentColor"/><path fill="currentColor" d="M10 7.4c-1.7 0-2.6 1.2-2.8 2.8l-.4 3.2-2.6 1.6c-.6.4-.4 1.3.3 1.3h4.2L10 15l1.3 1.3h4.2c.7 0 .9-.9.3-1.3l-2.6-1.6-.4-3.2C12.6 8.6 11.7 7.4 10 7.4z"/><path d="M4 18.4h12" stroke="currentColor" stroke-width="1" stroke-linecap="round" stroke-opacity=".7"/></svg>' },   // Eoor : méditant et halo
+  khurdan:  { cls: 't-khurdan', bg:'#111a2a', gold:'#c9ae8f', text:'#ece3d6', dim:'#a2988c', rule:'rgba(201,174,143,.32)', display:'"Alegreya SC", serif', glyph:'▼' },
+  viggo: { cls: 't-viggo', bg:'#17120e', gold:'#3fb8a8', text:'#f0e6d6', dim:'#a8977f', rule:'rgba(196,87,46,.32)', display:'"Josefin Sans", sans-serif', glyph:'<svg class="eg-svg" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 2.4c2.4 3.6 5 5.2 8 5.2s5.6-1.6 8-5.2" fill="none" stroke="currentColor" stroke-width=".9" stroke-opacity=".75"/><path fill="currentColor" d="M12 6.4l3.6 3.8L12 14l-3.6-3.8z"/><path fill="#fff" fill-opacity=".3" d="M12 6.4l1.8 1.9H10.2z"/><path fill="currentColor" fill-opacity=".85" d="M10.2 14.2c-.9 2.2-1 4.6-.3 7.4.9-1.8 1.4-4.3 1.2-7z"/><path fill="currentColor" fill-opacity=".85" d="M13.8 14.2c.9 2.2 1 4.6.3 7.4-.9-1.8-1.4-4.3-1.2-7z"/><path d="M9.8 16.4l.8.4M9.6 18.4l.9.3M14.2 16.4l-.8.4M14.4 18.4l-.9.3" stroke="#17120e" stroke-opacity=".6" stroke-width=".5"/></svg>' },   // Viggo : pendentif turquoise et plumes
+  unegen: { cls: 't-unegen', bg:'#0b1118', gold:'#a9d4e6', text:'#e9e6df', dim:'#95a1ad', rule:'rgba(169,212,230,.22)', display:'"Germania One", serif', glyph:'ᚢ' },
+  provisoire: { cls: 't-home', bg:'#1e1c24', gold:'#c8bba0', text:'#ebe6dc', dim:'#9d978c', rule:'rgba(200,187,160,.3)', display:'"Cinzel", serif', glyph:'◇' },
+  neonCyan: { cls: 't-neon-cyan', bg:'#0a0e19', gold:'#2fe3d3', text:'#e6f4f6', dim:'#8aa0b2', rule:'rgba(47,227,211,.38)', display:'"Chakra Petch", sans-serif', glyph:'◈' },
+  neonMagenta: { cls: 't-neon-magenta', bg:'#0d0a19', gold:'#f052b6', text:'#f6e9f3', dim:'#a395b2', rule:'rgba(240,82,182,.38)', display:'"Chakra Petch", sans-serif', glyph:'◈' },
+  // Hokkyoku : glyphe onibi (feu follet japonais), petite flamme turquoise lumineuse.
+  spectre:  { cls: 't-spectre', bg:'#0b1517', gold:'#8fe6de', text:'#e2f4f2', dim:'#8aa6a4', rule:'rgba(143,230,222,.34)', display:'"Cinzel", serif', glyph:'<svg class="onibi" viewBox="0 0 18 22" aria-hidden="true"><path fill="currentColor" fill-opacity=".32" d="M9 21.5c-4.4 0-7.3-3-7.3-6.7 0-3.6 2.9-5.5 4.9-8C8.3 4.6 8.7 2.6 8 .6c3.3 1.8 5.4 4.9 4.9 8.3 1.3-.4 2.2-1.3 2.6-2.5 1.2 2 1.9 4.2 1.9 6.9 0 4.6-3.7 8.2-8.4 8.2z"/><path fill="currentColor" d="M9 20c-3.3 0-5.4-2.3-5.4-5.1 0-2.8 2.2-4.2 3.8-6.1C8.6 7.3 9.2 5.6 8.8 3.4c2.4 1.5 3.6 3.9 3.2 6.4 1-.2 1.7-.8 2.1-1.7.8 1.4 1.2 3 1.2 4.9 0 3.9-2.8 7-6.3 7z"/><path d="M8.8 3.4C8 2.4 8.3 1.2 9.4 1.1" fill="none" stroke="currentColor" stroke-width=".9" stroke-linecap="round"/><ellipse cx="9" cy="15.4" rx="2.6" ry="3" fill="#f2fffd" fill-opacity=".85"/><circle cx="15.6" cy="3.4" r=".9" fill="currentColor" fill-opacity=".75"/><circle cx="2.6" cy="6.2" r=".6" fill="currentColor" fill-opacity=".55"/></svg>' },
+  sorciere: { cls: 't-sorciere', bg:'#0d0f22', gold:'#c7b2ef', text:'#ebe7f5', dim:'#9d98b8', rule:'rgba(199,178,239,.3)', display:'"Almendra", serif', glyph:'☾' },
+  rose:     { cls: 't-rose', bg:'#1f1418', gold:'#e3a3b5', text:'#f3e6ea', dim:'#b8979f', rule:'rgba(227,163,181,.34)', display:'"Cinzel", serif', glyph:'❀' },
+  violet:   { cls: 't-violet', bg:'#16111e', gold:'#b9a2dc', text:'#ece6f3', dim:'#a097b0', rule:'rgba(212,175,106,.5)', display:'"Cinzel", serif', glyph:'❀' },
+  kha:      { cls: 't-kha', bg:'#111012', gold:'#d0483d', text:'#eee7e2', dim:'#a39893', rule:'rgba(208,72,61,.32)', display:'"Alegreya SC", serif', glyph:'<svg class="eg-svg" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.4" y="1.8" width="11.2" height="20.4" rx="5.6" fill="none" stroke="currentColor" stroke-width="1.8"/><g fill="none" stroke="#c9a27a" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="7" r="2.2"/><path d="M12 4.8v4.4M9.8 7h4.4"/><path d="M9.6 15l2.4-4 2.4 4z"/><path d="M10 18.6h4"/></g></svg>' },   // Davaajav : cartouche à glyphes
+};
+const CATS = { quotidien:'Quotidien', metier:'Charge & métier', liens:'Liens' };
+const C = [
+  { id:'eoor', name:'Eoor', surname:'Silvershard', groups:['Principaux'], theme:'alamhigo', player:'corentin', acts:{
+    quotidien:['Méditation (tradition de Rhalgr)','Entraînement monial','Mécanique : entretien des motos','Balade à moto','Session hammam','Pique une tête dans sa piscine','Grosse session cuisine','Visite touristique'],
+    metier:['Permanence au Grand Bazar','Traitement des ouvrages','Affaires diplomatiques de Werlyt','Action pour « Un vœu pour les enfants »','Rédige un rapport'],
+    liens:['Temps avec Yasmeen','Moment avec Cillien','Soirée barbecue','Sexe avec Yasmeen'] } },
+  { id:'unegen', name:'Unegen', surname:'Haragin', groups:['Principaux'], theme:'unegen', player:'corentin', acts:{
+    quotidien:['Entraînement physique','Baignade dans la Steppe','Repos dans la clairière'],
+    metier:['Contrat de chasse','Troc au Ralliement','Commerce à Kugane','Navigation'],
+    liens:['Drague à Kugane','Drague dans la Steppe','Sexe avec Hokkyoku'] } },
+  { id:'yasmeen', name:'Yasmeen', surname:"Al'Iksir", groups:['Principaux'], theme:'sorciere', player:'elle', acts:{} },
+  { id:'hokkyoku', name:'Hokkyoku', surname:'Asako', groups:['Principaux'], theme:'spectre', player:'elle', acts:{} },
+  { id:'tamachag', name:'Tamachag', surname:'Khurdan', groups:['Khurdans'], theme:'khurdan', player:'corentin', acts:{
+    quotidien:["Tir à l'arc à cheval",'Chasse au vol avec Oyunchimeg','Soins et chevauchée avec Ayalal','Temps avec Duulakh','Travail du bois'],
+    metier:['Conseil et affaires de la tribu','Arbitrer un différend','Diplomatie avec une autre tribu','Ronde sur les terres khurdanes',"Transmettre l'histoire des Khurdans",'Chasse solo','Chasse en groupe'],
+    liens:['Temps avec Taiga','Nouvelles ou visite de Davaajav'] } },
+  { id:'khokkutsai', name:'Khokkutsai', surname:'Khurdan', groups:['Khurdans'], theme:'khurdan', player:'corentin', acts:{
+    quotidien:['Entraînement guerrier'],
+    metier:["Garde et défense de l'iloh","Administration de l'iloh",'Inventaire des réserves','Former les jeunes guerriers','Chasse solo','Chasse en groupe'],
+    liens:['Temps avec Inkaraa','Chasse avec Bator','Entraînement et boisson avec Batbayar','Moment avec Ankhbayar'] } },
+  { id:'ankhbayar', name:'Ankhbayar', surname:'Khurdan', groups:['Khurdans'], theme:'khurdan', player:'corentin', acts:{
+    quotidien:['Entretien des armes de chasse','Cuisine','Entraînement à l\'arc','Cours à la yourte des savoirs'],
+    metier:['Pistage','Pose et relève des pièges','Dépeçage et tannage des peaux','Rapporter le gibier au camp','Prépare la viande issue de la chasse','Chasse solo','Chasse en groupe'],
+    liens:['Temps avec Khubunjin','Moment avec Khokkutsai','Sexe avec Khubunjin'] } },
+  { id:'taiga', name:'Taiga', surname:'Khurdan', groups:['Khurdans'], theme:'khurdan', player:'elle', acts:{ metier:['Chasse solo','Chasse en groupe'] } },
+  { id:'khubunjin', name:'Khubunjin', surname:'', groups:['Khurdans'], theme:'khurdan', player:'elle', acts:{ metier:['Chasse solo','Chasse en groupe'] } },
+  { id:'inkaraa', name:'Inkaraa', surname:'Khurdan', groups:['Khurdans'], theme:'khurdan', player:'elle', acts:{ metier:['Tatoue au Ralliement'] } },
+  { id:'ogloo', name:'Ogloo', surname:'Khurdan', groups:['Khurdans'], theme:'khurdan', player:'elle', acts:{} },
+  { id:'javkhaanhun', name:'Javkhaanhun', surname:'Khurdan', groups:['Khurdans'], theme:'khurdan', player:'elle', acts:{ metier:['Chasse solo','Chasse en groupe'] } },
+  { id:'davaajav', name:'Davaajav', surname:'Kha', groups:['Secondaires'], theme:'kha', player:'corentin', acts:{
+    metier:['Fouilles sur un site','Exploration et repérage','Étude et catalogage des trouvailles','Recherches en archives, déchiffrage','Rencontre avec un client ou un marchand'],
+    liens:['Temps avec Ushuaia','Retrouvailles avec Walha','Nouvelles de Tamachag et Taiga'] } },
+  { id:'viggo', name:'Viggo', surname:'', groups:['Secondaires'], theme:'viggo', player:'corentin', acts:{
+    quotidien:['Entraînement','Sport en extérieur'],
+    metier:['Travail avec Maître Ironbeast','Ouvrage au Grand Bazar'],
+    liens:['Verre au Grand Bazar','Sexe avec Khopses'] } },
+  { id:'khopses', name:'Khopses', surname:'', groups:['Secondaires'], theme:'violet', player:'elle', acts:{ metier:['Rendez-vous client','Gala'], liens:['Rencontre Jais'] } },
+  { id:'echo', name:'Echo', surname:'', groups:['S9'], theme:'neonCyan', player:'corentin', acts:{
+    quotidien:['Va à la salle de muscu','Bidouille de drones perso\''],
+    metier:['Prépare le set à la maison','Compose à la maison','En studio avec la prod\'','Repérage d\'une future salle de set','Travail sur une commande de drones'],
+    liens:['Soirée Piscine','Verre avec les copains','Sexe avec Prism','Plaisir en solo sur Moonstone'] } },
+  { id:'prism', name:'Prism', surname:'', groups:['S9'], theme:'neonMagenta', player:'elle', acts:{ metier:['Publication Moonstone'] } },
+];
+const SOON = [];
+// Tranches horaires approximatives ; la journée RP commence à l'aube (5 h).
+const SLOTS = [
+  { id:'aube', label:'Aube', hint:'5 h – 8 h', icon:'aube' },
+  { id:'matin', label:'Matin', hint:'8 h – 12 h', icon:'matin' },
+  { id:'midi', label:'Midi', hint:'12 h – 14 h', icon:'midi' },
+  { id:'aprem', label:'Après-midi', hint:'14 h – 18 h', icon:'aprem' },
+  { id:'soir', label:'Soirée', hint:'18 h – 22 h', icon:'soir' },
+  { id:'nuit', label:'Nuit', hint:'22 h – 5 h', icon:'nuit' },
+];
+// Petites icônes au trait, dessinées dans la couleur du thème.
+const ICONS = {
+  aube:  '<path d="M3 18h18"/><path d="M7 18a5 5 0 0 1 10 0"/><path d="M12 6v3M5.6 9.6l2 2M18.4 9.6l-2 2"/>',
+  matin: '<circle cx="12" cy="13" r="3.5"/><path d="M12 5v2.5M12 18.5V21M4 13h2.5M17.5 13H20M6.3 7.3l1.8 1.8M15.9 16.9l1.8 1.8M17.7 7.3l-1.8 1.8M8.1 16.9l-1.8 1.8"/>',
+  midi:  '<circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2.5M12 19v2.5M2.5 12H5M19 12h2.5M5.3 5.3l1.8 1.8M16.9 16.9l1.8 1.8M18.7 5.3l-1.8 1.8M7.1 16.9l-1.8 1.8"/>',
+  aprem: '<circle cx="9" cy="10" r="3.5"/><path d="M9 3v1.5M3 10h1.5M4.8 5.8l1 1M13.2 5.8l-1 1"/><path d="M10 19h8a3 3 0 0 0 0-6 4.5 4.5 0 0 0-8.3 1.6A2.2 2.2 0 0 0 10 19z"/>',
+  soir:  '<path d="M3 17h18M7 21h10"/><path d="M7 17a5 5 0 0 1 10 0"/><path d="M12 3v5M9.8 6l2.2 2.2L14.2 6"/>',
+  nuit:  '<path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/><path d="M17 4l.6 1.4L19 6l-1.4.6L17 8l-.6-1.4L15 6l1.4-.6z"/>',
+};
+Object.assign(ICONS, {
+  clouds:  '<path d="M7 18h10a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.4 1.8A3.2 3.2 0 0 0 7 18z"/>',
+  fog:     '<path d="M4 9h16M6 13h12M4 17h16"/>',
+  wind:    '<path d="M3 9h11a3 3 0 1 0-3-3M3 14h15a3 3 0 1 1-3 3M3 19h7"/>',
+  rain:    '<path d="M7 14h10a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.4 1.8A3.2 3.2 0 0 0 7 14z"/><path d="M8 17l-1 3M12 17l-1 3M16 17l-1 3"/>',
+  thunder: '<path d="M7 13h10a4 4 0 0 0 0-8 5.5 5.5 0 0 0-10.4 1.8A3.2 3.2 0 0 0 7 13z"/><path d="M12.5 13l-2 4h3l-2 4"/>',
+});
+ICONS.temp = '<path d="M10 14.5V5a2 2 0 0 1 4 0v9.5a4 4 0 1 1-4 0z"/><path d="M12 9v7.5"/><circle cx="12" cy="17.5" r="1.2"/>';
+ICONS.snow = '<path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9"/><path d="M9.8 4.6 12 6.4l2.2-1.8M9.8 19.4 12 17.6l2.2 1.8"/>';
+ICONS.ground = '<path d="M3 19c3-2.2 6-2.2 9 0s6 2.2 9 0"/><path d="M12 4v9M8.1 6.2l7.8 4.6M8.1 10.8l7.8-4.6"/>';
+ICONS.lips = '<path style="fill:currentColor;stroke:none" d="M2 12c2.2-3.2 4.6-5 6.6-5 1.4 0 2.4.8 3.4 1.6 1-.8 2-1.6 3.4-1.6 2 0 4.4 1.8 6.6 5-2.6 3.6-6 5.6-10 5.6S4.6 15.6 2 12z"/><path style="stroke:var(--bg)" stroke-width="1.1" d="M4 12.1c2.6.9 5.3 1.1 8 .3 2.7.8 5.4.6 8-.3"/>';
+ICONS.shield = '<path d="M12 3l7 3v5c0 4.6-3 8.2-7 10-4-1.8-7-5.4-7-10V6z"/><path d="M9 12l2 2 4-4"/>';
+ICONS.globe = '<circle cx="12" cy="12" r="8.5"/><path d="M3.5 12h17M12 3.5c2.6 2.4 3.8 5.3 3.8 8.5s-1.2 6.1-3.8 8.5c-2.6-2.4-3.8-5.3-3.8-8.5s1.2-6.1 3.8-8.5z"/>';
+ICONS.route = '<circle cx="6" cy="18" r="2.2"/><circle cx="18" cy="6" r="2.2"/><path d="M8.2 18H15a3 3 0 0 0 0-6H9a3 3 0 0 1 0-6h6.8"/>';
+ICONS.warn = '<path d="M12 3.5 21.5 20h-19z"/><path d="M12 10v4.5"/><circle cx="12" cy="17.2" r=".6" style="fill:currentColor"/>';
+ICONS.flag = '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>';
+ICONS.zone = '<path d="M3 19 9.5 8l4 6.5 2.5-4L21 19z"/>';
+ICONS.star = '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>';
+ICONS.camera = '<path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>';
+ICONS.heartbeat = '<path d="M3 12h4l2-4 3 8 2-5 1.5 1H21"/>';
+ICONS.cake = '<path d="M4 20h16v-7H4z"/><path d="M4 15.5c2 1.3 4 1.3 6 0s4-1.3 6 0 3 1.3 4 0"/><path d="M12 13V9.5M12 7.5c-.9-.9-.9-2 0-3.5.9 1.5.9 2.6 0 3.5z"/>';
+ICONS.ring = '<circle cx="12" cy="14.5" r="6"/><path d="M9.5 4.5h5L16 7l-4 2.5L8 7z"/>';
+ICONS.target = '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>';
+ICONS.eye = '<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
+ICONS.bell = '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>';
+ICONS.phone = '<path d="M7 3h4l1.5 5-2.5 1.5a11 11 0 0 0 4.5 4.5L16 11.5l5 1.5v4a2 2 0 0 1-2 2A16 16 0 0 1 5 5a2 2 0 0 1 2-2z"/>';
+ICONS.pacifier = '<path d=\"M10.3 8.6V5.4a1.7 1.7 0 0 1 3.4 0v3.2\"/><path d=\"M4.5 10.6c0-1.6 2.6-2.2 7.5-2.2s7.5.6 7.5 2.2-2.6 2.6-7.5 2.6-7.5-1-7.5-2.6z\"/><circle cx=\"8.3\" cy=\"10.8\" r=\".5\" style=\"fill:currentColor\"/><circle cx=\"15.7\" cy=\"10.8\" r=\".5\" style=\"fill:currentColor\"/><path d=\"M12 13.2v1.4\"/><circle cx=\"12\" cy=\"17.8\" r=\"3.2\"/>';
+ICONS.pin = '<path d="M12 21s-6-5.6-6-10.5a6 6 0 0 1 12 0C18 15.4 12 21 12 21z"/><circle cx="12" cy="10.5" r="2.2"/>';
+ICONS.disc = '<circle cx="12" cy="12" r="8.5"/><circle cx="12" cy="12" r="2.2"/><path d="M12 6.2a5.8 5.8 0 0 1 5.8 5.8"/>';
+ICONS.delivery = '<path d="M3 7.5h10v8.5H3z"/><path d="M13 10.5h4l3 3v2.5h-7z"/><circle cx="7" cy="17.5" r="1.6"/><circle cx="16.5" cy="17.5" r="1.6"/>';
+ICONS.shell = '<path d="M12 20c-4.5 0-8-3.4-8-8.2C4 7.6 7.5 4 12 4s8 3.6 8 7.8c0 4.8-3.5 8.2-8 8.2z"/><path d="M12 20V4M12 20 7.2 6M12 20l4.8-14M12 20 4.6 9.6M12 20l7.4-10.4"/>';
+ICONS.cloth = '<path d="M9 3.5 4 6l1.6 4.2L8 9.4V20h8V9.4l2.4.8L20 6l-5-2.5c-.5 1.4-1.6 2.2-3 2.2s-2.5-.8-3-2.2z"/>';
+const icon = k => `<svg class="ico" viewBox="0 0 24 24" aria-hidden="true">${ICONS[k]}</svg>`;
+// Tranche proposée par défaut : celle choisie la dernière fois, sinon un indice du libellé.
+const lastSlot = {};
+const guessSlot = label => lastSlot[label] || (/nuit/i.test(label) ? ['nuit'] : /méditation/i.test(label) ? ['aube'] : null);
+// Une activité peut couvrir plusieurs périodes : on les regroupe en une plage pour le résumé.
+const spanOf = ids => {
+  const idx = SLOTS.map((x, i) => ids.includes(x.id) ? i : -1).filter(i => i >= 0);
+  if (!idx.length) return { key:'none', order:99, label:'Sans heure', hint:'', icon:'' };
+  const first = SLOTS[idx[0]], last = SLOTS[idx[idx.length - 1]];
+  const contiguous = idx[idx.length - 1] - idx[0] === idx.length - 1;
+  if (idx.length === 1) return { key:first.id, order:idx[0], label:first.label, hint:first.hint, icon:first.icon };
+  return contiguous
+    ? { key:idx.join('-'), order:idx[0], label:`${first.label} → ${last.label}`, hint:`${first.hint.split(' – ')[0]} – ${last.hint.split(' – ')[1]}`, icon:first.icon }
+    : { key:idx.join('-'), order:idx[0], label:idx.map(i => SLOTS[i].label).join(' + '), hint:'', icon:first.icon };
+};
+const GROUPS = ['Principaux','Khurdans','Secondaires','S9'];
+
+// État local de l'aperçu (non enregistré)
+// Lieux du jour proposés par personnage (on peut en ajouter depuis la fiche).
+const KHURDAN_PLACES = ['Khurdan Iloh', 'Le Ralliement', 'Liujia', 'Mer de Rubis'];
+const EOOR_PLACES = ['Grand Bazar', 'Chez Eoor', 'Chez Yasmeen', 'Thavnair'];
+const PLACES = {
+  echo:['S9','Tuliyollal'], prism:['S9','Tuliyollal'],
+  tamachag:KHURDAN_PLACES, khokkutsai:KHURDAN_PLACES, ankhbayar:KHURDAN_PLACES, taiga:KHURDAN_PLACES, khubunjin:KHURDAN_PLACES,
+  inkaraa:KHURDAN_PLACES, ogloo:KHURDAN_PLACES, javkhaanhun:KHURDAN_PLACES, davaajav:[...KHURDAN_PLACES, 'La Coupe', "Ul'dah"],
+  khopses:['Lavandière','Brumée'],
+  eoor:[...EOOR_PLACES, 'Gridania', 'Ala Mhigo', 'Rocasternes', 'Tuliyollal', "Yak'Tel"], yasmeen:[...EOOR_PLACES, 'Tuliyollal', "Yak'Tel"],
+  unegen:['Shirogane','Eorzea','Grand Bazar'], hokkyoku:['Shirogane','Eorzea','Grand Bazar'],
+  viggo:['Lavandière','Brumée'],
+};
+const initPlaces = () => C.forEach(c => {
+  const list = PLACES[c.id] || [];
+  c.places = list.filter(pl => PLACE_REGION[pl]);
+  const regs = list.map(pl => PLACE_REGION[pl] || REGION_NAME[pl]).filter(Boolean);
+  // Régions masquées par défaut sur certaines fiches ; elles restent ajoutables depuis « Autres ».
+  const hidden = HIDDEN_REGIONS[c.id] || [];
+  c.regions = REGION_ORDER.filter(r => !hidden.includes(r));
+});
+const state = {}; C.forEach(c => state[c.id] = { mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false });
+let current = 'home', filter = 'all', groupFilter = 'all';
+// Droits : chacun modifie ses personnages, et ne fait que lire ceux de l'autre.
+// « me » vient du compte Google connecté (fixé par sync.js avant le premier affichage).
+let me = 'corentin';
+const PLAYER_NAME = { corentin:'Nono', elle:'Jynette' };
+// ---------- Nouvelles : ce que l'autre joueur a ajouté sur vos personnages ----------
+const NEWS = [];   // { to, text, charId, key, read }
+const playerOf = id => C.find(c => c.id === id)?.player;
+const notify = (from, to, text, key) => {
+  if (!isChar(to) || playerOf(from) === playerOf(to)) return;          // seulement d'un joueur à l'autre
+  if (NEWS.some(n => n.key === key)) return;
+  NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false });
+};
+// Phrases tirées au sort (la même pour une même nuit).
+const queName = n => (/^[aeiouéèh]/i.test(n) ? "qu'" : 'que ') + n;
+const deName = n => (/^[aeiouéèh]/i.test(n) ? "d'" : 'de ') + n;
+const pickLine = (list, key) => list[Math.floor(seeded(key) * list.length)];
+const NIGHT_LINES = [
+  a => `${a} l'assure, la nuit a été chaude !`,
+  a => `${a} a passé une nuit brûlante…`,
+  a => `Les draps ${deName(a)} s'en souviennent encore.`,
+  a => `${a} n'a pas beaucoup dormi cette nuit.`,
+  a => `Nuit agitée pour ${a} : personne ne s'en plaindra.`,
+  (a, b) => `${a} et ${b} ont fait grimper la température cette nuit.`,
+  a => `Le feu de camp s'est éteint, pas celui de ${a}.`,
+  a => `${a} affiche ce matin un sourire très satisfait.`,
+  (a, b) => `${a} et ${b} n'ont pas vu passer la nuit.`,
+  a => `Il paraît que ${a} a encore les joues rouges.`,
+  (a, b) => `Nuit de braise pour ${a} et ${b}.`,
+];
+// Réservées aux couples khurdans (les deux personnages dans la catégorie Khurdans).
+const NIGHT_LINES_KHURDAN = [
+  (a, b) => `${a} et ${b} ont réveillé les voisins… et peut-être les chevaux.`,
+];
+// Nuits de Khopses avec un client : Viggo reçoit une nouvelle, et une autre si elle l'appelle.
+const CLIENT_PARTNER = { khopses:'viggo' };
+const pushNews = (to, text, key) => { if (!NEWS.some(n => n.key === key)) NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false }); };
+const CLIENT_LINES = [
+  (f, m) => `${f} a passé la nuit avec un client.`,
+  (f, m) => `Nuit de travail pour ${f} : un client a réservé ses charmes.`,
+  (f, m) => `${m}, ta belle était occupée cette nuit : un client.`,
+  (f, m) => `${f} a fait des heures supplémentaires cette nuit.`,
+  (f, m) => `Un client a eu droit aux talents de ${f} cette nuit.`,
+  (f, m) => `Le lit de ${f} n'était pas vide cette nuit… mais ce n'était pas ${m}.`,
+  (f, m) => `${f} rentrera plus riche et plus fatiguée : nuit avec un client.`,
+  (f, m) => `Rendez-vous professionnel nocturne pour ${f}.`,
+  (f, m) => `${m} a dormi seul : ${f} recevait un client.`,
+  (f, m) => `La bourse de ${f} s'est remplie cette nuit. Celle du client s'est vidée… en ${f}.`,
+  (f, m) => `Nuit lucrative pour ${f} : sa bourse déborde. Celle du client s'est vidée, et pas seulement de ses gils.`,
+  (f, m) => `${f} a encaissé le prix fort cette nuit. Le client, lui, est reparti les bourses vides.`,
+  (f, m) => `${f} a fait parler sa langue cette nuit… mais pas pour bavarder.`,
+  (f, m) => `Le client est reparti en titubant : ${f} a de sacrés talents de bouche.`,
+  (f, m) => `Ce soir, ${f} n'a pas dit grand-chose. Elle avait mieux à faire de sa bouche.`,
+  (f, m) => `Retour discret pour ${f} : robe froissée, coiffure à refaire, sourire en coin.`,
+  (f, m) => `${f} a passé la nuit face au mur. Le client, derrière, ne s'en est pas plaint.`,
+  (f, m) => `Position de la nuit pour ${f} : à quatre pattes. Le client a apprécié la vue.`,
+  (f, m) => `Le client a voulu en avoir pour son argent : ${f} a fait des heures sup' jusqu'à l'aube.`,
+  (f, m) => `${f} a chevauché son client toute la nuit. Il n'a pas demandé à descendre.`,
+  (f, m) => `${f} a laissé des marques de griffes dans le dos du client. Il a payé un supplément pour ça.`,
+  (f, m) => `Nuit sans répit pour ${f} : le client n'a jamais voulu faire de pause.`,
+  (f, m) => `Le client a pris ${f} contre le mur, sur la table, puis dans le lit. Elle a encaissé chaque coup de reins… et chaque gil.`,
+  (f, m) => `${f} a fini la nuit trempée de sueur, les cuisses tremblantes et la gorge enrouée d'avoir trop crié.`,
+  (f, m) => `Le client a joui trois fois. ${f} a compté, et facturé en conséquence.`,
+  (f, m) => `${f} a écarté les cuisses, le client a plongé : ils n'ont refait surface qu'à l'aube.`,
+  (f, m) => `Ce client-là aimait la prendre fort et longtemps. ${f} n'a pas dit non.`,
+  (f, m) => `Le client l'a prise sans ménagement jusqu'au petit jour. ${f} en garde les marques, et le sourire.`,
+  (f, m) => `${f} a passé la nuit à califourchon sur son client, à lui faire perdre la tête coup de hanches après coup de hanches.`,
+  (f, m) => `Penchée sur le lit, les mains agrippées aux draps, ${f} a fait hurler son client de plaisir.`,
+  (f, m) => `Le client a exploré chaque recoin de ${f}. Elle l'a laissé faire, et en a redemandé.`,
+  (f, m) => `${f} est repartie les jambes en coton et les reins en feu. Le client, lui, ne se relèvera pas avant midi.`,
+  (f, m) => `Les fesses de ${f} portent encore les marques des mains du client. Il a tenu à bien s'agripper.`,
+  (f, m) => `Ce soir, le client n'a eu d'yeux que pour la croupe de ${f}. Et pas seulement des yeux.`,
+  (f, m) => `Claques sur les fesses, reins cambrés, cris étouffés dans l'oreiller : le client en a eu pour son argent.`,
+  (f, m) => `Le client a passé la nuit le visage enfoui entre les seins de ${f}. Elle a compté ça comme du repos.`,
+  (f, m) => `${f} a fait jouir son client à la main, sans se presser, en le regardant droit dans les yeux.`,
+  (f, m) => `Le client a glissé son sexe entre les seins de ${f}. Elle l'a laissé faire jusqu'au bout.`,
+  (f, m) => `Une main experte, un rythme lent puis rapide : le client n'a pas tenu longtemps entre les doigts de ${f}.`,
+  (f, m) => `${f} a offert sa poitrine aux mains et à la bouche du client toute la nuit. Il en rêvera longtemps.`,
+  (f, m) => `Le client a pris ${f} sur le bord du lit, les chevilles sur ses épaules, jusqu'à ce qu'elle crie grâce.`,
+  (f, m) => `${f} a ondulé sur son client jusqu'à le vider complètement. Deux fois.`,
+  (f, m) => `Le client a goûté ${f} du cou jusqu'à l'entrejambe, sans en oublier un centimètre.`,
+  (f, m) => `${f} s'est agenouillée, a pris son temps, et a avalé jusqu'à la dernière goutte. Le client a payé double.`,
+  (f, m) => `Le client a attaché les poignets de ${f} à la tête de lit. Elle a joué la captive… et y a pris goût.`,
+  (f, m) => `Sous la douche, contre la porte, puis sur le tapis : le client a pris ${f} partout où il le pouvait.`,
+  (f, m) => `${f} a fini la nuit le corps luisant, la peau marquée de suçons, et le client à bout de souffle.`,
+  (f, m) => `Le client a voulu la regarder jouir. ${f} lui a offert le spectacle, les doigts entre les cuisses.`,
+  (f, m) => `${f} a enfourché son client à l'envers, pour qu'il profite de la vue sur sa croupe en pleine action.`,
+  (f, m) => `Au petit matin, le client réclamait encore. ${f} l'a achevé d'un dernier coup de reins, et d'une facture salée.`,
+  (f, m) => `Au petit matin, ${f} a laissé tomber sa robe sans un mot devant ${m}. Il a suivi des yeux chaque marque laissée par la nuit, et n'a plus rien dit pendant un long moment.`,
+  (f, m) => `${m} attendait, éveillé. Quand ${f} s'est dénudée lentement devant lui, il a compté les traces sur sa peau une à une, du bout des doigts. Le café a refroidi sur la table.`,
+  (f, m) => `${f} est rentrée encore chaude de la nuit. Elle s'est déshabillée face à ${m}, les yeux dans les siens, pour qu'il voie tout. Il a vu. Et il l'a attirée contre lui sans attendre.`,
+  (f, m) => `Le jour se levait quand ${f} a fait glisser ses bas devant ${m}. Les marques sur ses cuisses racontaient la nuit mieux que n'importe quel récit. Il s'est agenouillé pour les regarder de plus près.`,
+  (f, m) => `${m} a constaté les dégâts au petit matin : sa femme nue devant lui, la peau marquée, la voix encore enrouée, et ce sourire insolent. Il a fermé la porte de la chambre à clé.`,
+  (f, m) => `${m} s'est réveillé au bruit de la porte. ${f} s'est déshabillée au pied du lit, lentement, en le laissant découvrir chaque trace de la nuit. Il l'a tirée sous les draps avant qu'elle ait fini.`,
+  (f, m) => `Au petit matin, ${f} a dégrafé sa robe devant ${m} et l'a laissée glisser au sol. Il a vu les suçons dans son cou, les traces de doigts sur ses hanches… et a décidé d'effacer tout ça à sa façon.`,
+  (f, m) => `${m} a fait couler le bain. ${f} s'est dévêtue devant lui sans pudeur, morceau par morceau, en lui racontant la nuit à voix basse. L'eau a débordé.`,
+  (f, m) => `En cuillère, le client collé dans son dos : ${f} s'est fait prendre lentement jusqu'à l'aube, cambrée contre lui.`,
+  (f, m) => `Portée debout, les jambes nouées autour de la taille du client, ${f} a crié à chaque coup de reins.`,
+];
+const CALL_LINES = [
+  (f, m) => `Et avec le son et l'image !`,
+  (f, m) => `${f} a eu l'air d'aimer… ${m} confirme !`,
+  (f, m) => `Le plaisir aura été solitaire pour ${m}… Pas pour ${f} !`,
+  (f, m) => `${f} a appelé ${m} : il n'a pas raté une seconde du spectacle.`,
+  (f, m) => `Au bout du fil, ${m} a tout entendu. Absolument tout.`,
+  (f, m) => `${f} travaillait, ${m} écoutait. Chacun son rôle.`,
+  (f, m) => `Un appel de ${f} en pleine nuit : ${m} a eu droit au direct.`,
+  (f, m) => `${m} a profité de la retransmission en exclusivité.`,
+  (f, m) => `Le client payait, mais c'est ${m} qui a eu le meilleur siège.`,
+  (f, m) => `${f} a pensé à ${m}… à sa façon.`,
+  (f, m) => `${f} a joui… Trois fois.`,
+  (f, m) => `Au téléphone, ${m} n'a entendu qu'une chose : des claquements de bassin, encore et encore. Le client n'a pas ménagé ${f}.`,
+  (f, m) => `Clap, clap, clap… ${m} a vite compris que ce n'étaient pas des applaudissements.`,
+  (f, m) => `Le lit a tapé contre le mur toute la nuit, et ${f} a réveillé tout le quartier. ${m}, lui, n'a rien raté.`,
+  (f, m) => `Peau contre peau, souffles courts, cris étouffés : ${m} a eu droit au concert complet.`,
+  (f, m) => `Les jambes de ${f} ont passé plus de temps en l'air qu'au sol cette nuit. ${m} peut en témoigner.`,
+  (f, m) => `Jambes en l'air, voix dans la linkperle : ${m} n'a pas perdu une miette.`,
+  (f, m) => `Pendant un long moment, ${m} n'a plus entendu ${f} parler. Elle avait visiblement la bouche pleine.`,
+  (f, m) => `Au bout du fil, des bruits de succion et un client qui supplie. ${m} n'a pas eu besoin d'images.`,
+  (f, m) => `${f} a mis un moment à répondre à ${m}… Elle était occupée à autre chose de la bouche.`,
+  (f, m) => `${m} a entendu le client gémir le prénom de ${f}. Elle, elle ne pouvait pas répondre : on ne parle pas la bouche pleine.`,
+  (f, m) => `Au téléphone, ${m} a reconnu le rythme : le client l'a prise par-derrière, et ${f} n'a pas protesté.`,
+  (f, m) => `${f} à quatre pattes, le client derrière elle : ${m} n'a pas eu besoin de dessin.`,
+  (f, m) => `D'après les bruits, ${f} a passé une bonne partie de la nuit à genoux… et pas pour prier.`,
+  (f, m) => `${m} a entendu ${f} supplier qu'on ne s'arrête pas. Le client a obéi.`,
+  (f, m) => `D'après ce que ${m} a entendu, ${f} était au-dessus, et c'est elle qui menait la danse.`,
+  (f, m) => `Un dernier cri, puis plus rien : ${m} a compris que le client avait fini… et ${f} aussi.`,
+  (f, m) => `${m} a tout entendu, jusqu'au grincement du lit qui demandait grâce.`,
+  (f, m) => `${m} a entendu chaque coup de reins du client, et chaque gémissement de ${f} qui en redemandait.`,
+  (f, m) => `${f} haletait dans la linkperle pendant que le client la pilonnait. ${m} n'a pas raccroché.`,
+  (f, m) => `Au téléphone, ${f} a décrit à ${m} ce que le client lui faisait, en détail, entre deux cris.`,
+  (f, m) => `${m} a entendu ${f} jouir si fort que le client a dû lui plaquer une main sur la bouche.`,
+  (f, m) => `Les claquements, les râles, le lit qui cogne : ${f} a offert à ${m} une nuit en son pleine puissance.`,
+  (f, m) => `${f} a gardé la linkperle contre sa joue tout du long. ${m} a profité de chaque souffle et de chaque cri.`,
+  (f, m) => `${f} a laissé ${m} écouter le client la faire jouir encore et encore. Il n'a pas perdu une note.`,
+  (f, m) => `Au téléphone, ${m} a compté les claques sur les fesses de ${f}. Il a perdu le compte.`,
+  (f, m) => `${m} a entendu ${f} supplier le client d'aller plus loin, plus fort, par-derrière.`,
+  (f, m) => `D'après ce que ${m} a entendu, la croupe de ${f} a été la vraie vedette de la nuit.`,
+  (f, m) => `${m} a entendu le client gémir pendant que ${f} le caressait lentement, puis de plus en plus vite.`,
+  (f, m) => `${f} a mis la linkperle tout près pour que ${m} entende le client la prendre, plus fort, plus vite, jusqu'à ce qu'ils jouissent ensemble dans un dernier râle.`,
+];
+// « Faire garder Lahja » : garde du soir de la fille de Khopses et Viggo.
+const BABYSIT = { parents: ['khopses', 'viggo'], sitter: 'Jais', child: 'Lahja' };
+const babysitLine = () => {
+  const [a, b] = BABYSIT.parents, asked = BABYSIT.parents.filter(x => state[x].jais);
+  if (asked.length === 2) return `${BABYSIT.sitter} a fait la nounou pour ${BABYSIT.child}.`;
+  const home = BABYSIT.parents.filter(x => !state[x].jais).map(nameOf);
+  return `Garde du soir de ${BABYSIT.child} : ${home.join(' et ')}.`;
+};
+const babysitBlock = (id, editable) => !BABYSIT.parents.includes(id) ? '' : `<div class="babysit">
+  ${editable ? `<label class="act"><input type="checkbox" id="jais-${id}" ${state[id].jais ? 'checked' : ''}>${icon('pacifier')}<span>Faire garder ${BABYSIT.child}</span></label>` : ''}
+  <p class="where">${icon('pacifier')}<span>${esc(babysitLine())}</span></p></div>`;
+// Sets d'Echo : retour tardif → Prism attend, râle ou se fait livrer.
+const DJ = { dj:'echo', partner:'prism' };
+const RALE_LINES = [
+  (p, e) => `${p} a râlé ce soir : ${e} est rentré bien trop tard après son set.`,
+  (p, e) => `${p} fait la tête. Le set ${deName(e)} a duré un peu trop longtemps à son goût.`,
+  (p, e) => `Accueil glacial pour ${e} : ${p} l'attendait, bras croisés.`,
+  (p, e) => `${e}, prépare tes excuses : ${p} a boudé toute la soirée.`,
+  (p, e) => `${p} a soupiré très fort quand ${e} a enfin passé la porte.`,
+  (p, e) => `Le set était peut-être génial, mais ${p}, elle, n'a pas applaudi.`,
+  (p, e) => `${p} a fait la tête ce soir. ${e} dormira-t-il sur le canapé ?`,
+  (p, e) => `${e} est rentré tard. ${p} a monté le son… de sa mauvaise humeur.`,
+  (p, e) => `${e} a tenté un « Chérie, je suis rentré ! ». ${p} a répondu d'un silence assourdissant.`,
+  (p, e) => `${p} a éteint la lumière en entendant ${e} arriver. Message reçu : pas ce soir.`,
+  (p, e) => `${e} a eu droit au remix version longue des reproches de ${p}. Pas de quoi faire danser une salle.`,
+  (p, e) => `${p} a mis ses écouteurs en entendant ${e} rentrer. Lui aussi sait ce que c'est, ne plus rien entendre…`,
+];
+const WAIT_OPTS = { attend:'Prism attend', rale:'Prism râle', livre:'Prism se fait livrer' };
+const DOOR_OPTS = {
+  merci:    '« Merci pour la pizza, bonne soirée. »',
+  lingerie: '« En espérant que cette avant-première de mon partenariat lingerie vous a plu. »',
+  occupee:  "Le livreur livrera autre chose qu'une pizza. Echo n'avait qu'à être à l'heure. Il peut attendre un peu devant la porte. Prism est occupée.",
+};
+const DOOR_RECAP = {
+  merci:    'Prism a pris la pizza et souhaité bonne soirée au livreur',
+  lingerie: 'Prism a ouvert au livreur en avant-première lingerie',
+  occupee:  "Prism s'est occupée du livreur, Echo a attendu devant la porte",
+};
+// Notifications pour Echo selon l'accueil réservé au livreur.
+const DELIVERY_GUY = 'Le livreur';
+const DOOR_LINES = {
+  lingerie: [
+    (p, e) => `Le livreur est arrivé avant ${e}. ${p} lui a ouvert en lingerie… pour l'avant-première de son partenariat.`,
+    (p, e) => `${e}, tu étais en retard : c'est le livreur qui a eu la primeur de la nouvelle lingerie de ${p}.`,
+    (p, e) => `Le livreur a failli lâcher la pizza : ${p} a ouvert la porte en dentelle.`,
+    (p, e) => `${p} a testé sa lingerie de partenariat sur le livreur. Verdict : il a oublié de rendre la monnaie.`,
+    (p, e) => `Pourboire de luxe pour le livreur ce soir : une avant-première lingerie signée ${p}.`,
+    (p, e) => `Pendant ${queName(e)} rangeait ses platines, le livreur découvrait la nouvelle collection de ${p}. En exclusivité.`,
+    (p, e) => `Le livreur est reparti sans demander de signature. Il avait vu bien assez de ${p} comme ça.`,
+    (p, e) => `${p} a ouvert en nuisette transparente. Le livreur notera cette adresse en favori.`,
+    (p, e) => `Le livreur est reparti les joues en feu. ${p}, elle, a jugé la séance photo du partenariat très réussie.`,
+    (p, e) => `${e} n'aura vu que le carton de pizza. Le livreur, lui, a vu tout le reste.`,
+    (p, e) => `${p} a signé le bon de livraison en se penchant bien bas. Le livreur n'a pas regardé le stylo.`,
+    (p, e) => `Bas résille, porte-jarretelles, sourire en coin : ${p} a fait de la livraison de ce soir un défilé privé.`,
+    (p, e) => `${p} a demandé au livreur son avis sur sa tenue, en tournant lentement sur elle-même. Il n'a pas trouvé ses mots.`,
+    (p, e) => `Le livreur a mis trois tentatives à rendre la monnaie. ${p} n'avait presque rien sur elle, et ça l'a déconcentré.`,
+    (p, e) => `Quand ${e} est enfin arrivé, le livreur croisait dans l'escalier, l'air hagard. Il venait de voir l'avant-première.`,
+  ],
+  occupee: [
+    (p, e) => `${e} est rentré trop tard. Porte close : ${p} est occupée avec le livreur. Patience…`,
+    (p, e) => `${e} attend devant la porte. Derrière, le livreur livre autre chose qu'une pizza à ${p}.`,
+    (p, e) => `La pizza refroidit, ${e} aussi, sur le palier. ${p} et le livreur, eux, ont chaud.`,
+    (p, e) => `${e}, tu n'avais qu'à être à l'heure. ${p} a décidé de se faire livrer… autrement.`,
+    (p, e) => `Sur le palier, ${e} entend tout. Le livreur ne se presse pas, et ${p} ne lui demande pas de le faire.`,
+    (p, e) => `${p} a gardé le livreur un peu plus longtemps que prévu. ${e} a fait le pied de grue devant chez lui.`,
+    (p, e) => `${e} a frappé. Derrière la porte, seuls des gémissements lui ont répondu. Il s'est assis sur les marches.`,
+    (p, e) => `Le scooter du livreur est toujours garé en bas. ${e} l'a regardé longtemps en attendant que la porte s'ouvre.`,
+    (p, e) => `La porte s'est enfin ouverte : le livreur est sorti, chemise de travers, et a salué ${e} d'un signe de tête.`,
+    (p, e) => `${e} a eu tout le temps de regretter son dernier morceau. Derrière la porte, ${p} ne regrettait rien.`,
+    (p, e) => `${e} a reconnu le rythme à travers la porte. Ce n'était pas un de ses sets, mais ça montait aussi fort.`,
+    (p, e) => `La pizza est posée par terre dans l'entrée. Le livreur, lui, a été invité bien plus loin.`,
+    (p, e) => `${e} a envoyé un message : « Je suis devant. » Réponse de ${p} vingt minutes plus tard : « Encore un peu. »`,
+    (p, e) => `Le livreur avait promis d'être rapide. Pour une fois, il a pris tout son temps avec ${p}.`,
+    (p, e) => `Quand ${p} a enfin ouvert à ${e}, elle était décoiffée, essoufflée, et parfaitement satisfaite. La pizza était froide.`,
+  ],
+};
+const mins = m => m < 60 ? `${m} min` : `1 h ${String(m - 60).padStart(2, '0')}`;
+const djSalt = 0;
+const djTimes = () => { const k = 'dj:' + keyOf(rpDay) + (djSalt ? ':' + djSalt : ''); const r = x => 20 + Math.floor(seeded(k + x) * 61);   // 20 min … 1 h 20
+  let del = r(':livreur'), dj = r(':echo'); if (del === dj) del = Math.min(80, del + 5) === dj ? del - 5 : Math.min(80, del + 5);
+  return { del, dj, djFirst: dj < del }; };
+// Prism ne voit le retour tardif que si elle n'avait pas déjà validé sa journée quand Echo l'a coché.
+const djLate = () => { const e = state[DJ.dj], p = state[DJ.partner];
+  return !!(e.set && e.setLate && !(p.doneAt && p.doneAt < e.lateAt)); };
+const djLine = id => {
+  if (id === DJ.dj && state[id].set) return `<p class="where">${icon('disc')}<span>Set ce soir${state[id].setLate ? ' · retour tardif' : ''}</span></p>`;
+  if (id !== DJ.partner || !djLate()) return '';
+  const p = state[id], bits = [`${nameOf(DJ.dj)} est rentré tard après son set`];
+  if (p.wait === 'attend') bits.push(`${nameOf(id)} l'a attendu`);
+  if (p.wait === 'rale') bits.push(`${nameOf(id)} a râlé`);
+  if (p.wait === 'livre') { const t = djTimes();
+    bits.push(t.djFirst ? `${nameOf(DJ.dj)} est arrivé en premier, la livraison a suivi` : `le livreur est arrivé avant ${nameOf(DJ.dj)}`);
+    if (!t.djFirst && p.door) bits.push(DOOR_RECAP[p.door]); }
+  return `<p class="where">${icon(p.wait === 'livre' ? 'delivery' : 'disc')}<span>${esc(bits.join(' · '))}</span></p>`;
+};
+// Porte ouverte au livreur : Echo est prévenu (lingerie, ou attente sur le palier) ; « occupée » = nuit chaude avec le livreur.
+const setDoor = (id, door) => {
+  const d = keyOf(rpDay), s = state[id];
+  dropNews(['door:' + d + ':lingerie', 'door:' + d + ':occupee']);
+  if (s.door === 'occupee' && door !== 'occupee' && nightOf(id).with === DELIVERY_GUY) setNight(id, false);
+  s.door = door;
+  if (DOOR_LINES[door]) { const k = 'door:' + d + ':' + door; pushNews(DJ.dj, pickLine(DOOR_LINES[door], k)(nameOf(id), nameOf(DJ.dj)), k); }
+  if (door === 'occupee') setNight(id, true, DELIVERY_GUY);
+};
+const djBlock = id => {
+  const s = state[id];
+  if (id === DJ.dj) return `<section><h2>Set du soir</h2>
+    <label class="act"><input type="checkbox" id="dj-set-${id}" ${s.set ? 'checked' : ''}>${icon('disc')}<span>${nameOf(id)} mixe ce soir</span></label>
+    ${s.set ? `<label class="act"><input type="checkbox" id="dj-late-${id}" ${s.setLate ? 'checked' : ''}>${icon('nuit')}<span>Rentre tard après le set</span></label>` : ''}</section>`;
+  if (id !== DJ.partner || !djLate()) return '';
+  const t = djTimes();
+  return `<section><h2>${nameOf(DJ.dj)} rentre tard</h2>
+    <p class="reserved">${nameOf(DJ.dj)} a fait un set ce soir et rentre tard. Que fait ${nameOf(id)} ?</p>
+    ${Object.entries(WAIT_OPTS).map(([k, l]) => `<label class="act"><input type="radio" name="dj-wait-${id}" data-wait="${k}" ${s.wait === k ? 'checked' : ''}><span>${l}</span></label>`).join('')}
+    ${s.wait === 'livre' ? `<div class="delivery">
+      <p class="where">${icon('delivery')}<span>Livreur : ${mins(t.del)} · ${nameOf(DJ.dj)} : ${mins(t.dj)}</span></p>
+      ${t.djFirst ? `<p class="reserved">${nameOf(DJ.dj)} arrive en premier. Votre livraison suivra après.</p>`
+        : `<p class="reserved">Le livreur arrive en premier ! ${nameOf(id)} lui ouvre…</p>
+          ${Object.entries(DOOR_OPTS).map(([k, l]) => `<label class="act"><input type="radio" name="dj-door-${id}" data-door="${k}" ${s.door === k ? 'checked' : ''}><span>${esc(l)}</span></label>`).join('')}`}
+    </div>` : ''}</section>`;
+};
+// Jours de travail récurrents de Khopses : ces soirs-là, Viggo ne peut pas cocher une nuit avec elle.
+const WORKDAYS = { khopses: new Set() };   // 1 = lundi … 7 = dimanche
+const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
+const weekday = d => (d.getDay() + 6) % 7 + 1;
+const worksTonight = id => !!WORKDAYS[id]?.has(weekday(rpDay));
+const blockedWith = (id, w) => w && isChar(w) && CLIENT_PARTNER[w] === id && worksTonight(w);   // Viggo → Khopses un jour de travail
+const workdaysBlock = id => !WORKDAYS[id] ? '' : `<section><h2>Jours de travail</h2>
+  <div class="place-list" role="group" aria-label="Jours de travail récurrents">${DAY_NAMES.map((d, i) => `<button type="button" data-workday="${i + 1}" aria-pressed="${WORKDAYS[id].has(i + 1)}">${d}</button>`).join('')}</div>
+  <p class="reserved">${worksTonight(id) ? `${nameOf(id)} travaille ce soir : ${nameOf(CLIENT_PARTNER[id])} ne pourra pas cocher sa nuit avec elle.` : `Ces soirs-là, ${nameOf(CLIENT_PARTNER[id])} ne pourra pas cocher sa nuit avec elle.`}</p>
+</section>`;
+const isKhurdan = id => isChar(id) && C.find(c => c.id === id).groups.includes('Khurdans');
+const nightLinesFor = (a, b) => [...NIGHT_LINES, ...(isKhurdan(a) && isKhurdan(b) ? NIGHT_LINES_KHURDAN : [])];
+// Nuit sans protection : Jynette en est toujours avertie, quel que soit le joueur qui l'a cochée.
+const RISK_LINES = [
+  (f, m) => `${f} a-t-elle rencontré un champion parmi les compétiteurs de ${m} ?`,
+  (f, m) => `${m} ne s'est pas protégé : la course est lancée chez ${f}…`,
+  (f, m) => `Les petits nageurs de ${m} ont tenté leur chance chez ${f} cette nuit.`,
+  (f, m) => `Faut-il prévoir un berceau pour ${f} ? ${m} ne s'est pas protégé.`,
+  (f, m) => `Loterie de la nuit : ${f} a-t-elle tiré le bon numéro avec ${m} ?`,
+  (f, m) => `${m} a joué sans filet avec ${f}. Réponse dans neuf lunes ?`,
+  (f, m) => `Un petit ${m} est-il en route chez ${f} ?`,
+  (f, m) => `Pas de bouclier pour ${m} cette nuit : ${f} gardera-t-elle un souvenir durable ?`,
+  (f, m) => `${m} a semé sans compter chez ${f}. La récolte sera-t-elle bonne ?`,
+];
+const JYNETTE = 'elle';
+// Retire les nouvelles du jour devenues fausses (nuit annulée, partenaire changé, protection cochée).
+const dropNews = keys => { for (let i = NEWS.length - 1; i >= 0; i--) if (keys.includes(NEWS[i].key)) NEWS.splice(i, 1); window.RP_SYNC?.dropNews(keys); };
+const pairKeys = (a, b) => { const d = keyOf(rpDay); return ['night:' + d + ':' + [a, b].sort().join('+'), 'risk:' + d + ':' + a + ':' + b, 'risk:' + d + ':' + b + ':' + a]; };
+const checkRisk = id => {
+  const n = nightOf(id); if (!n.hot || !n.with) return;
+  const pair = [id, n.with], woman = pair.find(x => isChar(x) && isFem(x)), man = pair.find(x => x !== woman);
+  if (!woman || !man) return;
+  const unsafe = isChar(man) ? !isFem(man) && !state[man].protect : man !== 'client' && !pnjProtect(woman, man);
+  if (!unsafe) return;
+  const key = 'risk:' + keyOf(rpDay) + ':' + woman + ':' + man;
+  if (NEWS.some(x => x.key === key)) return;
+  // PNJ désigné par un article (« Le livreur ») : on évite « de Le livreur » / « Un petit Le livreur », et minuscule en milieu de phrase.
+  const m = whoLabel(man), art = /^(Le|La|Les) /.test(m);
+  const lines = art ? RISK_LINES.filter(fn => !/(de|petit) \$\{m\}/.test(fn.toString())) : RISK_LINES;
+  let text = pickLine(lines, key)(nameOf(woman), m);
+  if (art) text = text.replace(new RegExp('([a-zà-ÿ,] )' + m, 'g'), (_, p) => p + m[0].toLowerCase() + m.slice(1));
+  NEWS.unshift({ to: JYNETTE, text, charId: woman, key, read: false });
+};
+const MS_NEWS = {
+  'Rencontre':   (a, b) => `${a} et ${b} se sont rencontrés !`,
+  'Fiançailles': (a, b) => `${a} et ${b} sont fiancés !`,
+  'Mariage':     (a, b) => `${a} et ${b} se sont mariés !`,
+  'Grossesse':   (a, b) => `${a} et ${b} attendent un enfant !`,
+  'Naissance':   (a, b) => `Une naissance chez ${a} et ${b} !`,
+  'Séparation':  (a, b) => `${a} et ${b} se sont séparés…`,
+};
+const myNews = () => NEWS.filter(n => n.to === me);
+const canEdit = id => C.find(c => c.id === id)?.player === me;
+const shown = c => (filter === 'all' || c.player === filter) && (groupFilter === 'all' || c.groups.includes(groupFilter));
+const root = document.documentElement;
+const esc = s => s.replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+const vars = t => `--c-bg:${t.bg};--c-gold:${t.gold};--c-text:${t.text};--c-dim:${t.dim};--c-rule:${t.rule};--c-display:${t.display}`;
+// La journée RP bascule à 5 h : avant 5 h, on est encore « hier ».
+const rpDay = new Date(Date.now() - 5 * 3600e3);
+const today = rpDay.toLocaleDateString('fr-FR', { weekday:'long', day:'numeric', month:'long' });
+const dayKey = `${rpDay.getFullYear()}-${rpDay.getMonth() + 1}-${rpDay.getDate()}`;
+
+// Calendrier éorzéen : une lune par mois réel, en alternance astrale / ombrale.
+const moonIndex = rpDay.getMonth() + 1;                 // 1 à 12
+const moonNum = Math.ceil(moonIndex / 2);
+const moonKind = moonIndex % 2 ? 'astrale' : 'ombrale';
+const ord = (n, fem) => n === 1 ? (fem ? '1re' : '1er') : n + 'e';
+const eorzeaDate = `${ord(rpDay.getDate())} soleil de la ${ord(moonNum, true)} lune ${moonKind}`;
+// Lunes khurdanes, une par mois réel.
+// Silhouettes pleines dans l'esprit des icônes des fiches (couleur d'accent, détails évidés).
+const MOON_ICONS = {
+ "brebis": "<circle cx=\"8.6\" cy=\"12.2\" r=\"3.4\"/><circle cx=\"12\" cy=\"10.4\" r=\"3.6\"/><circle cx=\"15\" cy=\"12.6\" r=\"3.2\"/><circle cx=\"11.2\" cy=\"14.2\" r=\"3.2\"/><ellipse cx=\"18.6\" cy=\"10.6\" rx=\"2.4\" ry=\"2.9\" transform=\"rotate(25 18.6 10.6)\"/><path d=\"M16.9 9.2l-1.7-1.4 2.2-.3z\"/><path d=\"M8 15.5h1.6v5H8zM14 15.5h1.6v5H14z\"/><circle cx=\"19.2\" cy=\"10\" r=\".55\" style=\"fill:var(--bg)\"/>",
+ "louve": "<path d=\"M4.5 21 6.3 13.4 5.2 5l3.6 3.6L10.6 3.6l1.8 5.6 6.4 2.6 2.7 1.4-1.2 1.8-5.8.8-1.6 2.2.4 3z\"/><circle cx=\"13.3\" cy=\"10.6\" r=\".7\" style=\"fill:var(--bg)\"/><path d=\"M7.6 14.2c1 .9 2 1.3 3.2 1.4M7.3 17c1.1.8 2.2 1.1 3.4 1.1\" fill=\"none\" style=\"stroke:var(--bg)\" stroke-width=\".8\" stroke-linecap=\"round\"/>",
+ "irbis": "<ellipse cx=\"11\" cy=\"12.6\" rx=\"6.2\" ry=\"3.2\"/><circle cx=\"18.2\" cy=\"10.4\" r=\"2.7\"/><path d=\"M16.6 8.3l.4-1.9 1.4 1.2zM19 8l1.2-1.4.3 1.9z\"/><path d=\"M6.6 14h1.8v5.6H6.6zM13.6 14h1.8v5.6h-1.8z\"/><path d=\"M5.2 12.6C2 13.5 1.4 17 3.4 19.2c1.6 1.7 4 1.4 4.6.2\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2.2\" stroke-linecap=\"round\"/><circle cx=\"19.2\" cy=\"10\" r=\".55\" style=\"fill:var(--bg)\"/><g style=\"fill:var(--bg)\"><circle cx=\"9\" cy=\"11.6\" r=\".75\"/><circle cx=\"11.6\" cy=\"13.2\" r=\".75\"/><circle cx=\"13.6\" cy=\"11.4\" r=\".75\"/><circle cx=\"7.4\" cy=\"13.4\" r=\".6\"/></g>",
+ "aigle": "<circle cx=\"12\" cy=\"5.4\" r=\"2\"/><path d=\"M13.7 5l1.7.7-1.5.9z\"/><path d=\"M10.2 7.4h3.6l.6 7.2L12 16.4l-2.4-1.8z\"/><path d=\"M10.4 8.4C7.6 6.6 4.4 6.2 1.2 7.4l1.4 1.2-1 1 1.8.6-.8 1.2 2.2.2-.4 1.2c2.2-.6 4.2-1.2 6 -1zM13.6 8.4c2.8-1.8 6-2.2 9.2-1l-1.4 1.2 1 1-1.8.6.8 1.2-2.2.2.4 1.2c-2.2-.6-4.2-1.2-6-1z\"/><path d=\"M10 15l-1.2 4.4 3.2-1 3.2 1L14 15z\"/><circle cx=\"12.6\" cy=\"5\" r=\".5\" style=\"fill:var(--bg)\"/>",
+ "jument": "<path d=\"M8.2 21.6c-.2-3.6.6-6.4 2-8.6l-4.4.5C4.3 13.6 3.2 12.8 3.3 11.5c0-.8.5-1.4 1.1-1.8l5.9-4.6.5-2.6 2.1 1.9c3.9.3 6.9 3.6 6.9 8.4 0 3.4-.9 6.3-1.6 8.8Z\"/><circle cx=\"10.4\" cy=\"8.6\" r=\".9\" style=\"fill:var(--bg)\"/><path d=\"M13.6 4.6c2 .6 3.6 2.4 4.2 4.8M15 4.2c2.4.9 3.9 3.1 4.2 5.6\" fill=\"none\" style=\"stroke:var(--bg)\" stroke-width=\".8\" stroke-linecap=\"round\"/>",
+ "luciole": "<circle cx=\"12\" cy=\"5.4\" r=\"1.7\"/><path d=\"M11.2 4 9.4 1.6M12.8 4l1.8-2.4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\"/><ellipse cx=\"12\" cy=\"10.4\" rx=\"2.4\" ry=\"3.4\"/><ellipse cx=\"7.6\" cy=\"10.4\" rx=\"3.6\" ry=\"1.7\" transform=\"rotate(-25 7.6 10.4)\"/><ellipse cx=\"16.4\" cy=\"10.4\" rx=\"3.6\" ry=\"1.7\" transform=\"rotate(25 16.4 10.4)\"/><circle cx=\"12\" cy=\"16.6\" r=\"2.7\"/><path d=\"M12 20.6v1.8M8.4 19.4l-1.2 1.2M15.6 19.4l1.2 1.2M7.6 16.6H6M16.4 16.6H18\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\"/><path d=\"M12 7.6v5.6\" fill=\"none\" style=\"stroke:var(--bg)\" stroke-width=\".7\"/>",
+ "abeille": "<ellipse cx=\"9.4\" cy=\"7.4\" rx=\"3\" ry=\"4\" transform=\"rotate(-20 9.4 7.4)\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\"/><ellipse cx=\"13.6\" cy=\"7\" rx=\"2.6\" ry=\"3.6\" transform=\"rotate(20 13.6 7)\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.2\"/><ellipse cx=\"11.6\" cy=\"14.4\" rx=\"6.4\" ry=\"4\"/><circle cx=\"18.6\" cy=\"13.8\" r=\"2.4\"/><path d=\"M4.6 14.4 2.4 15l2.4.8z\"/><g fill=\"none\" style=\"stroke:var(--bg)\" stroke-width=\"1.3\"><path d=\"M9 10.6v7.6M12.4 10.4v8M15.4 11v6.8\"/></g><circle cx=\"19.4\" cy=\"13.2\" r=\".55\" style=\"fill:var(--bg)\"/>",
+ "loutre": "<circle cx=\"18\" cy=\"9.4\" r=\"2.8\"/><circle cx=\"16.4\" cy=\"7\" r=\".9\"/><path d=\"M17.2 11C14 12.6 8.4 13.4 4.2 14.6L1.8 16.4c4.2.7 8.4.6 12.4-.4 2.6-.6 4.4-2.2 5.4-4.4z\"/><circle cx=\"19.2\" cy=\"8.8\" r=\".55\" style=\"fill:var(--bg)\"/><path d=\"M20.4 10.2l2-.4M20.4 10.8l2 .4\" fill=\"none\" stroke=\"currentColor\" stroke-width=\".6\" stroke-linecap=\"round\"/><path d=\"M2.5 19.4c1.5-.9 3-.9 4.5 0s3 .9 4.5 0 3-.9 4.5 0 3 .9 4.5 0\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1.1\" stroke-linecap=\"round\"/>",
+ "ours": "<path d=\"M3 18.6V13c0-2.5 2-4 5-4 2-.8 5-1 7-.4l2.2-1.4c.8-.6 2.2-.4 2.8.4l1.6 2c.4.6 0 1.2-.6 1.2l-1.4.2c-.2 1.4-.8 2.6-1.6 3.4v4.2h-2.2v-3.2c-2.2.4-4.8.4-6.8 0v3.2H6.8v-3.6c-.8.2-1.4.6-1.6 1.2v2.4z\"/><circle cx=\"17.4\" cy=\"6.8\" r=\"1.2\"/><circle cx=\"19\" cy=\"8.7\" r=\".55\" style=\"fill:var(--bg)\"/>",
+ "ecureuil": "<path d=\"M9.6 20.4C3.6 19.6 1.6 13.8 3.4 9.4 5.2 5 10.2 4.4 11.8 7.6 9.2 7.2 7.2 9.2 7.8 12.2c.6 2.6 2.8 3.8 2.4 7z\"/><path d=\"M10.4 20.4c-.4-4 1-7.2 3.4-8.2-.6-1.6 0-3.6 2-4.2l.4-1.8 1.2 1.6c1.8.6 2.8 2 2.4 3.2l-1.6.4c.6 1.6.2 3.6-1 5 .8 1 1.6 2.2 1.4 4z\"/><circle cx=\"17.4\" cy=\"9.6\" r=\".55\" style=\"fill:var(--bg)\"/><path d=\"M6 9.6c.6-1.4 2-2.4 3.4-2.4M5 13c-.2-1 0-2 .4-2.8\" fill=\"none\" style=\"stroke:var(--bg)\" stroke-width=\".7\" stroke-linecap=\"round\"/>",
+ "mesange": "<circle cx=\"11\" cy=\"12.4\" r=\"5.2\"/><circle cx=\"15.4\" cy=\"8.6\" r=\"3.2\"/><path d=\"M18.3 8.2l2.4.5-2.4.9z\"/><path d=\"M6.8 14.2 2 17.6l1 1.1 5.2-2.4z\"/><ellipse cx=\"15.6\" cy=\"9.6\" rx=\"1.6\" ry=\"1.1\" style=\"fill:var(--bg)\"/><circle cx=\"16.4\" cy=\"7.8\" r=\".5\" style=\"fill:var(--bg)\"/><path d=\"M3 20.4h18M10 17.4l-.6 3M12.6 17.4l.4 3\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"1\" stroke-linecap=\"round\"/>",
+ "chouette": "<path d=\"M6 7 7.8 3.4l2.2 2.6c1.3-.3 2.7-.3 4 0l2.2-2.6L18 7c1.5 2 1.6 5 1 7-.6 4-3.5 7-7 7s-6.4-3-7-7c-.6-2-.5-5 1-7z\"/><circle cx=\"9.4\" cy=\"10.4\" r=\"2.3\" style=\"fill:var(--bg)\"/><circle cx=\"14.6\" cy=\"10.4\" r=\"2.3\" style=\"fill:var(--bg)\"/><circle cx=\"9.4\" cy=\"10.4\" r=\"1\"/><circle cx=\"14.6\" cy=\"10.4\" r=\"1\"/><path d=\"M11.2 12.2h1.6L12 14z\" style=\"fill:var(--bg)\"/><path d=\"M9.6 16.4l1 .8 1-.8M12.4 16.4l1 .8 1-.8M11 18.6l1 .8 1-.8\" fill=\"none\" style=\"stroke:var(--bg)\" stroke-width=\".7\" stroke-linecap=\"round\"/>"
+};
+const KHURDAN_MOONS = {
+  1:["brebis", "Lune de la brebis"],
+  2:["louve", "Lune de la louve"],
+  3:["irbis", "Lune de l'irbis"],
+  4:["aigle", "Lune de l'aigle"],
+  5:["jument", "Lune de la jument"],
+  6:["luciole", "Lune de la luciole"],
+  7:["abeille", "Lune de l'abeille"],
+  8:["loutre", "Lune de la loutre"],
+  9:["ours", "Lune de l'ours"],
+  10:["ecureuil", "Lune de l'écureuil"],
+  11:["mesange", "Lune de la mésange"],
+  12:["chouette", "Lune de la chouette"],
+};
+const khurdanMoon = KHURDAN_MOONS[moonIndex];
+
+// Météo du jour : tirage pondéré, identique pour tous les personnages d'un même foyer
+// et pour vous deux (graine = date RP + foyer, pas de hasard propre à l'appareil).
+const W = {
+  clear:  { label:'Temps clair', icon:'midi' },
+  fair:   { label:'Beau temps', icon:'aprem' },
+  clouds: { label:'Nuageux', icon:'clouds' },
+  fog:    { label:'Brouillard', icon:'fog' },
+  wind:   { label:'Venteux', icon:'wind' },
+  gales:  { label:'Bourrasques', icon:'wind' },
+  rain:   { label:'Pluie', icon:'rain' },
+  thunder:{ label:'Orages', icon:'thunder' },
+  snow:   { label:'Neige', icon:'snow' },
+  blizzard:{ label:'Blizzard', icon:'snow' },
+};
+// Météo « classique » de FFXIV, pour les foyers sans zone précise.
+const CLASSIC = { clear:15, fair:35, clouds:20, fog:10, rain:10, wind:5, thunder:5 };
+const HOMES = {
+  khurdans: { label:"Steppe d'Azim", table:{ clear:25, fair:40, clouds:10, fog:8, rain:7, wind:5, gales:5 } },
+  // Solution Nine : pas de météo par défaut ; une case sur la fiche d'Echo ou de Prism l'active pour la journée.
+  s9:       { label:'', table:CLASSIC, optIn:true },
+  eoor:     { label:'', table:CLASSIC },
+  viggo:    { label:'', table:CLASSIC },
+  unegen:   { label:'', table:CLASSIC },
+};
+const weatherOn = {};
+
+// Température du jour, calée sur une ville réelle de référence.
+// Dans l'aperçu : normales mensuelles + variation du jour (pas d'accès réseau ici).
+// Dans l'appli : relevé réel du jour via Open-Meteo, mis en cache une fois par jour.
+const CLIMATE = { // [maxima mensuels], [minima mensuels], °C
+  compiegne:   [[6,8,12,15,19,22,24,24,20,15,10,7],        [1,1,3,5,9,12,14,14,11,8,4,2]],
+  marrakech:   [[18,20,23,25,29,33,37,37,33,28,23,19],     [6,8,10,12,15,18,21,21,19,15,10,7]],
+  varna:       [[6,7,11,16,21,26,29,29,25,19,13,8],         [-1,0,3,8,13,17,20,20,16,11,6,1]],
+  erzurum:     [[-4,-2,4,13,18,24,29,29,24,16,7,-1],        [-16,-14,-8,1,5,9,13,13,8,3,-4,-12]],
+  arizona:     [[19,21,24,29,34,39,38,37,35,30,23,18],     [5,6,9,12,17,22,25,24,21,15,8,4]],   // Shaaloani (type Tucson)
+  cancun:      [[28,28,30,31,32,33,33,33,32,31,29,28],      [20,20,21,23,24,25,25,25,24,23,22,21]],
+  jungle:      [[28,30,32,35,35,33,32,32,32,31,29,28],      [18,18,20,22,23,23,22,22,22,21,20,18]],
+  kyoto:       [[9,10,14,20,25,28,32,33,29,23,17,12],        [1,1,4,9,14,19,23,24,20,13,7,3]],
+  tehran:      [[8,11,16,22,28,34,37,35,31,24,16,10],       [1,3,7,12,17,22,25,24,20,14,7,3]],
+  kerala:      [[32,33,34,34,33,29,28,28,29,30,31,31],     [22,23,24,25,25,23,23,23,23,23,23,22]], // forêt tropicale indienne
+  pondy:       [[29,30,32,34,37,37,36,35,34,32,30,29],     [21,22,24,26,28,28,27,26,26,25,23,22]], // Pondichéry
+  alps:        [[-1,0,4,8,13,17,20,19,15,10,4,0],           [-10,-10,-6,-2,2,6,8,8,4,0,-5,-9]],   // Alpes (Ishgard)
+  tahiti:      [[31,31,31,31,30,29,28,28,29,29,30,31],     [23,23,23,23,22,21,20,20,21,22,22,23]],
+  vietnam:     [[25,26,29,31,33,34,34,34,32,29,27,25],     [19,20,22,24,25,26,26,25,24,23,22,20]], // centre du Vietnam
+  moscow:      [[-4,-3,3,12,19,22,24,22,16,8,1,-3],        [-10,-10,-5,2,8,12,14,12,7,2,-3,-8]],
+  liujia:      [[-2,0,4,7,11,15,15,14,12,6,1,-1],           [-18,-16,-11,-6,-1,3,5,4,1,-6,-13,-17]],
+  rubis:       [[1,4,10,17,23,27,29,29,25,18,9,3],         [-9,-6,0,7,13,18,22,22,16,9,0,-6]],  // côte proche de Pékin
+  ulaanbaatar: [[-16,-11,-2,8,16,21,23,21,15,6,-5,-14], [-27,-24,-15,-6,1,7,11,9,2,-6,-16,-24]],
+  beijing:     [[2,5,12,21,27,30,31,30,26,19,10,3],      [-9,-6,0,7,13,18,22,21,15,8,0,-7]],
+  lisbon:      [[15,16,19,20,23,27,29,29,27,23,18,15],   [8,9,11,12,14,17,18,19,18,15,11,9]],
+  paris:       [[7,9,13,16,20,23,25,25,21,16,11,8],        [3,3,5,7,11,14,16,16,13,10,6,4]],
+  mumbai:      [[31,32,33,33,34,32,30,30,31,33,34,33],   [17,18,21,24,27,26,25,25,25,24,22,19]],
+};
+// Grandes régions, chacune avec son climat par défaut et ses lieux. On choisit une région par jour,
+// puis un ou plusieurs lieux à l'intérieur (on y voyage facilement dans la journée).
+const REGIONS = {
+  eorzea:   { label:'Eorzea', city:'compiegne', zones:{
+    noscea:        { label:'Noscea', city:'lisbon', places:['Limsa Lominsa', 'Brumée', 'Grand Bazar', 'Chez Yasmeen', 'Boudoir intime de Khopses'] },
+    sombrelinceul: { label:'Sombrelinceul', city:'compiegne', places:['Gridania', 'Lavandière', 'Chez Eoor', 'Chez Khopses & Viggo'] },
+    thanalan:      { label:'Thanalan', city:'marrakech', places:["Ul'dah", 'La Coupe', 'Chez Davaajav & Ushuaia'] },
+    coerthas:      { label:'Coerthas', city:'alps', places:['Ishgard'] },                 // Alpes, neiges éternelles
+    gyr:           { label:'Gyr Abania', city:'erzurum', places:['Ala Mhigo'] },          // Turquie montagneuse
+  } },
+  ilsabard: { label:'Ilsabard', city:'moscow', zones:{
+    garlemald:     { label:'Garlemald', city:'moscow', places:[] },                       // Moscou
+    werlyt:        { label:'Werlyt', city:'varna', places:['Rocasternes'] },              // mer Noire bulgare
+    corvos:        { label:'Corvos', city:'tehran', places:[] },                          // Téhéran
+  } },
+  othard:   { label:'Othard', city:'beijing', zones:{
+    steppe:        { label:"Steppe d'Azim", city:'ulaanbaatar', places:['Khurdan Iloh', 'Yourte commune', 'Yourte des savoirs', 'Yourte mammouth', "Yourte d'Ankhbayar", "Yourte d'Inkaraa & Khokkutsai", 'Yourte de Javkhaanhun', 'Yourte de Taiga & Tamachag', "Yourte d'Ogloo", 'Le Ralliement', 'Yourte Unegen'] },
+    yanxia:        { label:'Yanxia', city:'liujia', places:['Liujia', 'Doma'] },
+    rubis:         { label:'Mer de Rubis', city:'rubis', places:[] },
+    hingashi:      { label:'Hingashi', city:'beijing', places:['Shirogane', 'Chez Unegen', 'Chez Hokkyoku'] },
+    nagxia:        { label:'Nagxia', city:'vietnam', places:[] },                         // centre du Vietnam
+  } },
+  thavnair: { label:'Thavnair', city:'mumbai', zones:{
+    ile:           { label:'Île de Thavnair', city:'mumbai', places:['Radz-at-Han', 'Yedlihmad', 'Jungle des Sangha', 'Appartement Yasmeen', 'Chez les parents de Yasmeen'] },
+    mersdusud:     { label:'Îles des Mers du Sud', city:'tahiti', places:[] },            // Tahiti
+  } },
+  tural:    { label:'Tural', city:'cancun', places:['S9', "Elek'Trique", 'Les Faubourgs', 'Chez Prism & Echo', 'Tuliyollal', "Yak'Tel", 'Shaaloani'] },
+  autres:   { label:'Autres', city:null, places:[] },   // lieux libres : climat du foyer
+};
+// Ordre d'affichage, identique sur toutes les fiches.
+const REGION_ORDER = ['eorzea', 'ilsabard', 'othard', 'thavnair', 'tural', 'autres'];
+const EOOR_HIDDEN = ['othard'], KHURDAN_HIDDEN = ['eorzea', 'ilsabard', 'thavnair', 'tural'];
+const S9_HIDDEN = ['eorzea', 'ilsabard', 'othard', 'thavnair'];
+const HIDDEN_REGIONS = { eoor:EOOR_HIDDEN, yasmeen:EOOR_HIDDEN, echo:S9_HIDDEN, prism:S9_HIDDEN,
+  tamachag:KHURDAN_HIDDEN, khokkutsai:KHURDAN_HIDDEN, ankhbayar:KHURDAN_HIDDEN, taiga:KHURDAN_HIDDEN,
+  khubunjin:KHURDAN_HIDDEN, inkaraa:KHURDAN_HIDDEN, ogloo:KHURDAN_HIDDEN, javkhaanhun:KHURDAN_HIDDEN };
+// Zones masquées sur certaines fiches (Hingashi, Nagxia et les Mers du Sud pour les Khurdans).
+const KHURDAN_HIDDEN_ZONES = ['hingashi', 'nagxia', 'mersdusud'];
+const HIDDEN_ZONES = { tamachag:KHURDAN_HIDDEN_ZONES, khokkutsai:KHURDAN_HIDDEN_ZONES, ankhbayar:KHURDAN_HIDDEN_ZONES, taiga:KHURDAN_HIDDEN_ZONES,
+  khubunjin:KHURDAN_HIDDEN_ZONES, inkaraa:KHURDAN_HIDDEN_ZONES, ogloo:KHURDAN_HIDDEN_ZONES, javkhaanhun:KHURDAN_HIDDEN_ZONES };
+// Lieux visibles seulement par certains personnages.
+const EY = ['eoor', 'yasmeen'], UH = ['unegen', 'hokkyoku'], KV = ['khopses', 'viggo'], PE = ['prism', 'echo'];
+const PRIVATE_PLACES = {
+  'Chez Eoor':EY, 'Chez Yasmeen':EY, 'Appartement Yasmeen':EY, 'Chez les parents de Yasmeen':EY,
+  'Chez Unegen':UH, 'Chez Hokkyoku':UH, 'Yourte Unegen':UH,
+  'Chez Khopses & Viggo':KV, 'Boudoir intime de Khopses':KV,
+  'Chez Prism & Echo':PE,
+  'Chez Davaajav & Ushuaia':['davaajav'],
+  "Yourte d'Ankhbayar":['ankhbayar', 'khubunjin', 'taiga'],
+  "Yourte d'Inkaraa & Khokkutsai":['inkaraa', 'khokkutsai'],
+  'Yourte de Javkhaanhun':['javkhaanhun'],
+  'Yourte de Taiga & Tamachag':['taiga', 'tamachag'],
+  "Yourte d'Ogloo":['taiga', 'ogloo'],
+};
+const canSee = (id, pl) => !PRIVATE_PLACES[pl] || PRIVATE_PLACES[pl].includes(id);
+const PLACE_REGION = {}, ZONE_OF = {};
+Object.entries(REGIONS).forEach(([r, x]) => {
+  if (x.zones) x.places = Object.entries(x.zones).flatMap(([z, zone]) => zone.places.map(pl => (ZONE_OF[pl] = z, pl)));
+  x.places.forEach(pl => PLACE_REGION[pl] = r);
+});
+const REGION_NAME = {};
+// Climat propre de certains lieux (ville réelle de référence).
+const PLACE_CLIMATE = {
+  'Grand Bazar':'lisbon', 'Limsa Lominsa':'lisbon', 'Brumée':'lisbon',     // Noscea : Portugal
+  'Gridania':'compiegne', 'Lavandière':'compiegne',                  // Gridania : forêt de Compiègne
+  "Ul'dah":'marrakech',                                             // Ul'dah : Maroc
+  'Rocasternes':'varna', 'Ala Mhigo':'erzurum',                     // Gyr Abania : mer Noire / Turquie montagneuse
+  'Shaaloani':'arizona',                                             // Shaaloani : plaines arides type Arizona
+  'Tuliyollal':'cancun', "Yak'Tel":'jungle',                        // Tural : côte caraïbe / jungle mexicaine
+  'Liujia':'liujia', 'Shirogane':'beijing', 'Doma':'kyoto',   // Doma : plaines tempérées et humides (type Kyoto)
+  'Jungle des Sangha':'kerala', 'Yedlihmad':'pondy', 'Radz-at-Han':'mumbai',
+  'Ishgard':'alps',
+  'La Coupe':'marrakech', 'Chez Davaajav & Ushuaia':'marrakech',                                           // Thanalan, comme Ul'dah
+  'Khurdan Iloh':'ulaanbaatar', 'Le Ralliement':'ulaanbaatar', 'Yourte Unegen':'ulaanbaatar',
+  'Yourte commune':'ulaanbaatar', 'Yourte des savoirs':'ulaanbaatar', 'Yourte mammouth':'ulaanbaatar',
+  "Yourte d'Ankhbayar":'ulaanbaatar', "Yourte d'Inkaraa & Khokkutsai":'ulaanbaatar', 'Yourte de Javkhaanhun':'ulaanbaatar',
+  'Yourte de Taiga & Tamachag':'ulaanbaatar', "Yourte d'Ogloo":'ulaanbaatar',
+  // Chez-soi : climat de la zone où se trouve la maison.
+  'Chez Yasmeen':'lisbon', 'Boudoir intime de Khopses':'lisbon',     // Noscea
+  'Chez Eoor':'compiegne', 'Chez Khopses & Viggo':'compiegne',      // Gridania
+  'Appartement Yasmeen':'mumbai',                                   // Thavnair
+  'Chez Unegen':'beijing', 'Chez Hokkyoku':'beijing',               // Hingashi
+  // Chez Prism & Echo (Solution Nine) : pas de climat réel, comme S9.
+};
+const HOME_REGION = { khurdans:'othard', unegen:'othard', eoor:'eorzea', viggo:'eorzea', s9:'tural' };
+const DEFAULT_CITY = { khurdans:'ulaanbaatar', unegen:'beijing', eoor:'lisbon', viggo:'paris' };
+// Exceptions individuelles : Davaajav vit à La Coupe (Thanalan) ; la steppe prime quand il s'y rend.
+const DEFAULT_CITY_OF = { davaajav:'marrakech' }, HOME_REGION_OF = { davaajav:'eorzea' }, HOME_LABEL_OF = { davaajav:'La Coupe' };
+const defaultCity = id => DEFAULT_CITY_OF[id] || DEFAULT_CITY[HOME_OF[id]] || null;
+const homeRegion = id => HOME_REGION_OF[id] || HOME_REGION[HOME_OF[id]] || null;
+const regionOf = id => state[id].region || homeRegion(id);
+const climatesFor = id => {
+  const t = state[id].trip;
+  if (!t) return climatesAt(id, regionOf(id), state[id].places, state[id].zone);
+  // Mode voyage : météo du départ, puis de l'arrivée.
+  const leg = (l, tag) => !l.region ? [] : climatesAt(id, l.region, l.places, l.zone)
+    .map(x => ({ ...x, where: `${tag} · ${x.where || REGIONS[l.region].label}` }));
+  return [...leg(t.from, 'Départ'), ...leg(t.to, 'Arrivée')];
+};
+const TRAVEL_MODES = ['Éthérite', 'Aéronef', 'Monture', 'Bateau'];
+const zoneOf = T => T.zone && REGIONS[T.region]?.zones?.[T.zone];
+const legLabel = l => !l || !l.region ? '…' : l.places.size ? [...l.places].join(', ') : zoneOf(l)?.label || REGIONS[l.region].label;
+const climatesAt = (id, R, places, zone) => {
+  const reg = REGIONS[R];
+  if (!reg) return defaultCity(id) ? [{ city: defaultCity(id), where: HOME_LABEL_OF[id] || null }] : [];
+  const byCity = {};
+  [...places].filter(pl => PLACE_CLIMATE[pl]).forEach(pl => (byCity[PLACE_CLIMATE[pl]] ||= []).push(pl));
+  const list = Object.entries(byCity).map(([city, pls]) => ({ city, where: pls.join(', ') }));
+  if (list.length) return list;
+  const z = zone && reg.zones?.[zone];
+  if (z) return [{ city: z.city, where: z.label }];
+  if (R === homeRegion(id) || !reg.city) return defaultCity(id) ? [{ city: defaultCity(id), where: reg.city ? (HOME_LABEL_OF[id] || null) : reg.label }] : [];
+  return [{ city: reg.city, where: reg.label }];
+};
+const TEMP_CITY = id => climatesFor(id)[0]?.city || null;
+const keyOf = day => `${day.getFullYear()}-${day.getMonth() + 1}-${day.getDate()}`;
+const tempAt = (city, day) => {
+  const m = day.getMonth(), d = Math.round((seeded(keyOf(day) + ':t:' + city) - .5) * 6);
+  return { max: CLIMATE[city][0][m] + d, min: CLIMATE[city][1][m] + d };
+};
+const deg = n => (n < 0 ? '−' + (-n) : n) + '°';
+const HOME_OF = { tamachag:'khurdans', khokkutsai:'khurdans', ankhbayar:'khurdans', taiga:'khurdans', khubunjin:'khurdans',
+  inkaraa:'khurdans', ogloo:'khurdans', javkhaanhun:'khurdans', davaajav:'khurdans',
+  viggo:'viggo', khopses:'viggo', echo:'s9', prism:'s9', eoor:'eoor', yasmeen:'eoor', unegen:'unegen', hokkyoku:'unegen' };
+const seeded = str => { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 100000) / 100000; };
+// Météo cohérente avec la température : pour les personnages rattachés à une ville réelle,
+// on part du climat du mois (fréquence des jours de pluie, vent, brouillard) et de l'écart
+// du jour à la normale (plus chaud → plus dégagé, plus froid → plus couvert ou neigeux).
+const WET = { // probabilité d'un jour de précipitations, par mois
+  compiegne:   [.4,.35,.36,.34,.35,.3,.27,.26,.3,.36,.4,.42],
+  marrakech:   [.1,.1,.1,.1,.06,.02,.01,.02,.04,.08,.1,.1],
+  varna:       [.35,.3,.3,.3,.3,.25,.15,.12,.15,.25,.3,.35],
+  erzurum:     [.3,.3,.35,.4,.45,.25,.1,.08,.1,.25,.25,.3],
+  arizona:     [.08,.08,.06,.03,.02,.05,.3,.3,.15,.07,.05,.1],   // mousson d'été
+  cancun:      [.2,.12,.1,.08,.15,.35,.3,.35,.5,.45,.3,.25],
+  jungle:      [.4,.3,.25,.2,.35,.7,.75,.75,.8,.7,.55,.45],
+  kyoto:       [.25,.28,.35,.35,.35,.5,.45,.3,.4,.3,.25,.22],
+  tehran:      [.2,.2,.25,.2,.12,.03,.02,.02,.02,.1,.15,.2],
+  kerala:      [.05,.05,.1,.25,.45,.85,.85,.8,.6,.6,.4,.1],
+  pondy:       [.1,.05,.03,.05,.1,.15,.2,.25,.3,.5,.55,.3],
+  alps:        [.4,.38,.42,.45,.5,.5,.48,.48,.42,.4,.42,.42],
+  tahiti:      [.6,.55,.55,.45,.35,.25,.2,.2,.25,.35,.45,.55],
+  vietnam:     [.3,.2,.15,.15,.25,.25,.25,.3,.5,.65,.6,.45],
+  moscow:      [.45,.4,.35,.35,.35,.4,.4,.4,.4,.45,.5,.5],
+  liujia:      [.2,.25,.3,.35,.3,.45,.6,.6,.4,.25,.2,.2],
+  rubis:       [.06,.07,.1,.15,.2,.35,.5,.45,.25,.15,.1,.06],
+  ulaanbaatar: [.08,.07,.08,.12,.2,.35,.45,.42,.25,.1,.08,.08],
+  beijing:     [.05,.06,.1,.15,.2,.32,.48,.4,.22,.14,.08,.05],
+  lisbon:      [.4,.36,.3,.34,.25,.1,.04,.05,.15,.32,.4,.42],
+  paris:       [.38,.33,.34,.32,.34,.28,.25,.24,.27,.33,.37,.4],
+  mumbai:      [.01,.01,.01,.01,.05,.6,.85,.8,.55,.12,.04,.01],
+};
+// Neige sur les terres khurdanes. Pour chaque lieu : mois de neige renforcée et fréquence,
+// fenêtre de tirage de l'enneigement [mois, jour, durée], fenêtre du dégel, date limite du dégel,
+// seuil de maximale sous lequel les précipitations tombent en neige, et seuil de redoux pour le dégel.
+const SNOW = {
+  // Steppe (Oulan-Bator) : sol enneigé de fin novembre / début décembre à mars.
+  ulaanbaatar: { season:[10,11,0,1,2], boost:.28, start:[10,20,21], thaw:[2,1,31], latest:[3,15], line:1, melt:0 },
+  // Liujia (haut plateau tibétain) : hivers très neigeux, neige au sol de fin octobre à avril.
+  // Ala Mhigo (Turquie montagneuse) : sol enneigé de fin novembre / mi-décembre à mars.
+  erzurum:     { season:[11,0,1,2], boost:.35, start:[10,25,21], thaw:[2,5,25], latest:[3,15], line:1, melt:2 },
+  // Ishgard : neiges éternelles, la neige ne quitte jamais le sol.
+  alps:        { eternal:true, season:[0,1,2,3,4,9,10,11], boost:.45, line:3 },
+  // Garlemald (Moscou) : sol enneigé de mi-novembre à fin mars / avril.
+  moscow:      { season:[10,11,0,1,2], boost:.45, start:[10,10,25], thaw:[2,15,25], latest:[3,20], line:1, melt:1 },
+  liujia:      { season:[9,10,11,0,1,2,3], boost:.5, start:[9,15,21], thaw:[3,1,30], latest:[4,20], line:4, melt:4 },
+};
+// Premier jour de fonte de l'hiver qui se termine l'année y.
+const thawDay = (city, y) => {
+  const cfg = SNOW[city];
+  const thawFrom = new Date(y, cfg.thaw[0], cfg.thaw[1] + Math.floor(seeded(city + ':thaw:' + (y - 1)) * cfg.thaw[2]));
+  const latest = new Date(y, cfg.latest[0], cfg.latest[1]);
+  for (let d = new Date(thawFrom); d < latest; d.setDate(d.getDate() + 1)) if (tempAt(city, d).max > cfg.melt) return new Date(d);
+  return latest;
+};
+const snowCoverOn = (city, day) => {
+  const cfg = SNOW[city]; if (!cfg) return false;
+  if (cfg.eternal) return true;
+  const y = day.getMonth() >= 6 ? day.getFullYear() : day.getFullYear() - 1;   // année de début de l'hiver
+  const end = thawDay(city, y + 1);
+  const start = new Date(y, cfg.start[0], cfg.start[1] + Math.floor(seeded(city + ':cover:' + y) * cfg.start[2]));
+  if (day < start || day >= end) return false;
+  for (let d = new Date(start); d <= day; d.setDate(d.getDate() + 1)) {
+    const w = cityWeather(city, tempAt(city, d), d);
+    if (w === W.snow || w === W.blizzard) return true;
+  }
+  return false;
+};
+const WINDY = { tehran:[2,3,4],  alps:[0,1,2,11], tahiti:[5,6,7],  varna:[0,1,11],  cancun:[8,9],  marrakech:[2,3,4], ulaanbaatar:[2,3,4,5], liujia:[0,1,2,3,11], rubis:[2,3,4,10], beijing:[3,4] };        // mois venteux (index 0 à 11)
+const FOGGY = { kyoto:[5,10],  kerala:[11,0,1],  moscow:[9,10], vietnam:[0,1], alps:[9,10],  varna:[10,11,0,1],  jungle:[0,1,10,11],  compiegne:[9,10,11,0,1], rubis:[3,4,5,6,11,0], beijing:[0,1,10,11], lisbon:[9,10,11,0], paris:[9,10,11,0,1] };
+const STORMY = { kyoto:[6,7,8],  tehran:[3,4],  kerala:[3,4,9,10], pondy:[9,10,11],  tahiti:[11,0,1,2], vietnam:[8,9,10], alps:[5,6,7], moscow:[5,6,7],  varna:[5,6], erzurum:[4,5],  cancun:[5,6,7,8,9], jungle:[4,5,6,7,8,9],  compiegne:[5,6,7], marrakech:[7,8], rubis:[5,6,7], mumbai:[5,9], beijing:[5,6,7], paris:[5,6,7], ulaanbaatar:[6,7] }; // pluies orageuses
+const cityWeather = (city, tp, day = rpDay) => {
+  const m = day.getMonth(), dk = keyOf(day), dev = tp.max - CLIMATE[city][0][m];        // −3 à +3
+  let base = WET[city][m];
+  // Steppe en hiver : on force un peu la neige pour l'ambiance (environ un jour sur trois ou quatre).
+  if (SNOW[city]?.season.includes(m)) base = Math.max(base, SNOW[city].boost);
+  const wet = Math.min(.95, Math.max(0, base * (1 - dev / 5)));
+  const r = seeded(dk + ':w:' + city), r2 = seeded(dk + ':w2:' + city);
+  if (r < wet) {
+    if (tp.max <= (SNOW[city]?.line ?? 1)) return tp.min <= -15 && r2 < .35 ? W.blizzard : W.snow;
+    return (STORMY[city] || []).includes(m) && r2 < .45 ? W.thunder : W.rain;
+  }
+  if ((FOGGY[city] || []).includes(m) && r2 < .25) return W.fog;
+  if ((WINDY[city] || []).includes(m) && r2 > .7) return r2 > .88 ? W.gales : W.wind;
+  if (r < wet + .2) return W.clouds;
+  return dev > 0 ? W.clear : W.fair;
+};
+// Conditions du jour : une entrée par climat (plusieurs seulement si l'on voyage en Eorzea).
+const conditionsFor = id => {
+  const home = HOMES[HOME_OF[id]]; if (!home) return [];
+  const cl = climatesFor(id);   // un lieu à climat propre (ex. Tuliyollal) s'affiche même sans la case
+  if (!cl.length && home.optIn && !weatherOn[HOME_OF[id]]) return [];
+  if (cl.length) return cl.map(({ city, where }) => { const tp = tempAt(city, rpDay); return { ...cityWeather(city, tp), tp, where: where || home.label }; });
+  let r = seeded(dayKey + ':' + HOME_OF[id]) * 100;
+  for (const [k, w] of Object.entries(home.table)) { if ((r -= w) < 0) return [{ ...W[k], tp:null, where: home.label }]; }
+  return [{ ...W.fair, tp:null, where: home.label }];
+};
+const weatherFor = id => conditionsFor(id)[0] || null;
+
+// Couples : paires femme / homme.
+const PAIRS = [['hokkyoku','unegen'], ['taiga','tamachag'], ['khopses','viggo'], ['inkaraa','khokkutsai'],
+  ['yasmeen','eoor'], ['prism','echo'], ['khubunjin','ankhbayar']];
+const pairOf = id => PAIRS.find(p => p.includes(id));
+// État de la nuit par personnage : { hot, with }. « with » vaut l'id d'un personnage, 'client'
+// ou un nom libre. Quand le partenaire de la nuit est un personnage, sa fiche est cochée aussi.
+const nightsBy = {};
+// Amants : ajoutables à tout moment depuis la fiche ; ils s'ajoutent aux choix de partenaire de la nuit.
+const LOVERS = {};   // se remplit depuis les fiches
+const loversOf = id => (LOVERS[id] ||= []);
+const isChar = x => C.some(c => c.id === x);
+const partnerOf = id => pairOf(id)?.find(x => x !== id) || null;
+const charByName = v => C.find(c => c.name.toLowerCase() === v.toLowerCase())?.id || null;
+const whoLabel = x => x === 'client' ? 'un client' : isChar(x) ? nameOf(x) : x;
+const nightOf = id => {
+  const p = partnerOf(id), r = nightsBy[id] || {}, pr = p ? nightsBy[p] : null;
+  return { partner: p, solo: !p, isMan: !isFem(id), hot: !!r.hot, with: r.hot ? (r.with ?? p ?? '') : null,
+    partnerAway: p && pr?.hot && pr.with && pr.with !== id ? pr.with : null };
+};
+// « Monsieur se protège » : le dernier choix de chaque homme est repris d'une nuit à l'autre,
+// y compris quand c'est sa partenaire qui coche la nuit.
+const lastProtect = {};
+const applyProtect = man => { if (isChar(man) && !isFem(man) && state[man]) state[man].protect = !!lastProtect[man]; };
+// Pour un PNJ (non lié à un personnage), le choix se fait et se retient sur la fiche du personnage.
+const pnjProtect = (id, name) => !!lastProtect['pnj:' + id + ':' + name];
+const setProtect = (man, v) => { state[man].protect = v; lastProtect[man] = v; const w = nightOf(man).with; if (v && w) dropNews(pairKeys(man, w).slice(1)); checkRisk(man); };
+const setNight = (id, hot, w) => {
+  const old = nightsBy[id]?.with;
+  if (old && isChar(old) && nightsBy[old]?.with === id) nightsBy[old] = { hot:false, with:null };
+  const dflt = blockedWith(id, partnerOf(id)) ? '' : partnerOf(id);
+  if (blockedWith(id, w)) return;
+  nightsBy[id] = { hot, with: hot ? (w ?? dflt) : null };
+  const nw = nightsBy[id].with;
+  if (old && old !== nw) {
+    dropNews(pairKeys(id, old));
+    if (old === 'client') dropNews(['client:' + keyOf(rpDay) + ':' + id, 'call:' + keyOf(rpDay) + ':' + id]);
+  }
+  if (hot && nw && isChar(nw)) {
+    const prev = nightsBy[nw]?.with;
+    if (prev && prev !== id && isChar(prev) && nightsBy[prev]?.with === nw) { nightsBy[prev] = { hot:false, with:null }; dropNews(pairKeys(prev, nw)); }
+    nightsBy[nw] = { hot:true, with:id };
+    { const k = 'night:' + keyOf(rpDay) + ':' + [id, nw].sort().join('+'); notify(id, nw, pickLine(nightLinesFor(id, nw), k)(nameOf(id), nameOf(nw)), k); }
+    applyProtect(nw);
+  }
+  if (hot) applyProtect(id);
+  // Khopses avec un client : Viggo est prévenu ; l'appel à Viggo est remis à zéro si la nuit change.
+  if (CLIENT_PARTNER[id]) {
+    if (hot && nw === 'client') {
+      const k = 'client:' + keyOf(rpDay) + ':' + id;
+      pushNews(CLIENT_PARTNER[id], pickLine(CLIENT_LINES, k)(nameOf(id), nameOf(CLIENT_PARTNER[id])), k);
+    } else { state[id].callPartner = false; state[id].returnHour = null; }
+  }
+  if (state[id] && (!hot || nightsBy[id].with !== old)) state[id].shell = false;
+  if (old && isChar(old) && state[old] && nightOf(old).with !== id) state[old].shell = false;
+  checkRisk(id);
+};
+const nameOf = id => C.find(x => x.id === id).name;
+// Nuit chaude entre Echo et Prism : « Filmé et publié en ligne », avec un nombre de vues tiré au sort.
+const FILM_PAIR = ['echo', 'prism'];
+const filmed = {};   // clé du jour → true
+const filmKey = () => 'film:' + keyOf(rpDay);
+const canFilm = id => FILM_PAIR.includes(id) && nightOf(id).hot && nightOf(id).with === FILM_PAIR.find(x => x !== id);
+const isFilmed = id => canFilm(id) && !!filmed[filmKey()];
+const filmViews = () => { const r = seeded(filmKey() + ':vues'); return Math.round(Math.pow(10, 3 + r * 3.3)); };   // ~1 000 à ~2 000 000
+const viewsLabel = () => filmViews().toLocaleString('fr-FR') + ' vues';
+// Activités qui n'apparaissent que sous condition : Echo ne peut cocher « Plaisir en solo sur Moonstone »
+// que les jours où Prism a coché « Publication Moonstone ».
+const CONDITIONAL_ACTS = { echo: { 'Plaisir en solo sur Moonstone': () => state.prism.checked.has('Publication Moonstone') } };
+const actAvailable = (id, label) => !CONDITIONAL_ACTS[id]?.[label] || CONDITIONAL_ACTS[id][label]();
+// Activités avec une précision libre (affichée dans le résumé).
+// « Contrat de chasse » : durée en jours, rang D → SSS, monstre traqué et lieu de la chasse.
+// Le contrat court sur plusieurs jours : il se recoche tout seul chaque jour jusqu'à son terme (jour 2/3…).
+const CONTRACT_ACT = 'Contrat de chasse';
+const RANKS = ['D', 'C', 'B', 'A', 'S', 'SS', 'SSS'];
+const CONTRACTS = {};   // id → { start:'AAAA-MM-JJ', days, rank, monster, place }
+const isoDay = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+const dayIndex = k => Math.round((new Date(isoDay(rpDay) + 'T12:00') - new Date(k.start + 'T12:00')) / 864e5) + 1;
+const activeContract = id => { const k = CONTRACTS[id]; if (!k) return null; const n = dayIndex(k);
+  return n >= 1 && (!k.days || n <= k.days) ? { ...k, n } : null; };
+const contractDay = k => !k.days ? `jour ${k.n}` : k.days === 1 ? '1 jour' : k.n === k.days ? `dernier jour (${k.n}/${k.days})` : `jour ${k.n}/${k.days}`;
+const contractText = k => { if (!k) return ''; const bits = [!k.days ? `jour ${k.n}` : k.days === 1 ? '1 jour' : `jour ${k.n}/${k.days}`];
+  if (k.rank) bits.unshift('rang ' + k.rank);
+  const what = [k.monster, k.place].filter(Boolean).join(' · ');
+  return ` (${bits.join(', ')})` + (what ? ' : ' + what : ''); };
+const DETAIL_ACTS = { 'Visite touristique':'Lieu visité (ex. : Phare de Limsa)' };
+// Image du récap pour l'embed Discord : la fiche validée est convertie en PNG (sans le pied de page).
+// Dans l'appli, ce PNG part en pièce jointe du webhook ; ici, on l'affiche pour vérifier le rendu.
+const loadH2I = () => window.htmlToImage ? Promise.resolve(window.htmlToImage) : new Promise((ok, ko) => {
+  const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js';
+  sc.onload = () => ok(window.htmlToImage); sc.onerror = ko; document.head.appendChild(sc); });
+const recapPng = async id => {
+  const out = document.getElementById('png-out-' + id), card = document.querySelector('#view .recap');
+  out.innerHTML = '<p class="reserved">Création de l\'image…</p>';
+  try {
+    const h2i = await loadH2I(); await document.fonts.ready;
+    const bg = getComputedStyle(document.documentElement).getPropertyValue('--bg').trim() || '#111';
+    card.classList.add('capturing');
+    const url = await h2i.toPng(card, { pixelRatio: 2, backgroundColor: bg, cacheBust: true }).finally(() => card.classList.remove('capturing'));
+    const name = `${id}-${isoDay(rpDay)}.png`;
+    out.innerHTML = `<figure class="png-fig"><img src="${url}" alt="Image du récap envoyée sur Discord">
+      <figcaption><a href="${url}" download="${name}">Télécharger l'image</a></figcaption></figure>`;
+  } catch (e) { out.innerHTML = '<p class="reserved">Impossible de créer l\'image.</p>'; }
+};
+// Coquillage offert après une nuit chaude : affiché chez le ou la partenaire (« a reçu un coquillage au réveil »).
+const gotShell = id => { const n = nightOf(id); return n.hot && isChar(n.with) && isKhurdan(n.with) && !!state[n.with]?.shell && nightOf(n.with).with === id; };
+const nightLine = id => {
+  const n = nightOf(id); if (!n.hot) return '';
+  const bits = ['Nuit chaude'];
+  if (n.with) bits.push('avec ' + esc(whoLabel(n.with)));
+  if (n.with === 'client' && state[id].returnHour != null) bits.push(`retour à ${state[id].returnHour} h`);
+  if (isKhurdan(id) && state[id].shell) bits.push('a offert un coquillage');
+  if (gotShell(id)) bits.push('a reçu un coquillage au réveil');
+  if (isFilmed(id)) bits.push(`filmé et publié en ligne (${viewsLabel()})`);
+  if (n.isMan ? state[id].protect : n.with && (isChar(n.with) ? !isFem(n.with) && state[n.with].protect : n.with !== 'client' && pnjProtect(id, n.with))) bits.push('protégé');
+  return `<p class="where night-line">${icon('lips')}<span>${bits.join(' · ')}</span></p>`;
+};
+
+// Situation spéciale (maladie, hospitalisation…) : reste affichée en haut de la fiche jusqu'à ce qu'on la retire.
+const alerts = { ankhbayar:'En exil temporaire', khubunjin:'En exil temporaire' };   // id → texte
+// Événements de groupe, reconductibles chaque jour jusqu'à leur fin.
+const EVENTS = [ { id:'couvre-feu', label:'Couvre-feu à Khurdan Iloh', group:'Khurdans', except:['ankhbayar', 'khubunjin'], active:true, today:true } ];
+const eventsFor = c => EVENTS.filter(e => e.active && c.groups.includes(e.group) && !(e.except || []).includes(c.id));
+const alertBlock = (id, editable) => {
+  const a = alerts[id];
+  if (a) return `<div class="alert" role="note">${icon('warn')}<p><strong>Attention</strong>${esc(a)}</p>${editable ? `<button type="button" class="link" id="alert-off-${id}">Retirer</button>` : ''}</div>`;
+  if (!editable) return '';
+  return state[id].alertEdit
+    ? `<div class="alert edit">${icon('warn')}<input type="text" id="alert-text-${id}" placeholder="Ex. : hospitalisé après la chasse"><button type="button" class="btn" id="alert-save-${id}">Afficher</button></div>`
+    : `<button type="button" class="link alert-add" id="alert-add-${id}">${icon('warn')}Signaler une situation spéciale</button>`;
+};
+const eventsBlock = (c, editable) => eventsFor(c).map(e => editable
+  ? `<div class="event">${icon('flag')}<label class="check-inline"><input type="checkbox" data-event="${e.id}" ${e.today ? 'checked' : ''}> ${esc(e.label)} — en vigueur aujourd'hui</label><button type="button" class="link" data-event-end="${e.id}">Fin de l'événement</button></div>`
+  : (e.today ? `<p class="where">${icon('flag')}<span>${esc(e.label)}</span></p>` : '')).join('');
+
+// ---------- Fêtes saisonnières de FFXIV ----------
+// Dates habituelles ; les dates exactes sont annoncées chaque année et pourront être ajustées.
+const FESTIVALS = [
+  { name:'Fête de la Transition', from:[11,31], to:[0,14] },
+  { name:'La Valention', from:[1,1], to:[1,14] },
+  { name:'Fête des Demoiselles', from:[2,1], to:[2,14] },
+  { name:'Fête des Proeufs', from:[3,1], to:[3,14] },
+  { name:'Festival du Gold Saucer', from:[4,15], to:[4,31] },
+  { name:'Feux de la Mort', from:[7,1], to:[7,15] },
+  { name:'Fête de la Commémoration', from:[7,20], to:[8,5] },
+  { name:'Veillée des Saints', from:[9,18], to:[9,31] },
+  { name:'La fête des étoiles', from:[11,15], to:[11,30] },
+];
+const md = (m, d) => m * 100 + d;
+const festivalOn = day => {
+  const x = md(day.getMonth(), day.getDate());
+  return FESTIVALS.find(f => { const a = md(...f.from), b = md(...f.to); return a <= b ? x >= a && x <= b : x >= a || x <= b; }) || null;
+};
+
+// Les fêtes ne concernent que les personnages présents en Eorzea ce jour-là.
+const inEorzeaToday = id => {
+  const s = state[id];
+  if (s.trip) return [s.trip.from, s.trip.to].some(l => l.region === 'eorzea');
+  return (s.region || homeRegion(id)) === 'eorzea';
+};
+const inEorzeaRec = (c, rec) => rec?.real ? inEorzeaToday(c.id) : rec?.place ? PLACE_REGION[rec.place] === 'eorzea' : homeRegion(c.id) === 'eorzea';
+const festivalFor = (c, d, rec) => inEorzeaRec(c, rec) ? festivalOn(d) : null;
+
+// Jours khurdans : le Mois Blanc (premier jour de fonte des neiges sur la steppe, fête du Nouvel An
+// sur une journée) et le Naadam (11 au 13 juillet, comme en Mongolie).
+const khurdanDays = (c, d) => {
+  if (!c.groups.includes('Khurdans')) return [];
+  const out = [];
+  if (sameDay(d, thawDay('ulaanbaatar', d.getFullYear()))) out.push('Mois Blanc');
+  if (d.getMonth() === 6 && d.getDate() >= 11 && d.getDate() <= 13) out.push('Naadam');
+  // Transhumance : changement d'iloh à chaque saison.
+  const move = { 11: "Départ vers l'iloh d'hiver", 2: "Départ vers l'iloh de printemps", 5: "Départ vers l'iloh d'été", 8: "Départ vers l'iloh d'automne" };
+  if (d.getDate() === 21 && move[d.getMonth()]) out.push(move[d.getMonth()]);
+  return out;
+};
+// Anniversaires (dates éorzéennes des fiches converties : une lune par mois, astrale puis ombrale).
+const BIRTHDAYS = { eoor:[8,29], tamachag:[10,16], khokkutsai:[1,27], ankhbayar:[7,22], davaajav:[1,8],
+  taiga:[3,1], inkaraa:[3,26], ogloo:[6,27], javkhaanhun:[11,1], echo:[2,16], unegen:[11,12], viggo:[4,22], yasmeen:[0,10], khopses:[6,22], hokkyoku:[1,29] };   // mois comptés à partir de 0 (0 = janvier)
+const FRIENDS = [['tamachag','davaajav'], ['taiga','davaajav'], ['khokkutsai','ankhbayar']];
+// Anniversaires vus dans un seul sens (qui voit → de qui).
+const SEES_BIRTHDAY = {
+  taiga:['ankhbayar', 'ogloo'],
+  tamachag:['javkhaanhun'], davaajav:['javkhaanhun', 'hokkyoku'], khokkutsai:['javkhaanhun'],
+  ogloo:['taiga'],
+  javkhaanhun:['tamachag', 'davaajav', 'khokkutsai'],
+};
+const linkedTo = id => [...new Set([...[...PAIRS, ...FRIENDS].filter(p => p.includes(id)).map(p => p.find(x => x !== id)), ...(SEES_BIRTHDAY[id] || [])])];
+// Anniversaires de PNJ proches (enfants…), affichés sur les fiches indiquées.
+const PNJ_BIRTHDAYS = [
+  { name:'Lahja', date:[1, 14], for:['khopses', 'viggo'] },          // fille de Khopses et Viggo, née le 14 février
+  { name:'Shirkhegtei', date:[7, 30], for:['tamachag', 'taiga'] },   // fille de Tamachag et Taiga, née le 30 août
+  { name:'Shiruun', date:[7, 16], for:['taiga', 'ogloo'] },          // 16 août
+  { name:'Ushuaia', date:[6, 22], for:['davaajav'] },               // 22 juillet
+];
+// Né un 29 février : fêté le 28 février les années non bissextiles.
+const isLeap = y => (y % 4 === 0 && y % 100 !== 0) || y % 400 === 0;
+const bdayOn = ([m, day], d) => d.getMonth() === m && (d.getDate() === day || (m === 1 && day === 29 && !isLeap(d.getFullYear()) && d.getDate() === 28));
+const birthdaysOn = (id, d) => [...[id, ...linkedTo(id)].filter(x => BIRTHDAYS[x] && bdayOn(BIRTHDAYS[x], d)).map(x => [nameOf(x), BIRTHDAYS[x]]),
+    ...PNJ_BIRTHDAYS.filter(b => b.for.includes(id) && bdayOn(b.date, d)).map(b => [b.name, b.date])]
+  .map(([n, [m, day]]) => 'Anniversaire ' + (/^[aeiouéè]/i.test(n) ? "d'" : 'de ') + n + (day !== d.getDate() ? ` (${day} en réalité)` : ''));
+const specialDays = (c, d, rec) => [...khurdanDays(c, d), ...birthdaysOn(c.id, d), ...(f => f ? [f.name] : [])(festivalFor(c, d, rec))];
+
+// ---------- État physique ----------
+// Le moral (bon / petit) s'ajoute à l'état physique : les deux s'excluent l'un l'autre, mais pas « En forme ».
+const MORAL = ['Bon moral', 'Petit moral'];
+const PHYS = ['En forme', ...MORAL, 'Fatigue', 'Épuisement', 'Blessure', 'Maladie', 'Ivresse', 'Gueule de bois', 'Faim', 'Éprouvé de la nuit'];
+// Libellés accordés : les personnages de Jynette sont au féminin.
+const isFem = id => C.find(c => c.id === id)?.player === 'elle';
+const physLabel = (id, p) => p === 'Éprouvé de la nuit' && isFem(id) ? 'Éprouvée de la nuit' : p;
+
+// ---------- Arcs narratifs (durent au-delà d'une journée) ----------
+let arcSeq = 1;
+const ARCS = {};   // id → arcs ; vide au départ
+const arcsOf = id => (ARCS[id] ||= []);
+
+// ---------- Historique (exemple généré pour l'aperçu) ----------
+const MOODS = ['Serein', 'Fatigué mais satisfait', 'Tendu', 'Joyeux', 'Pensif', 'Irritable', 'Nostalgique', 'Déterminé',
+  'Tendre', 'Inquiet', 'Plein d\'entrain', 'Mélancolique', 'Agacé par la météo', 'Apaisé'];
+// Humeurs d'exemple accordées au genre du personnage.
+const MOOD_FEM = { 'Serein':'Sereine', 'Fatigué mais satisfait':'Fatiguée mais satisfaite', 'Tendu':'Tendue', 'Joyeux':'Joyeuse',
+  'Pensif':'Pensive', 'Déterminé':'Déterminée', 'Inquiet':'Inquiète', "Plein d'entrain":"Pleine d'entrain",
+  'Agacé par la météo':'Agacée par la météo', 'Apaisé':'Apaisée' };
+const MOOD_MASC = Object.fromEntries(Object.entries(MOOD_FEM).map(([m, f]) => [f, m]));
+const moodFor = (id, m) => isFem(id) ? MOOD_FEM[m] || m : m;
+const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
+const allActs = c => Object.values(c.acts).flat();
+const dayRecord = (c, d) => {
+  const s = state[c.id], city = defaultCity(c.id);
+  const cond = city ? (() => { const tp = tempAt(city, d); return { ...cityWeather(city, tp, d), tp }; })() : null;
+  if (sameDay(d, rpDay)) {
+    const filled = s.done || s.mood || s.checked.size;
+    return filled ? { mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
+      cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])] } : null,
+      phys: [...(s.phys || [])], real: true } : null;
+  }
+  if (d > rpDay) return null;
+  const e = HISTORY[c.id]?.[keyOf(d)];
+  if (!e || !(e.done || e.mood || e.checked?.length)) return null;
+  return { mood: e.mood || '', acts: [...(e.checked || [])], slots: e.slots || {}, place: [...(e.places || [])][0] || '', region: e.region || homeRegion(c.id),
+    cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
+    tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])] } : null,
+    phys: [...(e.phys || [])], real: true };
+};
+// Journées enregistrées, par personnage puis par date (clé keyOf) — remplies par sync.js.
+const HISTORY = {};
+const daysIn = (y, m) => new Date(y, m + 1, 0).getDate();
+const tally = arr => Object.entries(arr.reduce((o, x) => (o[x] = (o[x] || 0) + 1, o), {})).sort((a, b) => b[1] - a[1]);
+const statsFor = (c, days) => {
+  const recs = days.map(d => [d, dayRecord(c, d)]).filter(([, r]) => r);
+  const temps = recs.filter(([, r]) => r.cond).map(([d, r]) => ({ d, max: r.cond.tp.max, min: r.cond.tp.min }));
+  return {
+    filled: recs.length, total: days.filter(d => d <= rpDay).length,
+    acts: tally(recs.flatMap(([, r]) => r.acts)).slice(0, 3),
+    places: tally(recs.map(([, r]) => r.place).filter(Boolean)).slice(0, 3),
+    moods: tally(recs.map(([, r]) => r.mood).filter(Boolean)).slice(0, 2),
+    weather: tally(recs.filter(([, r]) => r.cond).map(([, r]) => r.cond.label)).slice(0, 2),
+    hottest: temps.reduce((a, b) => !a || b.max > a.max ? b : a, null),
+    coldest: temps.reduce((a, b) => !a || b.min < a.min ? b : a, null),
+    nights: recs.filter(([, r]) => r.hot).length, trips: recs.filter(([, r]) => r.trip).length,
+    phys: tally(recs.flatMap(([, r]) => r.phys)).slice(0, 2),
+  };
+};
+const MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+const fmtDay = d => `${d.getDate()} ${MONTHS[d.getMonth()]}`;
+const listOf = pairs => pairs.length ? pairs.map(([k, n]) => `${esc(k)} <small>×${n}</small>`).join(', ') : '—';
+
+const tabsHtml = id => `<div class="tabs" role="tablist">
+  <button type="button" role="tab" data-view="day" aria-selected="${state[id].view !== 'history'}">Journée</button>
+  <button type="button" role="tab" data-view="history" aria-selected="${state[id].view === 'history'}">Historique</button></div>`;
+const bindTabs = id => document.querySelectorAll('[data-view]').forEach(b => b.addEventListener('click', () => {
+  state[id].view = b.dataset.view; renderChar(id); window.scrollTo({ top:0 });
+}));
+
+function renderHistory(id) {
+  const c = C.find(x => x.id === id), t = THEMES[c.theme], s = state[id];
+  root.className = t.cls;
+  const cur = s.cal || (s.cal = { y: rpDay.getFullYear(), m: rpDay.getMonth() });
+  const { y, m } = cur, n = daysIn(y, m);
+  if (window.RP_SYNC && !RP_SYNC.hasMonth(y, m)) RP_SYNC.loadMonth(y, m).then(() => { if (current === id && s.view === 'history') renderChar(id); });
+  const days = Array.from({ length:n }, (_, i) => new Date(y, m, i + 1));
+  const lead = (new Date(y, m, 1).getDay() + 6) % 7;            // semaine commençant le lundi
+  const sel = s.calSel && s.calSel.getMonth() === m && s.calSel.getFullYear() === y ? s.calSel : null;
+  const selRec = sel && dayRecord(c, sel);
+  const st = statsFor(c, days);
+  document.getElementById('view').innerHTML = `
+    ${tabsHtml(id)}
+    <header><p class="kicker">${t.glyph} ${c.groups.join(' · ')}</p><h1>${c.name}${c.surname ? `<small>${c.surname}</small>` : ''}</h1></header>
+    <section>
+      <div class="cal-head"><button type="button" class="btn" id="cal-prev" aria-label="Mois précédent">‹</button>
+        <h2>${MONTHS[m]} ${y}</h2>
+        <button type="button" class="btn" id="cal-next" aria-label="Mois suivant">›</button></div>
+      <div class="cal" role="grid">
+        ${['L', 'M', 'M', 'J', 'V', 'S', 'D'].map(d => `<span class="cal-dow">${d}</span>`).join('')}
+        ${'<span></span>'.repeat(lead)}
+        ${days.map(d => { const r = dayRecord(c, d), f = festivalFor(c, d, r || { real: sameDay(d, rpDay) }) || khurdanDays(c, d).length, bd = birthdaysOn(c.id, d).length, ms = milestonesOn(c.id, d).length;
+          return `<button type="button" class="cal-day ${r ? 'filled' : ''} ${sameDay(d, rpDay) ? 'today' : ''} ${sel && sameDay(d, sel) ? 'sel' : ''} ${d > rpDay ? 'future' : ''}" data-day="${d.getDate()}" ${d > rpDay ? 'disabled' : ''}>
+            <span class="n">${d.getDate()}</span>${r?.cond ? icon(r.cond.icon) : ''}${r?.hot ? '<i class="heart"></i>' : ''}${f ? '<i class="fest-dot"></i>' : ''}${bd ? '<i class="bday-dot"></i>' : ''}${ms ? '<i class="ms-mark">✦</i>' : ''}</button>`; }).join('')}
+      </div>
+      <p class="reserved cal-legend"><span class="key filled"></span> journée remplie · <i class="heart"></i> nuit chaude · <i class="fest-dot"></i> fête · <i class="bday-dot"></i> anniversaire · <i class="ms-mark">✦</i> moment marquant</p>
+      ${sel ? `<div class="day-detail">
+        ${milestonesOn(id, sel).map(m => `<p class="milestone">${icon('ring')}<span>${esc(msLabel(m))}</span></p>`).join('')}
+        <h3>${fmtDay(sel)}${specialDays(c, sel, selRec || { real: sameDay(sel, rpDay) }).map(x => ' · ' + esc(x)).join('')}</h3>
+        ${selRec ? `
+          ${selRec.mood ? `<p class="recap-mood small">${esc(selRec.mood)}</p>` : ''}
+          ${selRec.cond ? `<p class="where">${icon(selRec.cond.icon)}<span>${selRec.cond.label} · ${deg(selRec.cond.tp.max)} / ${deg(selRec.cond.tp.min)}</span></p>` : ''}
+          ${selRec.place ? `<p class="where">${icon('pin')}<span>${esc(selRec.place)}</span></p>` : ''}
+          ${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(esc).join(' · ')}</span></p>` : ''}
+          ${selRec.phys.length ? `<p class="where">${icon('heartbeat')}<span>${selRec.phys.map(p => physLabel(id, p)).join(', ')}</span></p>` : ''}
+          ${selRec.trip ? `<p class="where">${icon('route')}<span>Voyage</span></p>` : ''}
+          ${selRec.hot ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude</span></p>` : ''}`
+        : '<p class="reserved">Pas de fiche remplie ce jour-là.</p>'}
+      </div>` : '<p class="reserved">Touche un jour pour revoir sa fiche.</p>'}
+    </section>
+
+    <section class="month-recap"><h2>Récap de ${MONTHS[m]}</h2>
+      <dl class="stats-list">
+        <div><dt>Journées remplies</dt><dd>${st.filled} / ${st.total}</dd></div>
+        <div><dt>Activités phares</dt><dd>${listOf(st.acts)}</dd></div>
+        <div><dt>Lieux fréquentés</dt><dd>${listOf(st.places)}</dd></div>
+        <div><dt>Humeurs dominantes</dt><dd>${listOf(st.moods)}</dd></div>
+        ${st.weather.length ? `<div><dt>Météo</dt><dd>${listOf(st.weather)}</dd></div>` : ''}
+        ${st.hottest ? `<div><dt>Températures</dt><dd>de ${deg(st.coldest.min)} (${fmtDay(st.coldest.d)}) à ${deg(st.hottest.max)} (${fmtDay(st.hottest.d)})</dd></div>` : ''}
+        ${st.phys.length ? `<div><dt>État physique</dt><dd>${listOf(st.phys)}</dd></div>` : ''}
+        <div><dt>Nuits chaudes</dt><dd>${st.nights}</dd></div>
+        ${st.trips ? `<div><dt>Voyages</dt><dd>${st.trips}</dd></div>` : ''}
+      </dl>
+    </section>
+`;
+  bindTabs(id);
+  document.getElementById('cal-prev').addEventListener('click', () => { cur.m--; if (cur.m < 0) { cur.m = 11; cur.y--; } s.calSel = null; renderChar(id); });
+  document.getElementById('cal-next').addEventListener('click', () => { cur.m++; if (cur.m > 11) { cur.m = 0; cur.y++; } s.calSel = null; renderChar(id); });
+  document.querySelectorAll('[data-day]').forEach(b => b.addEventListener('click', () => { s.calSel = new Date(y, m, +b.dataset.day); renderChar(id); }));
+}
+
+// ---------- Sections de la journée : état physique, capture, arcs ----------
+// ---------- Moments marquants (mariage, naissance…) : restent dans l'historique ----------
+const MILESTONE_TYPES = ['Rencontre', 'Fiançailles', 'Mariage', 'Grossesse', 'Naissance', 'Séparation', 'Deuil', 'Autre'];
+const SHARED_TYPES = ['Rencontre', 'Fiançailles', 'Mariage', 'Grossesse', 'Naissance', 'Séparation'];
+const MILESTONES = {};   // id → [{ key, type, note, with }]
+const milestonesOf = id => (MILESTONES[id] ||= []);
+const milestonesOn = (id, d) => milestonesOf(id).filter(m => m.key === keyOf(d));
+const msLabel = m => `${m.type}${m.with ? ' avec ' + whoLabel(m.with) : ''}${m.note ? ' — ' + m.note : ''}`;
+const milestoneSection = id => {
+  const s = state[id], today = milestonesOn(id, rpDay), p = partnerOf(id);
+  return `<section><h2>Moment marquant</h2>
+    ${today.map((m, i) => `<p class="milestone">${icon('ring')}<span>${esc(msLabel(m))}</span><button type="button" class="link small" data-ms-del="${i}" aria-label="Retirer">×</button></p>`).join('')}
+    ${s.msOpen ? `<div class="event-form">
+        <div class="place-list" role="group" aria-label="Type">${MILESTONE_TYPES.map(t => `<button type="button" data-ms-type="${t}" aria-pressed="${s.msType === t}">${t}</button>`).join('')}</div>
+        <input type="text" id="ms-note-${id}" placeholder="Précisions (facultatif)">
+        ${p && SHARED_TYPES.includes(s.msType) ? `<label class="check-inline"><input type="checkbox" id="ms-with-${id}" checked> Avec ${nameOf(p)} (ajouté aussi sur sa fiche)</label>` : ''}
+        <div class="special-row"><button type="button" class="btn" id="ms-save-${id}" ${s.msType ? '' : 'disabled'}>Enregistrer</button><button type="button" class="link" id="ms-cancel-${id}">Annuler</button></div>
+      </div>` : `<button type="button" class="link alert-add" id="ms-add-${id}">${icon('ring')}Noter un moment marquant (mariage, naissance…)</button>`}
+  </section>`;
+};
+const bindMilestones = id => {
+  const s = state[id];
+  document.getElementById('ms-add-' + id)?.addEventListener('click', () => { s.msOpen = true; s.msType = null; renderChar(id); });
+  document.getElementById('ms-cancel-' + id)?.addEventListener('click', () => { s.msOpen = false; renderChar(id); });
+  document.querySelectorAll('[data-ms-type]').forEach(b => b.addEventListener('click', () => {
+    const note = document.getElementById('ms-note-' + id)?.value || ''; s.msType = b.dataset.msType; renderChar(id);
+    const el = document.getElementById('ms-note-' + id); if (el) el.value = note;
+  }));
+  document.getElementById('ms-save-' + id)?.addEventListener('click', () => {
+    const note = document.getElementById('ms-note-' + id).value.trim(), withP = document.getElementById('ms-with-' + id)?.checked ? partnerOf(id) : null;
+    const key = keyOf(rpDay);
+    milestonesOf(id).push({ key, type: s.msType, note, with: withP });
+    if (withP) { milestonesOf(withP).push({ key, type: s.msType, note, with: id });
+      notify(id, withP, (MS_NEWS[s.msType] || ((a, b) => `Moment marquant pour ${a} et ${b} : ${s.msType.toLowerCase()}`))(nameOf(id), nameOf(withP)), 'ms:' + key + ':' + s.msType + ':' + [id, withP].sort().join('+')); }
+    s.msOpen = false; renderChar(id);
+  });
+  document.querySelectorAll('[data-ms-del]').forEach(b => b.addEventListener('click', () => {
+    const m = milestonesOn(id, rpDay)[+b.dataset.msDel];
+    MILESTONES[id] = milestonesOf(id).filter(x => x !== m);
+    if (m.with && isChar(m.with)) MILESTONES[m.with] = milestonesOf(m.with).filter(x => !(x.key === m.key && x.type === m.type && x.with === id));
+    renderChar(id);
+  }));
+};
+// ---------- Tableau de chasse : prises tirées au hasard (stables pour la journée) ----------
+// Gibier de la steppe (liste de Nono). weight = fréquence relative ; group = seulement en chasse de groupe.
+const KHURDAN_HUNT = {
+    acts: { 'Chasse solo': 'solo', 'Chasse en groupe': 'group' },
+    odds: { solo: .8, group: .9 },          // probabilité de rentrer avec au moins une prise
+    max:  { solo: 2, group: 4 },            // nombre maximum de prises
+    game: [
+      // Lagomorphes et sciuridés : le quotidien du chasseur
+      { name:'Lapin', weight:6 }, { name:'Lièvre', weight:6 }, { name:'Marmotte', weight:6 },
+      // Oiseaux
+      { name:'Perdrix', weight:4 }, { name:'Faisan', weight:3 }, { name:'Canard sauvage', weight:2.5 },
+      { name:'Oie sauvage', weight:2 }, { name:'Outarde', weight:1.5 },
+      // Cervidés et bovidés
+      { name:'Chevreuil', weight:3.5 }, { name:'Daim', weight:2.5 }, { name:'Cerf', weight:2 }, { name:'Antilope', weight:2.5 },
+      { name:'Hainag', weight:1.2 },
+      // Porcins et canidés
+      { name:'Sanglier', weight:1.5 }, { name:'Renard', weight:2.5 }, { name:'Loup', weight:1 },
+      // Grands prédateurs et géants : surtout en groupe ; en solo, exceptionnels
+      // (soloWeight : environ 0,4 % des prises en solo pour un félin, 0,1 % pour le mammouth)
+      { name:'Tigre', weight:.5, soloWeight:.19 }, { name:'Lion', weight:.4, soloWeight:.19 },
+      { name:'Baras', weight:.4, soloWeight:.19 }, { name:'Coeurl', weight:.35, soloWeight:.19 },
+      { name:'Mammouth', weight:.3, soloWeight:.047 },
+    ],
+};
+// Chasseurs khurdans : même table de prises pour tous.
+const HUNTS = Object.fromEntries(['ankhbayar', 'taiga', 'tamachag', 'khokkutsai', 'javkhaanhun', 'khubunjin'].map(id => [id, KHURDAN_HUNT]));
+// Ankhbayar, chasseur de métier : plus doué que les autres.
+HUNTS.ankhbayar = { ...KHURDAN_HUNT, odds: { solo: .9, group: .95 } };
+const huntFor = (id, label, day = rpDay) => {
+  const h = HUNTS[id], mode = h?.acts[label]; if (!mode) return null;
+  const k = keyOf(day) + ':' + id + ':' + label;
+  if (seeded(k + 'ok') >= h.odds[mode]) return { mode, catches: [] };          // bredouille
+  const wOf = g => mode === 'solo' ? (g.group ? 0 : g.soloWeight ?? g.weight) : g.weight;
+  const pool = h.game.filter(g => wOf(g) > 0), total = pool.reduce((a, g) => a + wOf(g), 0);
+  const n = 1 + Math.floor(seeded(k + 'n') * h.max[mode]);
+  const catches = Array.from({ length: n }, (_, i) => { let r = seeded(k + 'g' + i) * total; return pool.find(g => (r -= wOf(g)) < 0) || pool.at(-1); });
+  return { mode, catches: tally(catches.map(g => g.name)).map(([name, qty]) => ({ name, qty })) };
+};
+const huntText = h => !h ? '' : h.catches.length ? h.catches.map(c => (c.qty > 1 ? c.qty + ' × ' : '') + c.name).join(', ') : 'bredouille';
+const physSection = id => { const s = state[id]; s.phys ||= new Set();
+  return `<section><h2>État physique</h2>
+    <div class="place-list" role="group" aria-label="État physique">${PHYS.map(p => `<button type="button" data-phys="${p}" aria-pressed="${s.phys.has(p)}">${esc(physLabel(id, p))}</button>`).join('')}</div>
+    ${[...s.phys].some(p => p !== 'En forme' && p !== 'Bon moral') ? `<input type="text" id="physnote-${id}" placeholder="Précisions (ex. entorse à la cheville)" value="${esc(s.physNote || '')}">` : ''}
+  </section>`; };
+const shotSection = id => { const s = state[id];
+  return `<section><h2>Capture du jour</h2>
+    ${s.shot ? `<figure class="shot"><img src="${s.shot}" alt="Capture du jour de ${esc(C.find(x => x.id === id).name)}"><figcaption><button type="button" class="link" id="shot-off-${id}">Retirer la capture</button></figcaption></figure>`
+      : `<label class="btn file-btn">${icon('camera')}Joindre une capture<input type="file" id="shot-${id}" accept="image/*" hidden></label>`}
+  </section>`; };
+const arcsSection = id => {
+  const s = state[id], list = arcsOf(id), open = list.filter(a => !a.done), done = list.filter(a => a.done);
+  const arcHtml = a => `<div class="arc ${a.done ? 'done' : ''}">
+      <div class="arc-head">
+        ${s.arcEdit === a.id ? `<input type="text" id="arc-title-${a.id}" value="${esc(a.title)}"><button type="button" class="btn" data-arc-save="${a.id}">OK</button>`
+          : `<label class="check-inline arc-title"><input type="checkbox" data-arc-done="${a.id}" ${a.done ? 'checked' : ''}><b>${esc(a.title)}</b></label>
+             <span class="arc-progress">${a.steps.filter(x => x.done).length}/${a.steps.length}</span>
+             <button type="button" class="link" data-arc-edit="${a.id}">Modifier</button>
+             ${s.arcDel === a.id ? `<button type="button" class="link danger" data-arc-del-ok="${a.id}">Confirmer la suppression</button>` : `<button type="button" class="link" data-arc-del="${a.id}">Supprimer</button>`}`}
+      </div>
+      <ul class="arc-steps">${a.steps.map((st, i) => `<li><label class="check-inline"><input type="checkbox" data-step="${a.id}:${i}" ${st.done ? 'checked' : ''}> ${esc(st.t)}</label>
+        <button type="button" class="link small" data-step-del="${a.id}:${i}" aria-label="Retirer l'étape">×</button></li>`).join('')}</ul>
+      ${a.done ? '' : `<div class="special-row"><input type="text" id="step-new-${a.id}" placeholder="Nouvelle étape"><button type="button" class="btn" data-step-add="${a.id}">+</button></div>`}
+    </div>`;
+  return `<section><h2>Arcs narratifs</h2>
+    ${open.length ? open.map(arcHtml).join('') : '<p class="reserved">Aucun arc en cours.</p>'}
+    <div class="special-row"><input type="text" id="arc-new-${id}" placeholder="Nouvel arc (ex. : Retrouver la lame de Bator)"><button type="button" class="btn" id="arc-add-${id}">Créer</button></div>
+    ${done.length ? `<details class="arcs-done"><summary>Arcs terminés (${done.length})</summary>${done.map(arcHtml).join('')}</details>` : ''}
+  </section>`;
+};
+const bindDaySections = id => {
+  const s = state[id], list = arcsOf(id), find = aid => list.find(a => a.id === aid);
+  document.querySelectorAll('[data-phys]').forEach(b => b.addEventListener('click', () => {
+    const p = b.dataset.phys;
+    if (s.phys.has(p)) s.phys.delete(p);
+    else if (MORAL.includes(p)) { MORAL.forEach(m => s.phys.delete(m)); s.phys.add(p); }
+    else { if (p === 'En forme') [...s.phys].forEach(x => { if (!MORAL.includes(x)) s.phys.delete(x); }); else s.phys.delete('En forme'); s.phys.add(p); }
+    renderChar(id);
+  }));
+  document.getElementById('physnote-' + id)?.addEventListener('input', e => s.physNote = e.target.value);
+  document.getElementById('shot-' + id)?.addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    const rd = new FileReader(); rd.onload = () => { s.shot = rd.result; renderChar(id); }; rd.readAsDataURL(f);
+  });
+  document.getElementById('shot-off-' + id)?.addEventListener('click', () => { s.shot = null; renderChar(id); });
+  document.getElementById('arc-add-' + id)?.addEventListener('click', () => {
+    const v = document.getElementById('arc-new-' + id).value.trim(); if (!v) return;
+    list.push({ id:'arc-' + (arcSeq++), title:v, done:false, steps:[] }); renderChar(id);
+  });
+  document.querySelectorAll('[data-arc-done]').forEach(cb => cb.addEventListener('change', e => { find(cb.dataset.arcDone).done = e.target.checked; renderChar(id); }));
+  document.querySelectorAll('[data-arc-edit]').forEach(b => b.addEventListener('click', () => { s.arcEdit = b.dataset.arcEdit; renderChar(id); }));
+  document.querySelectorAll('[data-arc-save]').forEach(b => b.addEventListener('click', () => {
+    const v = document.getElementById('arc-title-' + b.dataset.arcSave).value.trim(); if (v) find(b.dataset.arcSave).title = v;
+    s.arcEdit = null; renderChar(id);
+  }));
+  document.querySelectorAll('[data-arc-del]').forEach(b => b.addEventListener('click', () => { s.arcDel = b.dataset.arcDel; renderChar(id); }));
+  document.querySelectorAll('[data-arc-del-ok]').forEach(b => b.addEventListener('click', () => {
+    list.splice(list.findIndex(a => a.id === b.dataset.arcDelOk), 1); s.arcDel = null; renderChar(id);
+  }));
+  document.querySelectorAll('[data-step]').forEach(cb => cb.addEventListener('change', e => {
+    const [aid, i] = cb.dataset.step.split(':'); find(aid).steps[+i].done = e.target.checked; renderChar(id);
+  }));
+  document.querySelectorAll('[data-step-del]').forEach(b => b.addEventListener('click', () => {
+    const [aid, i] = b.dataset.stepDel.split(':'); find(aid).steps.splice(+i, 1); renderChar(id);
+  }));
+  document.querySelectorAll('[data-step-add]').forEach(b => b.addEventListener('click', () => {
+    const aid = b.dataset.stepAdd, v = document.getElementById('step-new-' + aid).value.trim(); if (!v) return;
+    find(aid).steps.push({ t:v, done:false }); renderChar(id);
+  }));
+};
+
+function renderNav() {
+  const list = document.getElementById('navList');
+  const visible = C.filter(shown);
+  let html = `<li><button type="button" class="chip" id="nav-home" style="${vars(filter === 'elle' ? {...THEMES.rose, display:'"Spectral", serif'} : {bg:'#1e1c24',gold:'#c8bba0',text:'#ebe6dc',dim:'#9d978c',rule:'rgba(200,187,160,.3)',display:'"Spectral", serif'})}" data-go="home" ${current==='home'?'aria-current="true"':''}>Accueil</button></li>`;
+  const seen = new Set();
+  GROUPS.forEach(g => {
+    const members = visible.filter(c => c.groups.includes(g));
+    if (!members.length) return;
+    html += `<li class="nav-group">${g}</li>`;
+    members.forEach(c => {
+      const t = THEMES[c.theme], dup = seen.has(c.id); seen.add(c.id);
+      html += `<li class="${dup?'dup':''}"><button type="button" class="chip" id="nav-${c.id}-${g}" style="${vars(t)}" data-go="${c.id}" ${current===c.id?'aria-current="true"':''}><span class="g" aria-hidden="true">${t.glyph}</span>${c.name}${myNews().some(n => !n.read && n.charId === c.id) ? '<span class="news-dot" aria-label="nouvelle"></span>' : ''}<span class="dot ${state[c.id].done?'done':''}" aria-label="${state[c.id].done?'terminé':'à faire'}"></span></button></li>`;
+    });
+  });
+  list.innerHTML = html;
+  list.querySelector('[aria-current="true"]')?.scrollIntoView({ inline:'center', block:'nearest' });
+}
+
+function renderHome() {
+  root.className = filter === 'elle' ? 't-rose' : 't-home';
+  const visible = C.filter(shown);
+  document.getElementById('view').innerHTML = `
+    <p class="session">Connecté : ${PLAYER_NAME[me]} · <button type="button" class="link" id="signout">Se déconnecter</button></p>
+    <header><p class="kicker">Journée RP</p><h1>Aujourd'hui</h1><p class="date">${today}<br>${eorzeaDate}</p>${(f => f ? `<p class="fest home-fest">${icon('star')}En Eorzea : ${f.name}</p>` : '')(festivalOn(rpDay))}</header>
+    ${(list => list.length ? `<section class="news"><h2>${icon('bell')}Nouvelles${list.some(n => !n.read) ? ` <span class="badge">${list.filter(n => !n.read).length}</span>` : ''}</h2>
+      <ul>${list.slice(0, 8).map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
+      ${list.some(n => !n.read) ? `<button type="button" class="link" id="news-read">Tout marquer comme lu</button>` : ''}</section>` : '')(myNews())}
+    <div class="grid">
+      ${visible.map(c => { const t = THEMES[c.theme]; const s = state[c.id];
+        return `<button type="button" class="card" id="card-${c.id}" style="${vars(t)}" data-go="${c.id}">
+          <span class="grp">${t.glyph} ${c.groups.join(' · ')}</span><span class="name">${c.name}</span>
+          ${(w => w ? `<span class="wx">${icon(w.icon)}${w.label}</span>` : '')(weatherFor(c.id))}
+          ${alerts[c.id] ? `<span class="card-alert">${icon('warn')}${esc(alerts[c.id])}</span>` : ''}
+          <span class="state ${s.done?'done':''}">${s.done ? '✓ Terminé' : (s.mood || s.checked.size ? 'En cours' : 'À remplir')}</span></button>`; }).join('')}
+      ${filter !== 'elle' ? SOON.map(n => `<div class="card soon" style="${vars(THEMES.alamhigo)}"><span class="grp">À venir</span><span class="name">${n}</span></div>`).join('') : ''}
+    </div>`;
+}
+
+function renderChar(id) {
+  const c = C.find(x => x.id === id), t = THEMES[c.theme], s = state[id];
+  if (s.view === 'history') return renderHistory(id);
+  const loverMsg = s.loverMsg; s.loverMsg = null;
+  root.className = t.cls;
+  // Activités retirées de la liste (ex. : Inkaraa arrête de tatouer) : masquées, l'historique est conservé.
+  const removed = c.removedActs ||= new Set();
+  const live = k => (c.acts[k] || []).filter(a => !removed.has(a));
+  const cats = Object.keys(CATS).filter(k => live(k).length);
+  [...s.checked].forEach(l => { if (!actAvailable(id, l)) s.checked.delete(l); });
+  if (activeContract(id) && !s.contractOff) s.checked.add(CONTRACT_ACT);
+  if (!activeContract(id)) s.checked.delete(CONTRACT_ACT);
+  const actRow = (label, special) => {
+    const on = s.checked.has(label);
+    const k = activeContract(id) || {};
+    const contract = on && label === CONTRACT_ACT ? `<div class="contract">
+        <p class="wide contract-day">${icon('target')}<span>${k.n ? (k.n > 1 ? `Contrat en cours : ${contractDay(k)}` : `Nouveau contrat : ${contractDay(k)}`) : ''}</span></p>
+        <label><span>Début</span><input type="date" data-contract="start" value="${k.start || isoDay(rpDay)}" max="${isoDay(rpDay)}"></label>
+        <label><span>Rang</span><select data-contract="rank"><option value="">—</option>${RANKS.map(r => `<option ${k.rank === r ? 'selected' : ''}>${r}</option>`).join('')}</select></label>
+        <label><span>Durée (jours)</span><input type="number" min="1" max="60" inputmode="numeric" data-contract="days" value="${k.days || ''}"></label>
+        <label class="wide"><span>Monstre chassé</span><input type="text" data-contract="monster" value="${esc(k.monster || '')}" placeholder="Ex. : Béhémoth"></label>
+        <label class="wide"><span>Lieu de la chasse</span><input type="text" data-contract="place" value="${esc(k.place || '')}" placeholder="Ex. : Mor Dhona"></label>
+        ${k.days && k.n < k.days ? `<button type="button" class="link small wide" id="contract-end-${id}">Contrat terminé plus tôt (aujourd'hui)</button>` : ''}
+      </div>` : '';
+    const detail = on && DETAIL_ACTS[label] ? `<input type="text" class="act-detail" data-detail="${esc(label)}" value="${esc(s.details?.[label] || '')}" placeholder="${DETAIL_ACTS[label]}">` : '';
+    const slots = on ? `<div class="slots" role="group" aria-label="Moment de la journée">${SLOTS.map(sl => `<button type="button" data-slot="${sl.id}" data-for="${esc(label)}" aria-pressed="${(s.slots[label] || []).includes(sl.id)}" title="${sl.hint}">${icon(sl.icon)}${sl.label}</button>`).join('')}</div>` : '';
+    const regionOpts = sel => c.regions.map(r => `<option value="${r}" ${sel === r ? 'selected' : ''}>${REGIONS[r].label}</option>`).join('');
+    const trip = label === 'Voyage' && on && s.trip ? `<div class="trip-row">
+        <label><span>De</span><select id="tripfrom-${id}">${regionOpts(s.trip.from.region)}</select></label>
+        <span class="arrow" aria-hidden="true">→</span>
+        <label><span>Vers</span><select id="tripto-${id}"><option value="">Arrivée…</option>${regionOpts(s.trip.to.region)}</select></label>
+      </div>
+      <div class="trip-row modes" role="group" aria-label="Moyen de transport">${TRAVEL_MODES.map(m => `<label class="check-inline"><input type="checkbox" data-mode="${m}" ${s.trip.modes?.has(m) ? 'checked' : ''}> ${m}</label>`).join('')}</div>` : '';
+    const hunt = on ? huntFor(id, label) : null;
+    const huntRow = hunt ? `<p class="hunt ${hunt.catches.length ? '' : 'empty'}">${icon('target')}<span>${hunt.catches.length ? 'Prises : ' + esc(huntText(hunt)) : (isFem(id) ? 'Rentrée bredouille' : 'Rentré bredouille')}</span></p>` : '';
+    return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${detail}${contract}${trip}${slots}</div>`;
+  };
+  const dispLabel = l => l === CONTRACT_ACT && activeContract(id) ? l + contractText(activeContract(id)) : s.details?.[l] && DETAIL_ACTS[l] ? `${l} : ${s.details[l]}` : huntFor(id, l) ? `${l} (${huntText(huntFor(id, l))})` : l === 'Voyage' && s.trip ? `Voyage${s.trip.modes?.size ? ` (${[...s.trip.modes].join(', ').toLowerCase()})` : ''} : ${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}` : l;
+  const picked = [...s.checked];
+  const byKey = {};
+  picked.forEach(l => { const sp = spanOf(s.slots[l] || []); (byKey[sp.key] ||= { sl:sp, items:[] }).items.push(l); });
+  const groups = Object.values(byKey).sort((a, b) => a.sl.order - b.sl.order || a.sl.key.length - b.sl.key.length);
+  const regLabel = s.region ? REGIONS[s.region].label : '';
+  // Sélecteur Région → (Zone) → Lieux, pour la journée ou pour une étape de voyage.
+  const picker = (T, leg) => {
+    const L = leg ? ` data-leg="${leg}"` : '', reg = T.region && REGIONS[T.region];
+    let html = `<div class="place-list regions" role="group" aria-label="Région">${c.regions.map(r => `<button type="button"${L} data-region="${r}" aria-pressed="${T.region === r}">${icon('globe')}${REGIONS[r].label}${!leg && c.added?.has(r) ? '<small class="added">ajoutée</small>' : ''}</button>`).join('')}</div>`;
+    if (!reg) return html;
+    if (reg.zones) html += `<div class="place-list subs zones" role="group" aria-label="Zone">${Object.entries(reg.zones).filter(([z]) => !(HIDDEN_ZONES[id] || []).includes(z)).map(([z, zone]) => `<button type="button"${L} data-zone="${z}" aria-pressed="${T.zone === z}">${icon('zone')}${zone.label}</button>`).join('')}</div>`;
+    if (reg.zones && !T.zone) return html;
+    const base = reg.zones ? reg.zones[T.zone].places : reg.places;
+    const own = c.places.filter(pl => PLACE_REGION[pl] === T.region && (!reg.zones || ZONE_OF[pl] === T.zone));
+    const subs = [...new Set([...base, ...own])].filter(pl => canSee(id, pl));
+    if (subs.length) html += `<div class="place-list subs ${reg.zones ? 'deep' : ''}" role="group" aria-label="Lieux">${subs.map(pl => `<button type="button"${L} data-place="${esc(pl)}" aria-pressed="${T.places.has(pl)}">${icon('pin')}${esc(pl)}</button>`).join('')}</div>`;
+    return html;
+  };
+  const pathOf = T => T.region ? [REGIONS[T.region].label, zoneOf(T)?.label, [...T.places].join(', ')].filter(Boolean).join(' — ') : '…';
+  const placesLine = s.trip ? `<p class="where">${icon('route')}<span>${esc(pathOf(s.trip.from))} → ${esc(pathOf(s.trip.to))}</span></p>` : (s.region || s.places.size) ? `<p class="where">${icon('pin')}<span>${esc(pathOf(s))}</span></p>` : '';
+  const timeline = (groups.length || s.places.size || s.region || s.trip) ? `<section><h2>Déroulé du jour</h2>${placesLine}<div class="timeline">${groups.map(({ sl, items }) => `
+    <div class="period"><p class="period-head">${sl.icon ? icon(sl.icon) : ''}<span>${sl.label}</span>${sl.hint ? `<small>${sl.hint}</small>` : ''}</p>
+    <ul>${items.map(l => `<li>${esc(dispLabel(l))}</li>`).join('')}</ul></div>`).join('')}</div></section>` : '';
+  const chips = `${c.groups.includes('Khurdans') ? `<span class="moon"><svg class="moon-ico" viewBox="0 0 24 24" aria-hidden="true">${MOON_ICONS[khurdanMoon[0]]}</svg>${khurdanMoon[1]}</span>` : ''}
+        ${conditionsFor(id).map(w => `<span class="wx">${icon(w.icon)}${w.label}${w.tp ? ` · ${deg(w.tp.max)}<small>/ ${deg(w.tp.min)}</small>` : ''}${w.where ? `<small>${w.where}</small>` : ''}</span>`).join('')}
+        ${(f => f ? `<span class="fest">${icon('star')}${f.name}</span>` : '')(inEorzeaToday(id) ? festivalOn(rpDay) : null)}
+        ${khurdanDays(c, rpDay).map(x => `<span class="fest">${icon(x.startsWith('Départ') ? 'route' : 'star')}${x}</span>`).join('')}
+        ${birthdaysOn(id, rpDay).map(x => `<span class="fest">${icon('cake')}${esc(x)}</span>`).join('')}
+        ${snowCoverOn(TEMP_CITY(id), rpDay) ? `<span class="snowcover">${icon('ground')}${SNOW[TEMP_CITY(id)].eternal ? 'Neiges éternelles' : 'Sol enneigé'}</span>` : ''}`;
+
+  // Journée validée, ou fiche de l'autre joueur : visuel synthétique, sans les options de saisie.
+  const readOnly = !canEdit(id);
+  if (s.done || readOnly) {
+    document.getElementById('view').innerHTML = `
+    ${tabsHtml(id)}
+    ${readOnly ? `<p class="readonly-note">${icon('eye')}Fiche de ${PLAYER_NAME[c.player]} : lecture seule.</p>` : ''}
+    <article class="recap">
+      ${alertBlock(id, false)}
+      <header class="recap-head">
+        <p class="kicker">${t.glyph} ${c.groups.join(' · ')}</p>
+        <h1>${c.name}${c.surname ? `<small>${c.surname}</small>` : ''}</h1>
+        <p class="date">${today} · ${eorzeaDate}</p>
+        <div class="day-info">${chips}</div>
+      </header>
+      ${!s.done && !s.mood && !s.checked.size ? `<p class="reserved">${c.name} n'a pas encore rempli sa journée.</p>` : s.mood ? `<blockquote class="recap-mood">${esc(s.mood)}</blockquote>` : '<p class="reserved">Pas de mood renseigné.</p>'}
+      ${placesLine}
+      ${eventsBlock(c, false)}
+      ${milestonesOn(id, rpDay).map(m => `<p class="milestone">${icon('ring')}<span>${esc(msLabel(m))}</span></p>`).join('')}
+      ${s.phys?.size ? `<p class="where">${icon('heartbeat')}<span>${[...s.phys].map(p => physLabel(id, p)).join(', ')}${s.physNote ? ' — ' + esc(s.physNote) : ''}</span></p>` : ''}
+      ${isKhurdan(id) && s.violet ? `<p class="where">${icon('cloth')}<span>A porté du violet</span></p>` : ''}
+      ${nightLine(id)}
+      ${djLine(id)}
+      ${babysitBlock(id, false)}
+      ${groups.length ? `<ul class="recap-list">${groups.map(({ sl, items }) => `<li>
+        <span class="recap-when">${sl.icon ? icon(sl.icon) : ''}${sl.label}</span>
+        <span class="recap-what">${items.map(l => esc(dispLabel(l))).join(' · ')}</span></li>`).join('')}</ul>` : ''}
+      ${s.shot ? `<img class="recap-shot" src="${s.shot}" alt="Capture du jour">` : ''}
+      ${readOnly ? `<footer class="recap-foot"><span>${s.done ? '✓ Journée terminée' : 'Journée en cours'}</span></footer>` : `<footer class="recap-foot"><span>✓ Journée validée</span>
+        <span class="foot-btns"><button type="button" class="btn" id="png-${id}">${icon('camera')}Image du récap</button>
+        <button type="button" class="btn" id="edit-${id}">Modifier la journée</button></span></footer>`}
+    </article>
+    <div id="png-out-${id}" class="png-out" aria-live="polite"></div>`;
+    document.getElementById('png-'+id)?.addEventListener('click', () => recapPng(id));
+    document.getElementById('edit-'+id)?.addEventListener('click', () => { s.done = false; renderNav(); renderChar(id); });
+    bindTabs(id);
+    return;
+  }
+
+  document.getElementById('view').innerHTML = `
+    ${tabsHtml(id)}
+    ${alertBlock(id, true)}
+    ${eventsBlock(c, true)}
+    ${s.eventEdit ? `<div class="event-form">
+        <h3>Nouvel événement</h3>
+        <input type="text" id="ev-label-${id}" placeholder="Ex. : Fête de la Lune de la mésange">
+        <label class="check-inline">Pour la catégorie
+          <select id="ev-group-${id}">${c.groups.map(g => `<option value="${esc(g)}" ${g === s.eventGroup ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select></label>
+        ${(members => members.length > 1 ? `<p class="reserved">Personnages non concernés (exil, absence…) :</p>
+          <div class="place-list">${members.map(m => `<label class="check-inline"><input type="checkbox" data-ev-except="${m.id}"> ${m.name}</label>`).join('')}</div>` : '')(C.filter(m => m.groups.includes(s.eventGroup || c.groups[0])))}
+        <div class="special-row"><button type="button" class="btn" id="ev-create-${id}">Créer l'événement</button><button type="button" class="link" id="ev-cancel-${id}">Annuler</button></div>
+      </div>` : `<button type="button" class="link alert-add" id="ev-add-${id}">${icon('flag')}Ajouter un événement de groupe</button>`}
+    <header><p class="kicker">${t.glyph} ${c.groups.join(' · ')}</p><h1>${c.name}${c.surname ? `<small>${c.surname}</small>` : ''}</h1>
+      <p class="date">${today}<br>${eorzeaDate}</p>
+      <div class="day-info">${chips}</div>
+      ${HOMES[HOME_OF[id]]?.optIn ? `<label class="check-inline wx-toggle"><input type="checkbox" id="wx-${id}" ${weatherOn[HOME_OF[id]]?'checked':''}> Météo du jour</label>` : ''}
+      </header>
+    <section><h2>Mood du jour</h2>
+      <textarea id="mood-${id}" placeholder="Comment se sent ${c.name} aujourd'hui ?">${esc(s.mood)}</textarea></section>
+    ${physSection(id)}
+    <section><h2>Lieux du jour</h2>
+      <label class="check-inline"><input type="checkbox" id="trip-${id}" ${s.trip ? 'checked' : ''}>${icon('route')}Mode voyage</label>
+      ${s.trip ? ['from', 'to'].map(leg => `<div class="leg"><h3>${leg === 'from' ? 'Départ' : 'Arrivée'}</h3>${picker(s.trip[leg], leg)}</div>`).join('') : `
+      ${picker(s, '')}
+      ${s.region ? `
+        ${c.added?.has(s.region) ? `<button type="button" class="link" id="rmregion-${id}">Retirer ${REGIONS[s.region].label} de la fiche ${deName(c.name)}</button>` : ''}
+        ${(more => s.region === 'autres' && more.length ? `<div class="more-regions"><p class="reserved">Ajouter une région existante à la fiche ${deName(c.name)} :</p>
+          <div class="place-list">${more.map(r => `<button type="button" data-addregion="${r}">+ ${REGIONS[r].label}</button>`).join('')}</div></div>` : '')(REGION_ORDER.filter(r => !c.regions.includes(r)))}
+        ${!REGIONS[s.region].zones || s.zone ? `<div class="special-row"><input type="text" id="place-${id}" placeholder="Autre lieu en ${zoneOf(s)?.label || REGIONS[s.region].label}"><button type="button" class="btn" id="addplace-${id}">Ajouter</button></div>` : ''}`
+      : `<p class="reserved">Choisis d'abord la région du jour pour voir ses lieux.</p>`}`}
+    </section>
+    <section><h2>Activités</h2>
+      ${cats.length ? '' : `<p class="reserved">Liste d'activités à définir. En attendant, utilise le champ « Activité spéciale » et coche « L'ajouter aussi à la liste ».</p>`}
+      <div class="cat"><h3>Déplacement</h3>${actRow('Voyage')}</div>
+      ${cats.map(k => `<div class="cat"><h3>${CATS[k]}</h3>${s.manageActs
+        ? live(k).map(a => `<div class="act manage"><span>${esc(a)}</span><button type="button" class="link small" data-act-remove="${esc(a)}">Retirer</button></div>`).join('')
+        : live(k).filter(a => actAvailable(id, a)).map(a => actRow(a)).join('')}</div>`).join('')}
+      ${s.manageActs && removed.size ? `<div class="cat removed-acts"><h3>Retirées de la liste</h3>${[...removed].map(a => `<div class="act manage"><span>${esc(a)}</span><button type="button" class="link small" data-act-restore="${esc(a)}">Remettre</button></div>`).join('')}</div>` : ''}
+      ${cats.length || removed.size ? `<button type="button" class="link small manage-toggle" id="manage-acts-${id}">${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités'}</button>` : ''}
+      ${s.specials.length ? `<div class="cat"><h3>Spéciales du jour</h3>${s.specials.map(a => actRow(a, true)).join('')}</div>` : ''}
+      ${babysitBlock(id, true)}
+    </section>
+    ${djBlock(id)}
+    ${workdaysBlock(id)}
+    <section><h2>Activité spéciale</h2>
+      <div class="special-row"><input type="text" id="special-${id}" placeholder="Ex. : réception à l'ambassade">
+        <button type="button" class="btn" id="add-${id}">Ajouter</button></div>
+      <label class="check-inline"><input type="checkbox" id="keep-${id}"> L'ajouter aussi à la liste ${deName(c.name)}</label>
+    </section>
+    ${(n => `<section><h2>La nuit</h2>
+      ${isKhurdan(id) ? `<label class="act"><input type="checkbox" id="violet-${id}" ${s.violet ? 'checked' : ''}>${icon('cloth')}<span>A porté du violet</span></label>` : ''}
+      <label class="act night"><input type="checkbox" id="hot-${id}" ${n.hot ? 'checked' : ''}>${icon('lips')}<span>La nuit a été chaude</span></label>
+      ${blockedWith(id, n.partner) ? `<p class="reserved">${nameOf(n.partner)} travaille ce soir (jour de travail récurrent).</p>` : ''}
+      ${n.partnerAway ? `<p class="reserved">${nameOf(n.partner)} était avec ${esc(whoLabel(n.partnerAway))}${n.partnerAway === 'client' && state[n.partner].returnHour != null ? ` (retour à ${state[n.partner].returnHour} h)` : ''} cette nuit.</p>` : ''}
+      ${n.hot ? `<div class="place-list" role="group" aria-label="Avec qui ?">
+          ${[...new Set([n.partner, ...loversOf(id), ...(id === 'khopses' ? ['client'] : []), ...(id === DJ.partner && djLate() && state[id].wait === 'livre' && state[id].door === 'occupee' ? [DELIVERY_GUY] : [])].filter(Boolean))].map(w => `<span class="with-chip"><button type="button" data-with="${esc(w)}" aria-pressed="${n.with === w}" ${blockedWith(id, w) ? `disabled title="${esc(whoLabel(w))} travaille ce soir"` : ''}>${icon('lips')}${esc(w === 'client' ? 'Un client' : whoLabel(w))}</button>${loversOf(id).includes(w) ? `<button type="button" class="link small" data-lover-del="${esc(w)}" aria-label="Retirer ${esc(whoLabel(w))}">×</button>` : ''}</span>`).join('')}
+        </div>
+        <div class="special-row"><input type="text" id="lover-new-${id}" enterkeyhint="done" autocapitalize="words" placeholder="Nom d'un personnage ou d'un PNJ"><button type="button" class="btn" id="lover-add-${id}">Ajouter</button></div>
+        ${loverMsg ? `<p class="reserved lover-msg">${esc(loverMsg)}</p>` : ''}
+        ${isKhurdan(id) ? `<label class="check-inline"><input type="checkbox" id="shell-${id}" ${s.shell ? 'checked' : ''}>${icon('shell')}A offert un coquillage</label>` : ''}
+        ${gotShell(id) ? `<p class="check-inline info">${icon('shell')}A reçu un coquillage au réveil <small>(offert par ${esc(nameOf(n.with))})</small></p>` : ''}
+        ${CLIENT_PARTNER[id] && n.with === 'client' ? `<label class="check-inline return-hour">${icon('matin')}Retour à la maison
+          <select id="return-${id}"><option value="">—</option>${Array.from({ length: 13 }, (_, h) => `<option value="${h}" ${state[id].returnHour === h ? 'selected' : ''}>${h} h</option>`).join('')}</select></label>` : ''}
+        ${CLIENT_PARTNER[id] && n.with === 'client' ? `<label class="check-inline"><input type="checkbox" id="call-partner-${id}" ${state[id].callPartner ? 'checked' : ''}>${icon('phone')}Appel à ${nameOf(CLIENT_PARTNER[id])}</label>` : ''}
+        ${n.with && isChar(n.with) ? `<p class="reserved">Cochée aussi sur la fiche ${deName(nameOf(n.with))}.</p>` : ''}
+        ${canFilm(id) ? `<label class="check-inline"><input type="checkbox" id="film-${id}" ${filmed[filmKey()] ? 'checked' : ''}>${icon('camera')}Filmé et publié en ligne</label>
+          ${filmed[filmKey()] ? `<p class="where">${icon('eye')}<span>${viewsLabel()}</span></p>` : ''}` : ''}
+        ${n.isMan ? `<label class="check-inline"><input type="checkbox" id="protect-${id}" ${state[id].protect ? 'checked' : ''}>${icon('shield')}Monsieur se protège</label>`
+          : n.with && isChar(n.with) && !isFem(n.with)
+            ? `<p class="check-inline info">${icon('shield')}${nameOf(n.with)} ${state[n.with].protect ? 'se protège' : 'ne se protège pas'} <small>(indiqué sur sa fiche)</small></p>`
+            : n.with && !isChar(n.with) && n.with !== 'client' ? `<label class="check-inline"><input type="checkbox" id="protect-pnj-${id}" ${pnjProtect(id, n.with) ? 'checked' : ''}>${icon('shield')}${esc(n.with)} se protège</label>` : ''}` : ''}
+    </section>`)(nightOf(id))}
+    ${milestoneSection(id)}
+    ${arcsSection(id)}
+    ${shotSection(id)}
+    ${timeline}
+    <button type="button" class="btn primary" id="done-${id}" ${s.done?'disabled':''}>${s.done ? '✓ Journée validée' : "J'ai terminé"}</button>
+`;
+
+  document.getElementById('mood-'+id).addEventListener('input', e => s.mood = e.target.value);
+  bindTabs(id); bindDaySections(id); bindMilestones(id);
+  document.getElementById('alert-add-'+id)?.addEventListener('click', () => { s.alertEdit = true; renderChar(id); });
+  document.getElementById('alert-save-'+id)?.addEventListener('click', () => {
+    const v = document.getElementById('alert-text-'+id).value.trim(); if (!v) return;
+    alerts[id] = v; s.alertEdit = false; renderChar(id);
+  });
+  document.getElementById('alert-off-'+id)?.addEventListener('click', () => { delete alerts[id]; renderChar(id); });
+  document.querySelectorAll('[data-event]').forEach(cb => cb.addEventListener('change', e => { EVENTS.find(x => x.id === cb.dataset.event).today = e.target.checked; }));
+  document.querySelectorAll('[data-event-end]').forEach(b => b.addEventListener('click', () => { EVENTS.find(x => x.id === b.dataset.eventEnd).active = false; renderChar(id); }));
+  document.getElementById('ev-add-'+id)?.addEventListener('click', () => { s.eventEdit = true; s.eventGroup = c.groups[0]; renderChar(id); });
+  document.getElementById('ev-cancel-'+id)?.addEventListener('click', () => { s.eventEdit = false; renderChar(id); });
+  document.getElementById('ev-group-'+id)?.addEventListener('change', e => {
+    const label = document.getElementById('ev-label-'+id).value; s.eventGroup = e.target.value; renderChar(id);
+    document.getElementById('ev-label-'+id).value = label;
+  });
+  document.getElementById('ev-create-'+id)?.addEventListener('click', () => {
+    const label = document.getElementById('ev-label-'+id).value.trim(); if (!label) return;
+    const except = [...document.querySelectorAll('[data-ev-except]')].filter(x => x.checked).map(x => x.dataset.evExcept);
+    EVENTS.push({ id:'ev-' + Date.now(), label, group: s.eventGroup || c.groups[0], except, active:true, today:true });
+    s.eventEdit = false; renderChar(id);
+  });
+  // Mode voyage : partagé entre la section Lieux et l'activité « Voyage ».
+  const setTrip = on => {
+    if (on && !s.trip) {
+      s.trip = { from:{ region: s.region || homeRegion(id), places: new Set(s.places) }, to:{ region:null, places: new Set() }, modes: new Set() };
+      s.checked.add('Voyage');
+    } else if (!on && s.trip) {
+      s.trip = null; s.checked.delete('Voyage'); delete s.slots['Voyage'];
+    }
+    renderChar(id);
+  };
+  document.querySelectorAll('[data-addregion]').forEach(b => b.addEventListener('click', () => {
+    const r = b.dataset.addregion;
+    c.regions = REGION_ORDER.filter(x => x === r || c.regions.includes(x));   // garde l'ordre habituel
+    (c.added ||= new Set()).add(r);
+    s.region = r; s.places = new Set(); renderChar(id);
+  }));
+  document.getElementById('rmregion-'+id)?.addEventListener('click', () => {
+    const r = s.region;
+    c.regions = c.regions.filter(x => x !== r); c.added.delete(r);
+    s.region = null; s.places = new Set(); renderChar(id);
+  });
+  document.querySelectorAll('[data-mode]').forEach(cb => cb.addEventListener('change', e => {
+    const m = cb.dataset.mode; (s.trip.modes ||= new Set()); e.target.checked ? s.trip.modes.add(m) : s.trip.modes.delete(m);
+  }));
+  document.getElementById('trip-'+id)?.addEventListener('change', e => setTrip(e.target.checked));
+  const setLegRegion = (leg, r) => { const L = s.trip[leg]; L.region = r || null; L.zone = null; L.places = new Set(); renderChar(id); };
+  document.getElementById('tripfrom-'+id)?.addEventListener('change', e => setLegRegion('from', e.target.value));
+  document.getElementById('tripto-'+id)?.addEventListener('change', e => setLegRegion('to', e.target.value));
+  document.querySelectorAll('[data-region]').forEach(b => b.addEventListener('click', () => {
+    const r = b.dataset.region, leg = b.dataset.leg;
+    if (leg) return setLegRegion(leg, s.trip[leg].region === r ? null : r);
+    s.region = s.region === r ? null : r; s.zone = null;
+    s.places = new Set([...s.places].filter(pl => PLACE_REGION[pl] === s.region && !ZONE_OF[pl]));
+    renderChar(id);
+  }));
+  document.querySelectorAll('[data-zone]').forEach(b => b.addEventListener('click', () => {
+    const T = b.dataset.leg ? s.trip[b.dataset.leg] : s, z = b.dataset.zone;
+    T.zone = T.zone === z ? null : z;
+    T.places = new Set([...T.places].filter(pl => ZONE_OF[pl] === T.zone));
+    renderChar(id);
+  }));
+  document.querySelectorAll('[data-place]').forEach(b => b.addEventListener('click', () => {
+    const pl = b.dataset.place, set = b.dataset.leg ? s.trip[b.dataset.leg].places : s.places;
+    set.has(pl) ? set.delete(pl) : set.add(pl); renderChar(id);
+  }));
+  document.getElementById('return-'+id)?.addEventListener('change', e => { state[id].returnHour = e.target.value === '' ? null : +e.target.value; renderChar(id); });
+  document.getElementById('call-partner-'+id)?.addEventListener('change', e => {
+    state[id].callPartner = e.target.checked;
+    if (e.target.checked) { const k = 'call:' + keyOf(rpDay) + ':' + id; pushNews(CLIENT_PARTNER[id], pickLine(CALL_LINES, k)(nameOf(id), nameOf(CLIENT_PARTNER[id])), k); }
+    else dropNews(['call:' + keyOf(rpDay) + ':' + id]);
+  });
+  const djReset = () => { if (!s.setLate) { const p = DJ.partner; setDoor(p, null); dropNews(['rale:' + keyOf(rpDay)]); state[p].wait = null; } };
+  document.getElementById('dj-set-'+id)?.addEventListener('change', e => { s.set = e.target.checked; if (!s.set) s.setLate = false; djReset(); renderChar(id); });
+  document.getElementById('dj-late-'+id)?.addEventListener('change', e => { s.setLate = e.target.checked; s.lateAt = Date.now(); djReset(); renderChar(id); });
+  document.querySelectorAll('[data-wait]').forEach(r => r.addEventListener('change', () => {
+    const k = 'rale:' + keyOf(rpDay); setDoor(id, null); s.wait = r.dataset.wait;
+    if (s.wait === 'rale') pushNews(DJ.dj, pickLine(RALE_LINES, k)(nameOf(id), nameOf(DJ.dj)), k); else dropNews([k]);
+    renderChar(id); }));
+  document.querySelectorAll('[data-contract]').forEach(i => i.addEventListener('change', () => {
+    const f = i.dataset.contract, v = i.value.trim(), k = CONTRACTS[id] ||= { start: isoDay(rpDay) };
+    if (f === 'days') k.days = v ? Math.max(1, Math.min(60, Math.round(+v))) : null;
+    else if (f === 'start') k.start = v && v <= isoDay(rpDay) ? v : isoDay(rpDay);
+    else k[f] = v;
+    if (!activeContract(id)) k.days = dayIndex(k);   // un début trop ancien prolonge la durée jusqu'à aujourd'hui
+    renderChar(id); }));
+  document.getElementById('contract-end-'+id)?.addEventListener('click', () => { CONTRACTS[id].days = dayIndex(CONTRACTS[id]); renderChar(id); });
+  document.querySelectorAll('[data-detail]').forEach(i => i.addEventListener('change', () => { (s.details ||= {})[i.dataset.detail] = i.value.trim(); renderChar(id); }));
+  document.querySelectorAll('[data-door]').forEach(r => r.addEventListener('change', () => { setDoor(id, r.dataset.door); renderChar(id); }));
+  document.getElementById('jais-'+id)?.addEventListener('change', e => { state[id].jais = e.target.checked; renderChar(id); });
+  document.getElementById('hot-'+id)?.addEventListener('change', e => { setNight(id, e.target.checked); renderChar(id); });
+  document.querySelectorAll('[data-workday]').forEach(b => b.addEventListener('click', () => { const d = +b.dataset.workday, w = WORKDAYS[id]; w.has(d) ? w.delete(d) : w.add(d); renderChar(id); }));
+  document.querySelectorAll('[data-with]').forEach(b => b.addEventListener('click', () => { setNight(id, true, b.dataset.with); renderChar(id); }));
+  // Ajout d'un amant : bouton « Ajouter » ou touche Entrée du clavier (téléphone compris).
+  const addLover = (raw, alsoTonight) => {
+    const v = (raw || '').trim(); if (!v) return;
+    const who = charByName(v) || v;
+    if (who !== id && !loversOf(id).includes(who) && who !== partnerOf(id)) loversOf(id).push(who);
+    if (isChar(who) && who !== partnerOf(id) && !loversOf(who).includes(id)) loversOf(who).push(id);   // réciproque
+    if (alsoTonight) setNight(id, true, who);
+    state[id].loversOpen = true; state[id].loverMsg = `${whoLabel(who)} ajouté${isChar(who) && isFem(who) ? 'e' : ''}${alsoTonight ? ' et choisi' + (isChar(who) && isFem(who) ? 'e' : '') + ' pour cette nuit' : ''}.`;
+    renderChar(id);
+  };
+  const onEnter = (el, fn) => el?.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); fn(); } });
+  const loverEl = document.getElementById('lover-new-'+id);
+  document.getElementById('lover-add-'+id)?.addEventListener('click', () => addLover(loverEl.value, false));
+  onEnter(loverEl, () => addLover(loverEl.value, false));
+  document.querySelector('.lovers')?.addEventListener('toggle', e => { state[id].loversOpen = e.target.open; });
+  document.querySelectorAll('[data-lover-del]').forEach(b => b.addEventListener('click', () => {
+    const l = b.dataset.loverDel; LOVERS[id] = loversOf(id).filter(x => x !== l);
+    if (isChar(l)) LOVERS[l] = loversOf(l).filter(x => x !== id);
+    state[id].loversOpen = true; renderChar(id);
+  }));
+  document.getElementById('violet-'+id)?.addEventListener('change', e => { s.violet = e.target.checked; renderChar(id); });
+  document.getElementById('shell-'+id)?.addEventListener('change', e => { s.shell = e.target.checked; renderChar(id); });
+  document.getElementById('film-'+id)?.addEventListener('change', e => { filmed[filmKey()] = e.target.checked; renderChar(id); });
+  document.getElementById('protect-'+id)?.addEventListener('change', e => setProtect(id, e.target.checked));
+  document.getElementById('protect-pnj-'+id)?.addEventListener('change', e => { lastProtect['pnj:' + id + ':' + nightOf(id).with] = e.target.checked; if (e.target.checked) dropNews(pairKeys(id, nightOf(id).with).slice(1)); checkRisk(id); });
+  document.getElementById('addplace-'+id)?.addEventListener('click', () => {
+    const v = document.getElementById('place-'+id).value.trim(); if (!v || !s.region) return;
+    PLACE_REGION[v] ||= s.region; if (s.zone) ZONE_OF[v] ||= s.zone;
+    if (!c.places.includes(v)) { c.places.push(v); (c.customPlaces ||= []).push({ name: v, region: s.region, zone: s.zone || null }); }
+    s.places.add(v); renderChar(id);
+  });
+  document.getElementById('wx-'+id)?.addEventListener('change', e => { weatherOn[HOME_OF[id]] = e.target.checked; renderChar(id); });
+  document.querySelectorAll('[data-act]').forEach(cb => cb.addEventListener('change', e => {
+    const l = e.target.dataset.act;
+    if (l === 'Voyage') return setTrip(e.target.checked);
+    if (l === CONTRACT_ACT) { s.contractOff = !e.target.checked;
+      if (e.target.checked && !activeContract(id)) CONTRACTS[id] = { start: isoDay(rpDay) };
+      if (!e.target.checked && CONTRACTS[id]?.start === isoDay(rpDay)) delete CONTRACTS[id]; }   // contrat créé par erreur aujourd'hui
+    if (e.target.checked) { s.checked.add(l); if (!s.slots[l] && guessSlot(l)) s.slots[l] = [...guessSlot(l)]; }
+    else { s.checked.delete(l); delete s.slots[l]; }
+    renderChar(id);
+  }));
+  document.querySelectorAll('[data-slot]').forEach(b => b.addEventListener('click', () => {
+    const l = b.dataset.for;
+    const cur = new Set(s.slots[l] || []), id2 = b.dataset.slot;
+    cur.has(id2) ? cur.delete(id2) : cur.add(id2);
+    s.slots[l] = SLOTS.map(x => x.id).filter(x => cur.has(x));
+    if (s.slots[l].length) lastSlot[l] = s.slots[l]; else delete s.slots[l];
+    renderChar(id);
+  }));
+  document.getElementById('manage-acts-'+id)?.addEventListener('click', () => { s.manageActs = !s.manageActs; renderChar(id); });
+  document.querySelectorAll('[data-act-remove]').forEach(b => b.addEventListener('click', () => {
+    const l = b.dataset.actRemove; c.removedActs.add(l); s.checked.delete(l); delete s.slots[l]; renderChar(id); }));
+  document.querySelectorAll('[data-act-restore]').forEach(b => b.addEventListener('click', () => { c.removedActs.delete(b.dataset.actRestore); renderChar(id); }));
+  document.getElementById('add-'+id).addEventListener('click', () => {
+    const inp = document.getElementById('special-'+id), v = inp.value.trim(); if (!v) return;
+    if (document.getElementById('keep-'+id).checked) { (c.acts.quotidien ||= []).push(v); (c.addedActs ||= []).push(v); }
+    else s.specials.push(v);
+    s.checked.add(v); renderChar(id);
+  });
+  document.getElementById('done-'+id).addEventListener('click', () => { s.done = true; s.doneAt ??= Date.now(); renderNav(); renderChar(id); });
+}
+
+function go(id) { current = id; renderNav(); id === 'home' ? renderHome() : renderChar(id); window.scrollTo({ top:0 }); }
+document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
+document.addEventListener('click', e => { if (e.target.closest('#signout')) window.RP_SYNC?.signOut(); });
+document.addEventListener('click', e => {
+  if (e.target.closest('#news-read')) { myNews().forEach(n => n.read = true); go(current); return; }
+  const b = e.target.closest('.news [data-go]'); if (b) myNews().filter(n => n.charId === b.dataset.go).forEach(n => n.read = true);
+});
+document.querySelectorAll('.nav-filter button').forEach(b => b.addEventListener('click', () => {
+  const row = b.dataset.f ? '[data-f]' : '[data-g]';
+  if (b.dataset.f) filter = b.dataset.f; else groupFilter = b.dataset.g;
+  document.querySelectorAll('.nav-filter button' + row).forEach(x => x.setAttribute('aria-pressed', x === b));
+  if (current !== 'home' && !C.some(c => c.id === current && shown(c))) current = 'home';
+  go(current);
+}));
+initPlaces();
+
+// ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
+// Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
+const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
+  'details', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff'];
+const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false });
+// Firestore ne connaît ni les Set ni les Date : on les encode.
+const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }
+  : Array.isArray(v) ? v.map(enc)
+  : v && typeof v === 'object' ? Object.fromEntries(Object.entries(v).filter(([, x]) => x !== undefined).map(([k, x]) => [k, enc(x)]))
+  : v === undefined ? null : v;
+const dec = v => Array.isArray(v) ? v.map(dec)
+  : v && typeof v === 'object' ? (Array.isArray(v.$set) ? new Set(v.$set.map(dec)) : typeof v.$date === 'string' ? new Date(v.$date)
+    : typeof v.toDate === 'function' ? v.toDate() : Object.fromEntries(Object.entries(v).map(([k, x]) => [k, dec(x)])))
+  : v;
+const replaceObj = (target, src) => { Object.keys(target).forEach(k => delete target[k]); Object.assign(target, src || {}); };
+const replaceArr = (target, src) => { target.length = 0; (src || []).forEach(x => target.push(x)); };
+const owns = id => C.find(c => c.id === id)?.player === me;
+// Activités et lieux privés : jamais copiés dans l'encart public « Aujourd'hui » des fiches.
+const isPrivateAct = a => /^Sexe avec /.test(a) || a === 'Plaisir en solo sur Moonstone';
+
+const entryOf = id => {
+  const s = state[id], o = {};
+  ENTRY_KEYS.forEach(k => { if (s[k] !== undefined) o[k] = s[k]; });
+  const n = nightOf(id);
+  o.night = { hot: !!n.hot, with: n.hot ? (n.with || null) : null };   // pour l'historique
+  return enc(o);
+};
+const isEmptyVal = v => v === '' || v === false || v === null || v === undefined || (Array.isArray(v) && !v.length)
+  || (v && typeof v === 'object' && (Array.isArray(v.$set) ? !v.$set.length : !Object.keys(v).length));
+const meaningful = e => !!e && (e.night?.hot || Object.entries(e).some(([k, v]) => k !== 'night' && !isEmptyVal(v)));
+const applyEntry = (id, e) => {
+  const s = state[id];
+  ENTRY_KEYS.forEach(k => delete s[k]);
+  const d = dec(e || {}); delete d.night;
+  Object.assign(s, freshEntry(), d);
+};
+const charDocOf = c => enc({ addedActs: c.addedActs || [], removedActs: [...(c.removedActs || [])],
+  addedRegions: [...(c.added || [])], customPlaces: c.customPlaces || [] });
+const applyChar = (c, d) => {
+  if (!d) return;
+  (d.addedActs || []).forEach(a => { if (!allActs(c).includes(a)) (c.acts.quotidien ||= []).push(a); });
+  c.addedActs = [...(d.addedActs || [])];
+  c.removedActs = new Set(d.removedActs || []);
+  (d.addedRegions || []).forEach(r => { if (REGIONS[r] && !c.regions.includes(r)) { c.regions = REGION_ORDER.filter(x => x === r || c.regions.includes(x)); (c.added ||= new Set()).add(r); } });
+  c.customPlaces = [...(d.customPlaces || [])];
+  c.customPlaces.forEach(p => { PLACE_REGION[p.name] ||= p.region; if (p.zone) ZONE_OF[p.name] ||= p.zone; if (!c.places.includes(p.name)) c.places.push(p.name); });
+};
+const globalOf = () => enc({ lovers: LOVERS, protect: lastProtect, alerts, events: EVENTS, arcs: ARCS, arcSeq,
+  milestones: MILESTONES, contracts: CONTRACTS, workdays: WORKDAYS });
+const applyGlobal = g => {
+  const d = dec(g || {});
+  if ('lovers' in d) replaceObj(LOVERS, d.lovers);
+  if ('protect' in d) replaceObj(lastProtect, d.protect);
+  if ('alerts' in d) replaceObj(alerts, d.alerts);
+  if ('events' in d) replaceArr(EVENTS, d.events);
+  if ('arcs' in d) replaceObj(ARCS, d.arcs);
+  if ('arcSeq' in d) arcSeq = Math.max(arcSeq, d.arcSeq || 1);
+  if ('milestones' in d) replaceObj(MILESTONES, d.milestones);
+  if ('contracts' in d) replaceObj(CONTRACTS, d.contracts);
+  if ('workdays' in d) { replaceObj(WORKDAYS, d.workdays); WORKDAYS.khopses ||= new Set(); }
+};
+const dayOf = () => enc({ nights: nightsBy, filmed, weather: weatherOn,
+  protect: Object.fromEntries(C.map(c => [c.id, !!state[c.id].protect])),
+  shell: Object.fromEntries(C.map(c => [c.id, !!state[c.id].shell])) });
+const applyDay = g => {
+  const d = dec(g || {});
+  if ('nights' in d) replaceObj(nightsBy, d.nights);
+  if ('filmed' in d) replaceObj(filmed, d.filmed);
+  if ('weather' in d) replaceObj(weatherOn, d.weather);
+  if (d.protect) C.forEach(c => { if (c.id in d.protect) state[c.id].protect = !!d.protect[c.id]; });
+  if (d.shell) C.forEach(c => { if (c.id in d.shell) state[c.id].shell = !!d.shell[c.id]; });
+};
+// Encart public « Aujourd'hui » : humeur, activités publiques et lieu, seulement une fois la journée validée.
+const todayOf = id => {
+  const s = state[id]; if (!s.done) return null;
+  const place = [...s.places].find(pl => !PRIVATE_PLACES[pl]) || (s.zone && zoneOf(s)?.label) || (s.region && REGIONS[s.region]?.label) || '';
+  return { mood: s.mood || '', activities: [...s.checked].filter(a => !isPrivateAct(a)), place };
+};
+const dayNum = String(rpDay.getDate());
+const curYm = `${rpDay.getFullYear()}-${String(rpDay.getMonth() + 1).padStart(2, '0')}`;
+let typingDirty = false;
+const rerender = () => {
+  const f = document.activeElement;
+  if (f && document.getElementById('view').contains(f) && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) { typingDirty = true; return; }
+  typingDirty = false; renderNav(); current === 'home' ? renderHome() : renderChar(current);
+};
+document.addEventListener('focusout', () => setTimeout(() => { if (typingDirty) rerender(); }, 0));
+
+window.RP_APP = {
+  ids: C.map(c => c.id),
+  owned: () => C.filter(c => c.player === me).map(c => c.id),
+  setMe: m => { me = m; },
+  iso: isoDay(rpDay), ym: curYm, day: dayNum,
+  meaningful,
+  hydrate: ({ global, day, chars, news }) => {
+    applyGlobal(global); applyDay(day);
+    C.forEach(c => applyChar(c, chars[c.id]));
+    replaceArr(NEWS, (news || []).map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read })));
+  },
+  // data : { '30': entrée, … } d'un document days/{id}/months/{AAAA-MM}
+  applyMonth: (id, ym, data, withToday) => {
+    const [y, m] = ym.split('-').map(Number);
+    const h = HISTORY[id] ||= {};
+    Object.entries(data || {}).forEach(([d, e]) => { h[`${y}-${m}-${+d}`] = dec(e); });
+    if (withToday && ym === curYm && data?.[dayNum]) applyEntry(id, data[dayNum]);
+  },
+  applyGlobal, applyDay,
+  applyNews: list => {
+    list.forEach(n => {
+      const x = NEWS.find(o => o.key === n.key);
+      if (x) x.read = !!n.read; else NEWS.unshift({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read });
+    });
+  },
+  snapshot: () => {
+    const mine = C.filter(c => c.player === me);
+    return {
+      global: globalOf(), day: dayOf(),
+      entries: Object.fromEntries(mine.map(c => [c.id, entryOf(c.id)])),
+      chars: Object.fromEntries(mine.map(c => [c.id, charDocOf(c)])),
+      today: Object.fromEntries(mine.map(c => [c.id, todayOf(c.id)])),
+      news: NEWS.map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read })),
+    };
+  },
+  rerender,
+  start: () => go('home'),
+};
