@@ -646,9 +646,10 @@ const PLACE_CLIMATE = {
 const HOME_REGION = { khurdans:'othard', unegen:'othard', eoor:'eorzea', viggo:'eorzea', s9:'tural' };
 const DEFAULT_CITY = { khurdans:'ulaanbaatar', unegen:'beijing', eoor:'lisbon', viggo:'paris' };
 // Exceptions individuelles : Davaajav vit à La Coupe (Thanalan) ; la steppe prime quand il s'y rend.
-// Eoor vit à Lavandière (Sombrelinceul, côté Gridania) ; Yasmeen vit à Brumée (Noscea).
-const DEFAULT_CITY_OF = { davaajav:'marrakech', eoor:'compiegne' }, HOME_REGION_OF = { davaajav:'eorzea' },
-  HOME_LABEL_OF = { davaajav:'La Coupe', eoor:'Lavandière', yasmeen:'Brumée' };
+// Eoor, Viggo et Khopses vivent à Lavandière (Sombrelinceul, côté Gridania) : même météo pour les trois.
+// Yasmeen vit à Brumée (Noscea).
+const DEFAULT_CITY_OF = { davaajav:'marrakech', eoor:'compiegne', viggo:'compiegne', khopses:'compiegne' }, HOME_REGION_OF = { davaajav:'eorzea' },
+  HOME_LABEL_OF = { davaajav:'La Coupe', eoor:'Lavandière', yasmeen:'Brumée', viggo:'Lavandière', khopses:'Lavandière' };
 const defaultCity = id => DEFAULT_CITY_OF[id] || DEFAULT_CITY[HOME_OF[id]] || null;
 const homeRegion = id => HOME_REGION_OF[id] || HOME_REGION[HOME_OF[id]] || null;
 const regionOf = id => state[id].region || homeRegion(id);
