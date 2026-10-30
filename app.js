@@ -524,8 +524,8 @@ const W = {
 const CLASSIC = { clear:15, fair:35, clouds:20, fog:10, rain:10, wind:5, thunder:5 };
 const HOMES = {
   khurdans: { label:"Steppe d'Azim", table:{ clear:25, fair:40, clouds:10, fog:8, rain:7, wind:5, gales:5 } },
-  // Solution Nine : pas de météo par défaut ; une case sur la fiche d'Echo ou de Prism l'active pour la journée.
-  s9:       { label:'Solution Nine', table:CLASSIC, optIn:true },
+  // Solution Nine : temps clair en permanence, entre 20 et 30 degrés.
+  s9:       { label:'Solution Nine', table:CLASSIC, fixed:'clear', temp:[20, 30] },
   eoor:     { label:'Noscea', table:CLASSIC },          // climat de base : Noscea (Lisbonne)
   viggo:    { label:'Sombrelinceul', table:CLASSIC },   // climat de base : Sombrelinceul (Paris)
   unegen:   { label:'Hingashi', table:CLASSIC },        // climat de base : Hingashi (Pékin)
@@ -775,6 +775,10 @@ const conditionsFor = id => {
   const cl = climatesFor(id);   // un lieu à climat propre (ex. Tuliyollal) s'affiche même sans la case
   if (!cl.length && home.optIn && !weatherOn[HOME_OF[id]]) return [];
   if (cl.length) return cl.map(({ city, where }) => { const tp = tempAt(city, rpDay); return { ...cityWeather(city, tp), tp, where: where || home.label }; });
+  if (home.fixed) {   // ciel immuable (Solution Nine) : seule la température varie d'un jour à l'autre
+    const [lo, hi] = home.temp, min = lo + Math.round(seeded(dayKey + ':' + HOME_OF[id] + ':min') * 4), max = Math.min(hi, min + 5 + Math.round(seeded(dayKey + ':' + HOME_OF[id] + ':max') * 5));
+    return [{ ...W[home.fixed], tp: { max, min }, where: home.label }];
+  }
   let r = seeded(dayKey + ':' + HOME_OF[id]) * 100;
   for (const [k, w] of Object.entries(home.table)) { if ((r -= w) < 0) return [{ ...W[k], tp:null, where: home.label }]; }
   return [{ ...W.fair, tp:null, where: home.label }];
