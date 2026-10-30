@@ -525,10 +525,10 @@ const CLASSIC = { clear:15, fair:35, clouds:20, fog:10, rain:10, wind:5, thunder
 const HOMES = {
   khurdans: { label:"Steppe d'Azim", table:{ clear:25, fair:40, clouds:10, fog:8, rain:7, wind:5, gales:5 } },
   // Solution Nine : pas de météo par défaut ; une case sur la fiche d'Echo ou de Prism l'active pour la journée.
-  s9:       { label:'', table:CLASSIC, optIn:true },
-  eoor:     { label:'', table:CLASSIC },
-  viggo:    { label:'', table:CLASSIC },
-  unegen:   { label:'', table:CLASSIC },
+  s9:       { label:'Solution Nine', table:CLASSIC, optIn:true },
+  eoor:     { label:'Noscea', table:CLASSIC },          // climat de base : Noscea (Lisbonne)
+  viggo:    { label:'Sombrelinceul', table:CLASSIC },   // climat de base : Sombrelinceul (Paris)
+  unegen:   { label:'Hingashi', table:CLASSIC },        // climat de base : Hingashi (Pékin)
 };
 const weatherOn = {};
 
