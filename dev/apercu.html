@@ -604,10 +604,10 @@ const C = [
     liens:['Verre au Grand Bazar','Sexe avec Khopses'] } },
   { id:'khopses', name:'Khopses', surname:'', groups:['Secondaires'], theme:'violet', player:'elle', acts:{ metier:['Rendez-vous client','Gala'], liens:['Rencontre Jais'] } },
   { id:'echo', name:'Echo', surname:'', groups:['S9'], theme:'neonCyan', player:'corentin', acts:{
-    quotidien:['Va à la salle de muscu','Bidouille de drones perso\''],
+    quotidien:['Va à la salle de muscu','Bidouille de drones perso\'','Commande de malbouffe'],
     metier:['Prépare le set à la maison','Compose à la maison','En studio avec la prod\'','Repérage d\'une future salle de set','Travail sur une commande de drones'],
     liens:['Soirée Piscine','Verre avec les copains','Sexe avec Prism','Plaisir en solo sur Moonstone'] } },
-  { id:'prism', name:'Prism', surname:'', groups:['S9'], theme:'neonMagenta', player:'elle', acts:{ metier:['Publication Moonstone'] } },
+  { id:'prism', name:'Prism', surname:'', groups:['S9'], theme:'neonMagenta', player:'elle', acts:{ quotidien:['Commande de malbouffe'], metier:['Publication Moonstone'] } },
 ];
 const SOON = [];
 // Tranches horaires approximatives ; la journée RP commence à l'aube (5 h).
@@ -1457,6 +1457,18 @@ const contractText = k => { if (!k) return ''; const bits = [!k.days ? `jour ${k
   if (k.rank) bits.unshift('rang ' + k.rank);
   const what = [k.monster, k.place].filter(Boolean).join(' · ');
   return ` (${bits.join(', ')})` + (what ? ' : ' + what : ''); };
+// Activités dont la précision est tirée au sort quand on les coche (le tirage est gardé pour la journée).
+const JUNK_ACT = 'Commande de malbouffe';
+const RANDOM_ACTS = { [JUNK_ACT]: ['Maxi kebab « Fighter Bouffeur »', 'Pizza « Tartaglia »', 'Mégapizza 6 fromages', 'Tacos tulliyolois', 'Ramen', 'Sushis',
+  'Pizza kebab', 'Poulet croustillant « Chik&Dip »', 'Burger smashé « Night Vision »', 'Panini « La mama del Arcadioni »', 'Triple burger frites',
+  '« Le bouche artère », burger quatre étages', 'Crêpes sucrées', 'Crêpes salées « Thunder Fury »'] };
+const drawFor = (label, not) => { const l = RANDOM_ACTS[label].filter(x => x !== not); return l[Math.floor(Math.random() * l.length)]; };
+// Plat le plus commandé de l'année (wrap d'Echo et Prism).
+const junkOfYear = (c, y) => tally(Array.from({ length: 366 }, (_, i) => new Date(y, 0, 1 + i)).filter(d => d.getFullYear() === y && d <= rpDay).map(d => {
+  if (sameDay(d, rpDay)) return state[c.id].checked.has(JUNK_ACT) ? state[c.id].details?.[JUNK_ACT] : null;
+  const e = typeof HISTORY === 'undefined' ? null : HISTORY[c.id]?.[keyOf(d)];
+  return e && (e.checked?.has?.(JUNK_ACT) || e.checked?.includes?.(JUNK_ACT)) ? e.details?.[JUNK_ACT] : null;
+}).filter(Boolean));
 const DETAIL_ACTS = { 'Visite touristique':'Lieu visité (ex. : Phare de Limsa)', 'Tourisme et Découverte':'Lieu découvert (ex. : Château de Doma)' };
 // Image du récap pour l'embed Discord : la fiche validée est convertie en PNG (sans le pied de page).
 // Dans l'appli, ce PNG part en pièce jointe du webhook ; ici, on l'affiche pour vérifier le rendu.
@@ -1799,6 +1811,7 @@ const wrapExtrasHtml = (c, y) => {
       ${card('Plus longue série', x.best + ' jours', "d'affilée")}
       ${x.word ? card("Mot de l'année", '« ' + esc(x.word) + ' »') : ''}
       ${x.slotsTotal ? card(lateRatio >= 50 ? 'Oiseau de nuit' : 'Lève-tôt', (lateRatio >= 50 ? lateRatio : 100 - lateRatio) + ' %', lateRatio >= 50 ? 'de ses activités le soir ou la nuit' : "de ses activités à l'aube ou le matin") : ''}
+      ${(j => j ? card('Malbouffe de l\'année', esc(j[0]), `commandé ${j[1]} fois`) : '')(RANDOM_ACTS[JUNK_ACT] && allActs(c).includes(JUNK_ACT) ? junkOfYear(c, y)[0] : null)}
       ${x.bestMonth !== null ? card('Mois le plus rempli', MONTHS[x.bestMonth], 'saison préférée : ' + x.season) : ''}
     </div>
     ${x.first ? `<div class="mood-pair"><div><span>Premier mood</span><q>${esc(x.first[1].mood)}</q><small>${fmtDay(x.first[0])}</small></div>
@@ -2203,6 +2216,7 @@ function renderChar(id) {
         <label class="wide"><span>Lieu de la chasse</span><input type="text" data-contract="place" value="${esc(k.place || '')}" placeholder="Ex. : Mor Dhona"></label>
         ${k.days && k.n < k.days ? `<button type="button" class="link small wide" id="contract-end-${id}">Contrat terminé plus tôt (aujourd'hui)</button>` : ''}
       </div>` : '';
+    const drawn = on && RANDOM_ACTS[label] ? `<p class="act-detail drawn">${icon('star')}<span>${esc(s.details?.[label] || '…')}</span> <button type="button" class="link small" data-redraw="${esc(label)}">Autre tirage</button></p>` : '';
     const detail = on && DETAIL_ACTS[label] ? `<input type="text" class="act-detail" data-detail="${esc(label)}" value="${esc(s.details?.[label] || '')}" placeholder="${DETAIL_ACTS[label]}">` : '';
     const slots = on ? `<div class="slots" role="group" aria-label="Moment de la journée">${SLOTS.map(sl => `<button type="button" data-slot="${sl.id}" data-for="${esc(label)}" aria-pressed="${(s.slots[label] || []).includes(sl.id)}" title="${sl.hint}">${icon(sl.icon)}${sl.label}</button>`).join('')}</div>` : '';
     const regionOpts = sel => c.regions.map(r => `<option value="${r}" ${sel === r ? 'selected' : ''}>${REGIONS[r].label}</option>`).join('');
@@ -2214,9 +2228,9 @@ function renderChar(id) {
       <div class="trip-row modes" role="group" aria-label="Moyen de transport">${TRAVEL_MODES.map(m => `<label class="check-inline"><input type="checkbox" data-mode="${m}" ${s.trip.modes?.has(m) ? 'checked' : ''}> ${m}</label>`).join('')}</div>` : '';
     const hunt = on ? huntFor(id, label) : null;
     const huntRow = hunt ? `<p class="hunt ${hunt.catches.length ? '' : 'empty'}">${icon('target')}<span>${hunt.catches.length ? 'Prises : ' + esc(huntText(hunt)) : (isFem(id) ? 'Rentrée bredouille' : 'Rentré bredouille')}</span></p>` : '';
-    return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${detail}${contract}${trip}${slots}</div>`;
+    return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${drawn}${detail}${contract}${trip}${slots}</div>`;
   };
-  const dispLabel = l => l === CONTRACT_ACT && activeContract(id) ? l + contractText(activeContract(id)) : s.details?.[l] && DETAIL_ACTS[l] ? `${l} : ${s.details[l]}` : huntFor(id, l) ? `${l} (${huntText(huntFor(id, l))})` : l === 'Voyage' && s.trip ? `Voyage${s.trip.modes?.size ? ` (${[...s.trip.modes].join(', ').toLowerCase()})` : ''} : ${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}` : l;
+  const dispLabel = l => l === CONTRACT_ACT && activeContract(id) ? l + contractText(activeContract(id)) : s.details?.[l] && (DETAIL_ACTS[l] || RANDOM_ACTS[l]) ? `${l} : ${s.details[l]}` : huntFor(id, l) ? `${l} (${huntText(huntFor(id, l))})` : l === 'Voyage' && s.trip ? `Voyage${s.trip.modes?.size ? ` (${[...s.trip.modes].join(', ').toLowerCase()})` : ''} : ${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}` : l;
   const picked = [...s.checked];
   const byKey = {};
   picked.forEach(l => { const sp = spanOf(s.slots[l] || []); (byKey[sp.key] ||= { sl:sp, items:[] }).items.push(l); });
@@ -2459,6 +2473,7 @@ function renderChar(id) {
     if (!activeContract(id)) k.days = dayIndex(k);   // un début trop ancien prolonge la durée jusqu'à aujourd'hui
     renderChar(id); }));
   document.getElementById('contract-end-'+id)?.addEventListener('click', () => { CONTRACTS[id].days = dayIndex(CONTRACTS[id]); renderChar(id); });
+  document.querySelectorAll('[data-redraw]').forEach(b => b.addEventListener('click', () => { const l = b.dataset.redraw; (s.details ||= {})[l] = drawFor(l, s.details[l]); renderChar(id); }));
   document.querySelectorAll('[data-detail]').forEach(i => i.addEventListener('change', () => { (s.details ||= {})[i.dataset.detail] = i.value.trim(); renderChar(id); }));
   document.getElementById('dj-reroll-'+id)?.addEventListener('click', () => { djSalt++; setDoor(id, null); renderChar(id); });
   document.querySelectorAll('[data-door]').forEach(r => r.addEventListener('change', () => { setDoor(id, r.dataset.door); renderChar(id); }));
@@ -2506,8 +2521,8 @@ function renderChar(id) {
     if (l === CONTRACT_ACT) { s.contractOff = !e.target.checked;
       if (e.target.checked && !activeContract(id)) CONTRACTS[id] = { start: isoDay(rpDay) };
       if (!e.target.checked && CONTRACTS[id]?.start === isoDay(rpDay)) delete CONTRACTS[id]; }   // contrat créé par erreur aujourd'hui
-    if (e.target.checked) { s.checked.add(l); if (!s.slots[l] && guessSlot(l)) s.slots[l] = [...guessSlot(l)]; }
-    else { s.checked.delete(l); delete s.slots[l]; }
+    if (e.target.checked) { s.checked.add(l); if (!s.slots[l] && guessSlot(l)) s.slots[l] = [...guessSlot(l)]; if (RANDOM_ACTS[l] && !s.details?.[l]) (s.details ||= {})[l] = drawFor(l); }
+    else { s.checked.delete(l); delete s.slots[l]; if (RANDOM_ACTS[l] && s.details) delete s.details[l]; }
     renderChar(id);
   }));
   document.querySelectorAll('[data-slot]').forEach(b => b.addEventListener('click', () => {

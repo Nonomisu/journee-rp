@@ -26,7 +26,7 @@ const embedFor = id => {
 const dispLabelOf = (id, l) => {
   const s = state[id];
   if (l === CONTRACT_ACT && activeContract(id)) return l + contractText(activeContract(id));
-  if (s.details?.[l] && DETAIL_ACTS[l]) return `${l} : ${s.details[l]}`;
+  if (s.details?.[l] && (DETAIL_ACTS[l] || RANDOM_ACTS[l])) return `${l} : ${s.details[l]}`;
   const h = huntFor(id, l); if (h) return `${l} (${huntText(h)})`;
   return l;
 };
