@@ -572,7 +572,7 @@ const C = [
     metier:['Permanence au Grand Bazar','Traitement des ouvrages','Affaires diplomatiques de Werlyt','Action pour « Un vœu pour les enfants »','Rédige un rapport'],
     liens:['Temps avec Yasmeen','Moment avec Cillien','Soirée barbecue','Sexe avec Yasmeen'] } },
   { id:'unegen', name:'Unegen', surname:'Haragin', groups:['Principaux'], theme:'unegen', player:'corentin', acts:{
-    quotidien:['Entraînement physique','Baignade dans la Steppe','Repos dans la clairière'],
+    quotidien:['Entraînement physique','Baignade dans la Steppe','Repos dans la clairière','Tourisme et Découverte'],
     metier:['Contrat de chasse','Troc au Ralliement','Commerce à Kugane','Navigation'],
     liens:['Drague à Kugane','Drague dans la Steppe','Sexe avec Hokkyoku'] } },
   { id:'yasmeen', name:'Yasmeen', surname:"Al'Iksir", groups:['Principaux'], theme:'sorciere', player:'elle', acts:{} },
@@ -1439,7 +1439,7 @@ const contractText = k => { if (!k) return ''; const bits = [!k.days ? `jour ${k
   if (k.rank) bits.unshift('rang ' + k.rank);
   const what = [k.monster, k.place].filter(Boolean).join(' · ');
   return ` (${bits.join(', ')})` + (what ? ' : ' + what : ''); };
-const DETAIL_ACTS = { 'Visite touristique':'Lieu visité (ex. : Phare de Limsa)' };
+const DETAIL_ACTS = { 'Visite touristique':'Lieu visité (ex. : Phare de Limsa)', 'Tourisme et Découverte':'Lieu découvert (ex. : Château de Doma)' };
 // Image du récap pour l'embed Discord : la fiche validée est convertie en PNG (sans le pied de page).
 // Dans l'appli, ce PNG part en pièce jointe du webhook ; ici, on l'affiche pour vérifier le rendu.
 const loadH2I = () => window.htmlToImage ? Promise.resolve(window.htmlToImage) : new Promise((ok, ko) => {
