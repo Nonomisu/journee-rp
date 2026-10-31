@@ -75,6 +75,7 @@ window.RP_SYNC = {
   hasMonth: (y, m) => loaded.has(ymOf(y, m)),
   loadMonth: (y, m) => loadMonth(ymOf(y, m)),
   save: () => schedule(),
+  saveNow: () => flush(),
   // Webhook Discord : rangé dans Firestore (lisible par les deux joueurs seulement), jamais dans le code.
   setWebhook: url => setDoc(doc(db, 'shared', 'discord'), { webhook: url }, { merge: true }),
   // Toute l'année (pour le wrap) : douze mois, tous personnages.

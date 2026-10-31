@@ -100,7 +100,7 @@ a = js.index("  if (d > rpDay) return null;\n  const k = keyOf(d) + ':' + c.id, 
 b = js.index("const daysIn =")
 js = js[:a] + """  if (d > rpDay) return null;
   const e = HISTORY[c.id]?.[keyOf(d)];
-  if (!e || !(e.done || e.mood || e.checked?.length)) return null;
+  if (!e || !(e.done || e.mood || e.checked?.size || e.checked?.length)) return null;
   return { mood: e.mood || '', acts: [...(e.checked || [])], slots: e.slots || {}, place: [...(e.places || [])][0] || '', region: e.region || homeRegion(c.id),
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
     tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])] } : null,
@@ -147,7 +147,7 @@ js = one(js, "initPlaces();\ntry { window.addEventListener('hashchange', () => g
   "initPlaces();\n" + pathlib.Path(__file__).with_name('persist.js').read_text() + pathlib.Path(__file__).with_name('discord-part.js').read_text() + pathlib.Path(__file__).with_name('push-part.js').read_text())
 # Discord : envoi à la validation, état d'envoi dans le pied du récap, réglage du webhook (Nono)
 js = one(js, "document.getElementById('done-'+id).addEventListener('click', () => { s.done = true; s.doneAt ??= Date.now(); renderNav(); renderChar(id); });",
-  "document.getElementById('done-'+id).addEventListener('click', () => { s.done = true; s.doneAt ??= Date.now(); renderNav(); renderChar(id); window.RP_DISCORD?.send(id); });")
+  "document.getElementById('done-'+id).addEventListener('click', () => { s.done = true; s.doneAt ??= Date.now(); renderNav(); renderChar(id); window.RP_SYNC?.saveNow(); window.RP_DISCORD?.send(id); });")
 js = one(js, '<footer class="recap-foot"><span>✓ Journée validée</span>', '<footer class="recap-foot"><span>✓ Journée validée${window.RP_DISCORD ? RP_DISCORD.status(id) : \'\'}</span>')
 # Réglage Discord (Nono) : discret, tout en bas de l'accueil
 js = re.sub(r"(SOON\.map\(n => `<div class=\"card soon\".*?\.join\(''\) : ''\}\n    </div>)`;",

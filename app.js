@@ -1029,7 +1029,7 @@ const dayRecord = (c, d) => {
   }
   if (d > rpDay) return null;
   const e = HISTORY[c.id]?.[keyOf(d)];
-  if (!e || !(e.done || e.mood || e.checked?.length)) return null;
+  if (!e || !(e.done || e.mood || e.checked?.size || e.checked?.length)) return null;
   return { mood: e.mood || '', acts: [...(e.checked || [])], slots: e.slots || {}, place: [...(e.places || [])][0] || '', region: e.region || homeRegion(c.id),
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
     tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])] } : null,
@@ -1898,7 +1898,7 @@ function renderChar(id) {
     else s.specials.push(v);
     s.checked.add(v); renderChar(id);
   });
-  document.getElementById('done-'+id).addEventListener('click', () => { s.done = true; s.doneAt ??= Date.now(); renderNav(); renderChar(id); window.RP_DISCORD?.send(id); });
+  document.getElementById('done-'+id).addEventListener('click', () => { s.done = true; s.doneAt ??= Date.now(); renderNav(); renderChar(id); window.RP_SYNC?.saveNow(); window.RP_DISCORD?.send(id); });
 }
 
 function go(id) { current = id; renderNav(); id === 'home' ? renderHome() : renderChar(id); window.scrollTo({ top:0 }); }
