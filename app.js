@@ -1320,7 +1320,7 @@ function renderHistory(id) {
           ${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(esc).join(' · ')}</span></p>` : ''}
           ${selRec.phys.length ? `<p class="where">${icon('heartbeat')}<span>${selRec.phys.map(p => physLabel(id, p)).join(', ')}</span></p>` : ''}
           ${selRec.trip ? `<p class="where">${icon('route')}<span>Voyage</span></p>` : ''}
-          ${selRec.hot ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude</span></p>` : ''}`
+          ${selRec.hot ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${selRec.with ? ' avec ' + esc(whoLabel(selRec.with)) : ''}</span></p>` : (n => n ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${n.with ? ' avec ' + esc(whoLabel(n.with)) : ''}</span></p>` : '')(nightOn(c, sel))}`
         : `<p class="reserved">Pas de fiche remplie ce jour-là.</p>${(n => n ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${n.with ? ' avec ' + esc(whoLabel(n.with)) : ''}</span></p>` : '')(nightOn(c, sel))}`}
       </div>` : '<p class="reserved">Touche un jour pour revoir sa fiche.</p>'}
     </section>
