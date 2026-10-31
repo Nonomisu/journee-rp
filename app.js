@@ -154,12 +154,13 @@ let current = 'home', filter = 'all', groupFilter = 'all';
 let me = 'corentin';
 const PLAYER_NAME = { corentin:'Nono', elle:'Jynette' };
 // ---------- Nouvelles : ce que l'autre joueur a ajouté sur vos personnages ----------
-const NEWS = [];   // { to, text, charId, key, read }
+const NEWS = [];   // { to, text, charId, key, read, at (heure de création) }
+let newsDayOpen = false;   // menu « Nouvelles du jour » ouvert ou replié (garde l'état entre deux affichages)
 const playerOf = id => C.find(c => c.id === id)?.player;
 const notify = (from, to, text, key) => {
   if (!isChar(to) || playerOf(from) === playerOf(to)) return;          // seulement d'un joueur à l'autre
   if (NEWS.some(n => n.key === key)) return;
-  NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false, src: from });
+  NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false, src: from, at: Date.now() });
 };
 // Phrases tirées au sort (la même pour une même nuit).
 const queName = n => (/^[aeiouéèh]/i.test(n) ? "qu'" : 'que ') + n;
@@ -184,7 +185,7 @@ const NIGHT_LINES_KHURDAN = [
 ];
 // Nuits de Khopses avec un client : Viggo reçoit une nouvelle, et une autre si elle l'appelle.
 const CLIENT_PARTNER = { khopses:'viggo' };
-const pushNews = (to, text, key, src) => { if (!NEWS.some(n => n.key === key)) NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false, src }); };
+const pushNews = (to, text, key, src) => { if (!NEWS.some(n => n.key === key)) NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false, src, at: Date.now() }); };
 const CLIENT_LINES = [
   (f, m) => `${f} a passé la nuit avec un client.`,
   (f, m) => `Nuit de travail pour ${f} : un client a réservé ses charmes.`,
@@ -461,6 +462,9 @@ const MS_NEWS = {
 // Toutes les nouvelles ne partent qu'une fois validée la fiche qui les a déclenchées.
 const newsReady = n => !n.src || !!state[n.src]?.done;
 const myNews = () => NEWS.filter(n => n.to === me && newsReady(n));
+// Nouvelles reçues pendant la journée RP en cours (elle commence à 5 h), lues ou non : historique du jour.
+const newsOfToday = () => myNews().filter(n => n.at && sameDay(new Date(n.at - 5 * 3600e3), rpDay)).sort((a, b) => b.at - a.at);
+const newsHour = n => new Date(n.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 const canEdit = id => C.find(c => c.id === id)?.player === me;
 const shown = c => (filter === 'all' || c.player === filter) && (groupFilter === 'all' || c.groups.includes(groupFilter));
 const root = document.documentElement;
@@ -1534,9 +1538,12 @@ function renderHome() {
   document.getElementById('view').innerHTML = `
     <p class="session">Connecté : ${PLAYER_NAME[me]} · <button type="button" class="link" id="signout">Se déconnecter</button></p>
     <header><p class="kicker">Journée RP</p><h1>Aujourd'hui</h1><p class="date">${today}<br>${eorzeaDate}</p>${(f => f ? `<p class="fest home-fest">${icon('star')}En Eorzea : ${f.name}</p>` : '')(festivalOn(rpDay))}</header>
-    ${(list => list.length ? `<section class="news"><h2>${icon('bell')}Nouvelles${list.some(n => !n.read) ? ` <span class="badge">${list.filter(n => !n.read).length}</span>` : ''}</h2>
-      <ul>${list.slice(0, 8).map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
-      ${list.some(n => !n.read) ? `<button type="button" class="link" id="news-read">Tout marquer comme lu</button>` : ''}</section>` : '')(myNews())}
+    ${((unread, day) => unread.length || day.length ? `<section class="news"><h2>${icon('bell')}Nouvelles${unread.length ? ` <span class="badge">${unread.length}</span>` : ''}</h2>
+      ${unread.length ? `<ul>${unread.slice(0, 8).map(n => `<li class="unread"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
+      <button type="button" class="link" id="news-read">Tout marquer comme lu</button>` : '<p class="reserved">Rien de nouveau pour l\'instant.</p>'}
+      ${day.length ? `<details class="news-day"${newsDayOpen ? ' open' : ''}><summary>Nouvelles du jour (${day.length})</summary>
+        <ul>${day.map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}"><small>${newsHour(n)}</small> ${esc(n.text)}</button></li>`).join('')}</ul></details>` : ''}
+      </section>` : '')(myNews().filter(n => !n.read), newsOfToday())}
     ${wrapBanner(`<div class="wrap-open">${C.filter(c => c.player === me).map(c => `<button type="button" class="btn" data-wrap-open="${c.id}">${c.name}</button>`).join('')}</div>`)}
     <div class="grid">
       ${visible.map(c => { const t = THEMES[c.theme]; const s = state[c.id];
@@ -1905,6 +1912,7 @@ document.addEventListener('click', async e => {
 });
 document.addEventListener('click', e => { if (e.target.closest('#signout')) window.RP_SYNC?.signOut(); });
 document.addEventListener('click', e => {
+  const sm = e.target.closest('.news-day summary'); if (sm) { newsDayOpen = !sm.parentElement.open; return; }
   if (e.target.closest('#news-read')) { myNews().forEach(n => n.read = true); go(current); return; }
   const b = e.target.closest('.news [data-go]'); if (b) myNews().filter(n => n.charId === b.dataset.go).forEach(n => n.read = true);
 });
@@ -1981,6 +1989,8 @@ const applyGlobal = g => {
 const dayOf = () => enc({ nights: nightsBy, filmed, weather: weatherOn,
   protect: Object.fromEntries(C.map(c => [c.id, !!state[c.id].protect])),
   shell: Object.fromEntries(C.map(c => [c.id, !!state[c.id].shell])) });
+// Heure de création d'une nouvelle venue de Firestore (horodatage serveur, ou texte ISO dans les tests).
+const newsAt = n => n.createdAt?.toMillis?.() ?? (n.createdAt ? Date.parse(n.createdAt) : null);
 const applyDay = g => {
   const d = dec(g || {});
   if ('nights' in d) replaceObj(nightsBy, d.nights);
@@ -2014,7 +2024,7 @@ window.RP_APP = {
   hydrate: ({ global, day, chars, news }) => {
     applyGlobal(global); applyDay(day);
     C.forEach(c => applyChar(c, chars[c.id]));
-    replaceArr(NEWS, (news || []).map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read })));
+    replaceArr(NEWS, (news || []).map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read, at: newsAt(n) })));
   },
   // data : { '30': entrée, … } d'un document days/{id}/months/{AAAA-MM}
   applyMonth: (id, ym, data, withToday) => {
@@ -2027,7 +2037,7 @@ window.RP_APP = {
   applyNews: list => {
     list.forEach(n => {
       const x = NEWS.find(o => o.key === n.key);
-      if (x) x.read = !!n.read; else NEWS.unshift({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read });
+      if (x) x.read = !!n.read; else NEWS.unshift({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read, at: newsAt(n) || Date.now() });
     });
   },
   snapshot: () => {

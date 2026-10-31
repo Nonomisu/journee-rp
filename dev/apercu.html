@@ -360,6 +360,9 @@ button.link { background: none; border: 0; padding: 0; color: var(--gold); text-
 .news li button { text-decoration: none; color: var(--dim); font-size: .95rem; text-align: left; }
 .news li.unread button { color: var(--text); font-weight: 500; }
 .news li.unread::before { content: "● "; color: #d8708a; }
+.news-day summary { cursor: pointer; color: var(--dim); font-size: .9rem; }
+.news-day[open] summary { margin-bottom: .4rem; }
+.news-day small { color: var(--dim); font-variant-numeric: tabular-nums; margin-right: .25rem; }
 .news-dot { width: .45rem; height: .45rem; border-radius: 50%; background: #d8708a; margin-left: .15rem; }
 .return-hour select { background: var(--surface); color: var(--text); border: 1px solid var(--rule); border-radius: 6px; padding: .25rem .5rem; font: inherit; margin-left: .3rem; }
 .contract { display: grid; grid-template-columns: 1fr 1fr; gap: .45rem .6rem; margin: .4rem 0 .3rem 1.9rem; }
@@ -713,12 +716,13 @@ let current = 'home', filter = 'all', groupFilter = 'all';
 let me = 'corentin';
 const PLAYER_NAME = { corentin:'Nono', elle:'Jynette' };
 // ---------- Nouvelles : ce que l'autre joueur a ajouté sur vos personnages ----------
-const NEWS = [];   // { to, text, charId, key, read }
+const NEWS = [];   // { to, text, charId, key, read, at (heure de création) }
+let newsDayOpen = false;   // menu « Nouvelles du jour » ouvert ou replié (garde l'état entre deux affichages)
 const playerOf = id => C.find(c => c.id === id)?.player;
 const notify = (from, to, text, key) => {
   if (!isChar(to) || playerOf(from) === playerOf(to)) return;          // seulement d'un joueur à l'autre
   if (NEWS.some(n => n.key === key)) return;
-  NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false, src: from });
+  NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false, src: from, at: Date.now() });
 };
 // Phrases tirées au sort (la même pour une même nuit).
 const queName = n => (/^[aeiouéèh]/i.test(n) ? "qu'" : 'que ') + n;
@@ -743,7 +747,7 @@ const NIGHT_LINES_KHURDAN = [
 ];
 // Nuits de Khopses avec un client : Viggo reçoit une nouvelle, et une autre si elle l'appelle.
 const CLIENT_PARTNER = { khopses:'viggo' };
-const pushNews = (to, text, key, src) => { if (!NEWS.some(n => n.key === key)) NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false, src }); };
+const pushNews = (to, text, key, src) => { if (!NEWS.some(n => n.key === key)) NEWS.unshift({ to: playerOf(to), text, charId: to, key, read: false, src, at: Date.now() }); };
 const CLIENT_LINES = [
   (f, m) => `${f} a passé la nuit avec un client.`,
   (f, m) => `Nuit de travail pour ${f} : un client a réservé ses charmes.`,
@@ -1021,6 +1025,9 @@ const MS_NEWS = {
 // Toutes les nouvelles ne partent qu'une fois validée la fiche qui les a déclenchées.
 const newsReady = n => !n.src || !!state[n.src]?.done;
 const myNews = () => NEWS.filter(n => n.to === me && newsReady(n));
+// Nouvelles reçues pendant la journée RP en cours (elle commence à 5 h), lues ou non : historique du jour.
+const newsOfToday = () => myNews().filter(n => n.at && sameDay(new Date(n.at - 5 * 3600e3), rpDay)).sort((a, b) => b.at - a.at);
+const newsHour = n => new Date(n.at).toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 const canEdit = id => C.find(c => c.id === id)?.player === me;
 const shown = c => (filter === 'all' || c.player === filter) && (groupFilter === 'all' || c.groups.includes(groupFilter));
 const root = document.documentElement;
@@ -2117,9 +2124,12 @@ function renderHome() {
     <div class="whoami" role="group" aria-label="Aperçu : je suis">Aperçu, connecté en tant que
       ${Object.entries(PLAYER_NAME).map(([k, n]) => `<button type="button" data-me="${k}" aria-pressed="${me === k}">${n}</button>`).join('')}</div>
     <header><p class="kicker">Journée RP</p><h1>Aujourd'hui</h1><p class="date">${today}<br>${eorzeaDate}</p>${(f => f ? `<p class="fest home-fest">${icon('star')}En Eorzea : ${f.name}</p>` : '')(festivalOn(rpDay))}</header>
-    ${(list => list.length ? `<section class="news"><h2>${icon('bell')}Nouvelles${list.some(n => !n.read) ? ` <span class="badge">${list.filter(n => !n.read).length}</span>` : ''}</h2>
-      <ul>${list.slice(0, 8).map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
-      ${list.some(n => !n.read) ? `<button type="button" class="link" id="news-read">Tout marquer comme lu</button>` : ''}</section>` : '')(myNews())}
+    ${((unread, day) => unread.length || day.length ? `<section class="news"><h2>${icon('bell')}Nouvelles${unread.length ? ` <span class="badge">${unread.length}</span>` : ''}</h2>
+      ${unread.length ? `<ul>${unread.slice(0, 8).map(n => `<li class="unread"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
+      <button type="button" class="link" id="news-read">Tout marquer comme lu</button>` : '<p class="reserved">Rien de nouveau pour l\'instant.</p>'}
+      ${day.length ? `<details class="news-day"${newsDayOpen ? ' open' : ''}><summary>Nouvelles du jour (${day.length})</summary>
+        <ul>${day.map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}"><small>${newsHour(n)}</small> ${esc(n.text)}</button></li>`).join('')}</ul></details>` : ''}
+      </section>` : '')(myNews().filter(n => !n.read), newsOfToday())}
     ${wrapBanner(`<div class="wrap-open">${C.filter(c => c.player === me).map(c => `<button type="button" class="btn" data-wrap-open="${c.id}">${c.name}</button>`).join('')}</div>`)}
     <div class="grid">
       ${visible.map(c => { const t = THEMES[c.theme]; const s = state[c.id];
@@ -2488,6 +2498,7 @@ document.addEventListener('click', async e => {
 });
 document.addEventListener('click', e => { const b = e.target.closest('[data-me]'); if (b) { me = b.dataset.me; go(current); } });
 document.addEventListener('click', e => {
+  const sm = e.target.closest('.news-day summary'); if (sm) { newsDayOpen = !sm.parentElement.open; return; }
   if (e.target.closest('#news-read')) { myNews().forEach(n => n.read = true); go(current); return; }
   const b = e.target.closest('.news [data-go]'); if (b) myNews().filter(n => n.charId === b.dataset.go).forEach(n => n.read = true);
 });

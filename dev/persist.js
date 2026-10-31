@@ -63,6 +63,8 @@ const applyGlobal = g => {
 const dayOf = () => enc({ nights: nightsBy, filmed, weather: weatherOn,
   protect: Object.fromEntries(C.map(c => [c.id, !!state[c.id].protect])),
   shell: Object.fromEntries(C.map(c => [c.id, !!state[c.id].shell])) });
+// Heure de création d'une nouvelle venue de Firestore (horodatage serveur, ou texte ISO dans les tests).
+const newsAt = n => n.createdAt?.toMillis?.() ?? (n.createdAt ? Date.parse(n.createdAt) : null);
 const applyDay = g => {
   const d = dec(g || {});
   if ('nights' in d) replaceObj(nightsBy, d.nights);
@@ -96,7 +98,7 @@ window.RP_APP = {
   hydrate: ({ global, day, chars, news }) => {
     applyGlobal(global); applyDay(day);
     C.forEach(c => applyChar(c, chars[c.id]));
-    replaceArr(NEWS, (news || []).map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read })));
+    replaceArr(NEWS, (news || []).map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read, at: newsAt(n) })));
   },
   // data : { '30': entrée, … } d'un document days/{id}/months/{AAAA-MM}
   applyMonth: (id, ym, data, withToday) => {
@@ -109,7 +111,7 @@ window.RP_APP = {
   applyNews: list => {
     list.forEach(n => {
       const x = NEWS.find(o => o.key === n.key);
-      if (x) x.read = !!n.read; else NEWS.unshift({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read });
+      if (x) x.read = !!n.read; else NEWS.unshift({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read, at: newsAt(n) || Date.now() });
     });
   },
   snapshot: () => {
