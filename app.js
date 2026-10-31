@@ -583,7 +583,7 @@ const REGIONS = {
   } },
   othard:   { label:'Othard', city:'beijing', zones:{
     steppe:        { label:"Steppe d'Azim", city:'ulaanbaatar', places:['Khurdan Iloh', 'Yourte commune', 'Yourte des savoirs', 'Yourte mammouth', "Yourte d'Ankhbayar", "Yourte d'Inkaraa & Khokkutsai", 'Yourte de Javkhaanhun', 'Yourte de Taiga & Tamachag', "Yourte d'Ogloo", 'Le Ralliement', 'Yourte Unegen'] },
-    yanxia:        { label:'Yanxia', city:'liujia', places:['Liujia', 'Doma', 'Porte de Cieux : Temple des Héritiers des Dosojins'] },
+    yanxia:        { label:'Yanxia', city:'liujia', places:['Liujia', 'Doma', 'Porte des Cieux : Temple des Héritiers des Dosojins'] },
     rubis:         { label:'Mer de Rubis', city:'rubis', places:[] },
     hingashi:      { label:'Hingashi', city:'beijing', places:['Shirogane', 'Chez Unegen', 'Chez Hokkyoku'] },
     nagxia:        { label:'Nagxia', city:'vietnam', places:[] },                         // centre du Vietnam
