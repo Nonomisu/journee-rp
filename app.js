@@ -829,7 +829,7 @@ const setNight = (id, hot, w) => {
     const prev = nightsBy[nw]?.with;
     if (prev && prev !== id && isChar(prev) && nightsBy[prev]?.with === nw) { nightsBy[prev] = { hot:false, with:null }; dropNews(pairKeys(prev, nw)); }
     nightsBy[nw] = { hot:true, with:id };
-    { const k = 'night:' + keyOf(rpDay) + ':' + [id, nw].sort().join('+'); notify(id, nw, pickLine(nightLinesFor(id, nw), k)(nameOf(id), nameOf(nw)), k); }
+    { const k = 'night:' + keyOf(rpDay) + ':' + [id, nw].sort().join('+'); notify(id, nw, pickLine(nightLinesFor(nw, id), k)(nameOf(nw), nameOf(id)), k); }   // la nouvelle parle du personnage du destinataire (ou du couple)
     applyProtect(nw);
   }
   if (hot) applyProtect(id);
@@ -1368,7 +1368,7 @@ const bindMilestones = id => {
     const key = keyOf(rpDay);
     milestonesOf(id).push({ key, type: s.msType, note, with: withP });
     if (withP) { milestonesOf(withP).push({ key, type: s.msType, note, with: id });
-      notify(id, withP, (MS_NEWS[s.msType] || ((a, b) => `Moment marquant pour ${a} et ${b} : ${s.msType.toLowerCase()}`))(nameOf(id), nameOf(withP)), 'ms:' + key + ':' + s.msType + ':' + [id, withP].sort().join('+')); }
+      notify(id, withP, (MS_NEWS[s.msType] || ((a, b) => `Moment marquant pour ${a} et ${b} : ${s.msType.toLowerCase()}`))(nameOf(withP), nameOf(id)), 'ms:' + key + ':' + s.msType + ':' + [id, withP].sort().join('+')); }
     s.msOpen = false; renderChar(id);
   });
   document.querySelectorAll('[data-ms-del]').forEach(b => b.addEventListener('click', () => {
