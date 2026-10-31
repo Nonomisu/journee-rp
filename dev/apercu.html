@@ -2124,12 +2124,12 @@ function renderHome() {
     <div class="whoami" role="group" aria-label="Aperçu : je suis">Aperçu, connecté en tant que
       ${Object.entries(PLAYER_NAME).map(([k, n]) => `<button type="button" data-me="${k}" aria-pressed="${me === k}">${n}</button>`).join('')}</div>
     <header><p class="kicker">Journée RP</p><h1>Aujourd'hui</h1><p class="date">${today}<br>${eorzeaDate}</p>${(f => f ? `<p class="fest home-fest">${icon('star')}En Eorzea : ${f.name}</p>` : '')(festivalOn(rpDay))}</header>
-    ${((unread, day) => unread.length || day.length ? `<section class="news"><h2>${icon('bell')}Nouvelles${unread.length ? ` <span class="badge">${unread.length}</span>` : ''}</h2>
+    ${((unread, day) => `<section class="news"><h2>${icon('bell')}Nouvelles${unread.length ? ` <span class="badge">${unread.length}</span>` : ''}</h2>
       ${unread.length ? `<ul>${unread.slice(0, 8).map(n => `<li class="unread"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
       <button type="button" class="link" id="news-read">Tout marquer comme lu</button>` : '<p class="reserved">Rien de nouveau pour l\'instant.</p>'}
-      ${day.length ? `<details class="news-day"${newsDayOpen ? ' open' : ''}><summary>Nouvelles du jour (${day.length})</summary>
-        <ul>${day.map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}"><small>${newsHour(n)}</small> ${esc(n.text)}</button></li>`).join('')}</ul></details>` : ''}
-      </section>` : '')(myNews().filter(n => !n.read), newsOfToday())}
+      <details class="news-day"${newsDayOpen ? ' open' : ''}><summary>Nouvelles du jour (${day.length})</summary>
+        ${day.length ? `<ul>${day.map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}"><small>${newsHour(n)}</small> ${esc(n.text)}</button></li>`).join('')}</ul>` : '<p class="reserved">Aucune nouvelle depuis 5 h ce matin.</p>'}</details>
+      </section>`)(myNews().filter(n => !n.read), newsOfToday())}
     ${wrapBanner(`<div class="wrap-open">${C.filter(c => c.player === me).map(c => `<button type="button" class="btn" data-wrap-open="${c.id}">${c.name}</button>`).join('')}</div>`)}
     <div class="grid">
       ${visible.map(c => { const t = THEMES[c.theme]; const s = state[c.id];
