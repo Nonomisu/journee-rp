@@ -158,6 +158,9 @@ assert 'preview-note' not in js, 'reste d\'aperçu'
 
 (OUT / 'app.js').write_text('// Journée RP — logique de l\'appli (générée depuis l\'aperçu, voir dev/build.py).\n' + js.strip() + '\n')
 page = '<!doctype html>\n<html lang="fr">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">\n' + page.replace('<style>', '</head>\n<body>\n<style>', 0)
-page_out = page + '<script src="app.js" charset="utf-8"></script>\n<script type="module" src="sync.js"></script>\n' + tail.strip() + '\n'
+# Adresses versionnées (?v=empreinte) : un téléphone ne peut pas garder une ancienne version d'app.js / sync.js en cache.
+import hashlib
+ver = lambda f: hashlib.sha256((OUT / f).read_bytes()).hexdigest()[:10]
+page_out = page + f'<script src="app.js?v={ver("app.js")}" charset="utf-8"></script>\n<script type="module" src="sync.js?v={ver("sync.js")}"></script>\n' + tail.strip() + '\n'
 (OUT / 'index.html').write_text(page_out)
 print('ok', len(js.splitlines()), 'lignes JS')
