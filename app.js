@@ -38,6 +38,7 @@ const C = [
     quotidien:['Entretien des armes de chasse','Cuisine','Entraînement à l\'arc','Cours à la yourte des savoirs'],
     metier:['Pistage','Pose et relève des pièges','Dépeçage et tannage des peaux','Rapporter le gibier au camp','Prépare la viande issue de la chasse','Chasse solo','Chasse en groupe'],
     liens:['Temps avec Khubunjin','Moment avec Khokkutsai','Sexe avec Khubunjin'] } },
+  { id:'tengis', name:'Tengis', surname:'Khurdan', groups:['Khurdans'], theme:'khurdan', player:'corentin', acts:{ metier:['Chasse solo','Chasse en groupe'] } },
   { id:'taiga', name:'Taiga', surname:'Khurdan', groups:['Khurdans'], theme:'khurdan', player:'elle', acts:{ metier:['Chasse solo','Chasse en groupe'] } },
   { id:'khubunjin', name:'Khubunjin', surname:'', groups:['Khurdans'], theme:'khurdan', player:'elle', acts:{ metier:['Chasse solo','Chasse en groupe'] } },
   { id:'inkaraa', name:'Inkaraa', surname:'Khurdan', groups:['Khurdans'], theme:'khurdan', player:'elle', acts:{ metier:['Tatoue au Ralliement'] } },
@@ -132,7 +133,7 @@ const EOOR_PLACES = ['Grand Bazar', 'Chez Eoor', 'Chez Yasmeen', 'Thavnair'];
 const PLACES = {
   echo:['S9','Tuliyollal'], prism:['S9','Tuliyollal'],
   tamachag:KHURDAN_PLACES, khokkutsai:KHURDAN_PLACES, ankhbayar:KHURDAN_PLACES, taiga:KHURDAN_PLACES, khubunjin:KHURDAN_PLACES,
-  inkaraa:KHURDAN_PLACES, ogloo:KHURDAN_PLACES, javkhaanhun:KHURDAN_PLACES, davaajav:[...KHURDAN_PLACES, 'La Coupe', "Ul'dah"],
+  inkaraa:KHURDAN_PLACES, ogloo:KHURDAN_PLACES, javkhaanhun:KHURDAN_PLACES, tengis:KHURDAN_PLACES, davaajav:[...KHURDAN_PLACES, 'La Coupe', "Ul'dah"],
   khopses:['Lavandière','Brumée'],
   eoor:[...EOOR_PLACES, 'Gridania', 'Ala Mhigo', 'Rocasternes', 'Tuliyollal', "Yak'Tel"], yasmeen:[...EOOR_PLACES, 'Tuliyollal', "Yak'Tel"],
   unegen:['Shirogane','Eorzea','Grand Bazar'], hokkyoku:['Shirogane','Eorzea','Grand Bazar'],
@@ -596,11 +597,11 @@ const EOOR_HIDDEN = ['othard'], KHURDAN_HIDDEN = ['eorzea', 'ilsabard', 'thavnai
 const S9_HIDDEN = ['eorzea', 'ilsabard', 'othard', 'thavnair'];
 const HIDDEN_REGIONS = { eoor:EOOR_HIDDEN, yasmeen:EOOR_HIDDEN, echo:S9_HIDDEN, prism:S9_HIDDEN,
   tamachag:KHURDAN_HIDDEN, khokkutsai:KHURDAN_HIDDEN, ankhbayar:KHURDAN_HIDDEN, taiga:KHURDAN_HIDDEN,
-  khubunjin:KHURDAN_HIDDEN, inkaraa:KHURDAN_HIDDEN, ogloo:KHURDAN_HIDDEN, javkhaanhun:KHURDAN_HIDDEN };
+  khubunjin:KHURDAN_HIDDEN, inkaraa:KHURDAN_HIDDEN, ogloo:KHURDAN_HIDDEN, javkhaanhun:KHURDAN_HIDDEN, tengis:KHURDAN_HIDDEN };
 // Zones masquées sur certaines fiches (Hingashi, Nagxia et les Mers du Sud pour les Khurdans).
 const KHURDAN_HIDDEN_ZONES = ['hingashi', 'nagxia', 'mersdusud'];
 const HIDDEN_ZONES = { tamachag:KHURDAN_HIDDEN_ZONES, khokkutsai:KHURDAN_HIDDEN_ZONES, ankhbayar:KHURDAN_HIDDEN_ZONES, taiga:KHURDAN_HIDDEN_ZONES,
-  khubunjin:KHURDAN_HIDDEN_ZONES, inkaraa:KHURDAN_HIDDEN_ZONES, ogloo:KHURDAN_HIDDEN_ZONES, javkhaanhun:KHURDAN_HIDDEN_ZONES };
+  khubunjin:KHURDAN_HIDDEN_ZONES, inkaraa:KHURDAN_HIDDEN_ZONES, ogloo:KHURDAN_HIDDEN_ZONES, javkhaanhun:KHURDAN_HIDDEN_ZONES, tengis:KHURDAN_HIDDEN_ZONES };
 // Lieux visibles seulement par certains personnages.
 const EY = ['eoor', 'yasmeen'], UH = ['unegen', 'hokkyoku'], KV = ['khopses', 'viggo'], PE = ['prism', 'echo'];
 const PRIVATE_PLACES = {
@@ -686,7 +687,7 @@ const tempAt = (city, day) => {
 };
 const deg = n => (n < 0 ? '−' + (-n) : n) + '°';
 const HOME_OF = { tamachag:'khurdans', khokkutsai:'khurdans', ankhbayar:'khurdans', taiga:'khurdans', khubunjin:'khurdans',
-  inkaraa:'khurdans', ogloo:'khurdans', javkhaanhun:'khurdans', davaajav:'khurdans',
+  inkaraa:'khurdans', ogloo:'khurdans', javkhaanhun:'khurdans', tengis:'khurdans', davaajav:'khurdans',
   viggo:'viggo', khopses:'viggo', echo:'s9', prism:'s9', eoor:'eoor', yasmeen:'eoor', unegen:'unegen', hokkyoku:'unegen' };
 const seeded = str => { let h = 2166136261; for (const ch of str) { h ^= ch.charCodeAt(0); h = Math.imul(h, 16777619); } return ((h >>> 0) % 100000) / 100000; };
 // Météo cohérente avec la température : pour les personnages rattachés à une ville réelle,
@@ -963,7 +964,7 @@ const khurdanDays = (c, d) => {
 };
 // Anniversaires (dates éorzéennes des fiches converties : une lune par mois, astrale puis ombrale).
 const BIRTHDAYS = { eoor:[8,29], tamachag:[10,16], khokkutsai:[1,27], ankhbayar:[7,22], davaajav:[1,8],
-  taiga:[3,1], inkaraa:[3,26], ogloo:[6,27], javkhaanhun:[11,1], echo:[2,16], unegen:[11,12], viggo:[4,22], yasmeen:[0,10], khopses:[6,22], hokkyoku:[1,29] };   // mois comptés à partir de 0 (0 = janvier)
+  taiga:[3,1], inkaraa:[3,26], tengis:[5,4], ogloo:[6,27], javkhaanhun:[11,1], echo:[2,16], unegen:[11,12], viggo:[4,22], yasmeen:[0,10], khopses:[6,22], hokkyoku:[1,29] };   // mois comptés à partir de 0 (0 = janvier)
 const FRIENDS = [['tamachag','davaajav'], ['taiga','davaajav'], ['khokkutsai','ankhbayar']];
 // Anniversaires vus dans un seul sens (qui voit → de qui).
 const SEES_BIRTHDAY = {
@@ -1401,7 +1402,7 @@ const KHURDAN_HUNT = {
     ],
 };
 // Chasseurs khurdans : même table de prises pour tous.
-const HUNTS = Object.fromEntries(['ankhbayar', 'taiga', 'tamachag', 'khokkutsai', 'javkhaanhun', 'khubunjin'].map(id => [id, KHURDAN_HUNT]));
+const HUNTS = Object.fromEntries(['ankhbayar', 'taiga', 'tamachag', 'khokkutsai', 'javkhaanhun', 'khubunjin', 'tengis'].map(id => [id, KHURDAN_HUNT]));
 // Ankhbayar, chasseur de métier : plus doué que les autres.
 HUNTS.ankhbayar = { ...KHURDAN_HUNT, odds: { solo: .9, group: .95 } };
 // Tableau de chasse de l'année (wrap).
