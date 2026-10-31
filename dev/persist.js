@@ -24,7 +24,8 @@ const entryOf = id => {
   ENTRY_KEYS.forEach(k => { if (s[k] !== undefined) o[k] = s[k]; });
   const n = nightOf(id);
   o.night = { hot: !!n.hot, with: n.hot ? (n.with || null) : null };   // pour l'historique
-  if (FILM_PAIR.includes(id)) o.film = isFilmed(id);                  // vidéo publiée (wrap d'Echo et Prism)
+  if (FILM_PAIR.includes(id)) o.film = isFilmed(id);
+  o.rp = rpPlayed[id] || null;                                        // journée jouée en RP (et avec qui)                  // vidéo publiée (wrap d'Echo et Prism)
   return enc(o);
 };
 const isEmptyVal = v => v === '' || v === false || v === null || v === undefined || (Array.isArray(v) && !v.length)
@@ -33,7 +34,7 @@ const meaningful = e => !!e && (e.night?.hot || Object.entries(e).some(([k, v]) 
 const applyEntry = (id, e) => {
   const s = state[id];
   ENTRY_KEYS.forEach(k => delete s[k]);
-  const d = dec(e || {}); delete d.night; delete d.film;
+  const d = dec(e || {}); delete d.night; delete d.film; delete d.rp;
   Object.assign(s, freshEntry(), d);
 };
 const charDocOf = c => enc({ addedActs: c.addedActs || [], removedActs: [...(c.removedActs || [])],
@@ -61,7 +62,7 @@ const applyGlobal = g => {
   if ('contracts' in d) replaceObj(CONTRACTS, d.contracts);
   if ('workdays' in d) { replaceObj(WORKDAYS, d.workdays); WORKDAYS.khopses ||= new Set(); }
 };
-const dayOf = () => enc({ nights: nightsBy, filmed, weather: weatherOn,
+const dayOf = () => enc({ nights: nightsBy, filmed, weather: weatherOn, rp: rpPlayed,
   protect: Object.fromEntries(C.map(c => [c.id, !!state[c.id].protect])),
   shell: Object.fromEntries(C.map(c => [c.id, !!state[c.id].shell])) });
 // Heure de création d'une nouvelle venue de Firestore (horodatage serveur, ou texte ISO dans les tests).
@@ -70,6 +71,7 @@ const applyDay = g => {
   const d = dec(g || {});
   if ('nights' in d) replaceObj(nightsBy, d.nights);
   if ('filmed' in d) replaceObj(filmed, d.filmed);
+  if ('rp' in d) replaceObj(rpPlayed, d.rp);
   if ('weather' in d) replaceObj(weatherOn, d.weather);
   if (d.protect) C.forEach(c => { if (c.id in d.protect) state[c.id].protect = !!d.protect[c.id]; });
   if (d.shell) C.forEach(c => { if (c.id in d.shell) state[c.id].shell = !!d.shell[c.id]; });

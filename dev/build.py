@@ -99,9 +99,12 @@ js = one(js, "  const { y, m } = cur, n = daysIn(y, m);",
 a = js.index("  if (d > rpDay) return null;\n  const k = keyOf(d) + ':' + c.id, r = seeded(k);")
 b = js.index("const daysIn =")
 js = js[:a] + """  if (d > rpDay) return null;
-  const e = HISTORY[c.id]?.[keyOf(d)];
-  if (!e || !(e.done || e.mood || e.checked?.size || e.checked?.length)) return null;
-  return { mood: e.mood || '', acts: [...(e.checked || [])], slots: e.slots || {}, place: [...(e.places || [])][0] || '', region: e.region || homeRegion(c.id),
+  const e0 = HISTORY[c.id]?.[keyOf(d)];
+  // Jouée en RP : notée sur sa fiche, ou sur celle de son partenaire de jeu (la sienne a pu ne pas être enregistrée)
+  const rp = e0?.rp || C.find(x => x.id !== c.id && HISTORY[x.id]?.[keyOf(d)]?.rp === c.id)?.id || null;
+  if (!rp && (!e0 || !(e0.done || e0.mood || e0.checked?.size || e0.checked?.length))) return null;
+  const e = e0 || {};
+  return { rp, mood: e.mood || '', acts: [...(e.checked || [])], slots: e.slots || {}, place: [...(e.places || [])][0] || '', region: e.region || homeRegion(c.id),
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
     tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])] } : null,
     phys: [...(e.phys || [])], real: true };

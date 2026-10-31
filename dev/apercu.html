@@ -1412,6 +1412,17 @@ const setNight = (id, hot, w) => {
   checkRisk(id);
 };
 const nameOf = id => C.find(x => x.id === id).name;
+// Journée jouée en RP : cochée par binôme (les deux fiches comptent comme remplies, même sans activités).
+const rpPlayed = {};   // id → id du partenaire de jeu, ou 'pnj' (seul·e ou avec des PNJ)
+const setRp = (id, on, w) => {
+  const unlink = x => { const o = rpPlayed[x]; if (o && isChar(o) && rpPlayed[o] === x) delete rpPlayed[o]; delete rpPlayed[x]; };
+  unlink(id);
+  if (!on) return;
+  const p = w || 'pnj';
+  if (isChar(p)) unlink(p);
+  rpPlayed[id] = p; if (isChar(p)) rpPlayed[p] = id;
+};
+const rpLabel = id => { const w = rpPlayed[id]; return w ? 'Journée jouée en RP' + (isChar(w) ? ' avec ' + nameOf(w) : '') : ''; };
 // Nuit chaude entre Echo et Prism : « Filmé et publié en ligne », avec un nombre de vues tiré au sort.
 const FILM_PAIR = ['echo', 'prism'];
 const filmed = {};   // clé du jour → true
@@ -1592,8 +1603,8 @@ const dayRecord = (c, d) => {
   const s = state[c.id], city = defaultCity(c.id);
   const cond = city ? (() => { const tp = tempAt(city, d); return { ...cityWeather(city, tp, d), tp }; })() : null;
   if (sameDay(d, rpDay)) {
-    const filled = s.done || s.mood || s.checked.size;
-    return filled ? { mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
+    const filled = s.done || s.mood || s.checked.size || rpPlayed[c.id];
+    return filled ? { rp: rpPlayed[c.id] || null, mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
       cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])] } : null,
       phys: [...(s.phys || [])], real: true } : null;
   }
@@ -1909,6 +1920,7 @@ function renderHistory(id) {
       <p class="reserved cal-legend"><span class="key filled"></span> journée remplie · <i class="heart"></i> nuit chaude · <i class="fest-dot"></i> fête · <i class="bday-dot"></i> anniversaire · <i class="ms-mark">✦</i> moment marquant</p>
       ${sel ? `<div class="day-detail">
         ${milestonesOn(id, sel).map(m => `<p class="milestone">${icon('ring')}<span>${esc(msLabel(m))}</span></p>`).join('')}
+        ${selRec?.rp ? `<p class="where">${icon('star')}<span>Journée jouée en RP${isChar(selRec.rp) ? ' avec ' + esc(nameOf(selRec.rp)) : ''}</span></p>` : ''}
         <h3>${fmtDay(sel)}${specialDays(c, sel, selRec || { real: sameDay(sel, rpDay) }).map(x => ' · ' + esc(x)).join('')}</h3>
         ${selRec ? `
           ${selRec.mood ? `<p class="recap-mood small">${esc(selRec.mood)}</p>` : ''}
@@ -2134,7 +2146,7 @@ function renderNav() {
     html += `<li class="nav-group">${g}</li>`;
     members.forEach(c => {
       const t = THEMES[c.theme], dup = seen.has(c.id); seen.add(c.id);
-      html += `<li class="${dup?'dup':''}"><button type="button" class="chip" id="nav-${c.id}-${g}" style="${vars(t)}" data-go="${c.id}" ${current===c.id?'aria-current="true"':''}><span class="g" aria-hidden="true">${t.glyph}</span>${c.name}${myNews().some(n => !n.read && n.charId === c.id) ? '<span class="news-dot" aria-label="nouvelle"></span>' : ''}<span class="dot ${state[c.id].done?'done':''}" aria-label="${state[c.id].done?'terminé':'à faire'}"></span></button></li>`;
+      html += `<li class="${dup?'dup':''}"><button type="button" class="chip" id="nav-${c.id}-${g}" style="${vars(t)}" data-go="${c.id}" ${current===c.id?'aria-current="true"':''}><span class="g" aria-hidden="true">${t.glyph}</span>${c.name}${myNews().some(n => !n.read && n.charId === c.id) ? '<span class="news-dot" aria-label="nouvelle"></span>' : ''}<span class="dot ${state[c.id].done || rpPlayed[c.id] ? 'done' : ''}" aria-label="${state[c.id].done ? 'terminé' : rpPlayed[c.id] ? 'jouée en RP' : 'à faire'}"></span></button></li>`;
     });
   });
   list.innerHTML = html;
@@ -2162,7 +2174,7 @@ function renderHome() {
           <span class="grp">${t.glyph} ${c.groups.join(' · ')}</span><span class="name">${c.name}</span>
           ${(w => w ? `<span class="wx">${icon(w.icon)}${w.label}</span>` : '')(weatherFor(c.id))}
           ${alerts[c.id] ? `<span class="card-alert">${icon('warn')}${esc(alerts[c.id])}</span>` : ''}
-          <span class="state ${s.done?'done':''}">${s.done ? '✓ Terminé' : (s.mood || s.checked.size ? 'En cours' : 'À remplir')}</span></button>`; }).join('')}
+          <span class="state ${s.done || rpPlayed[c.id] ? 'done' : ''}">${s.done ? '✓ Terminé' : rpPlayed[c.id] ? '✓ Jouée en RP' : (s.mood || s.checked.size ? 'En cours' : 'À remplir')}</span></button>`; }).join('')}
       ${filter !== 'elle' ? SOON.map(n => `<div class="card soon" style="${vars(THEMES.alamhigo)}"><span class="grp">À venir</span><span class="name">${n}</span></div>`).join('') : ''}
     </div>`;
 }
@@ -2249,7 +2261,8 @@ function renderChar(id) {
         <p class="date">${today} · ${eorzeaDate}</p>
         <div class="day-info">${chips}</div>
       </header>
-      ${!s.done && !s.mood && !s.checked.size ? `<p class="reserved">${c.name} n'a pas encore rempli sa journée.</p>` : s.mood ? `<blockquote class="recap-mood">${esc(s.mood)}</blockquote>` : '<p class="reserved">Pas de mood renseigné.</p>'}
+      ${rpPlayed[id] ? `<p class="where">${icon('star')}<span>${esc(rpLabel(id))}</span></p>` : ''}
+      ${!s.done && !s.mood && !s.checked.size && !rpPlayed[id] ? `<p class="reserved">${c.name} n'a pas encore rempli sa journée.</p>` : s.mood ? `<blockquote class="recap-mood">${esc(s.mood)}</blockquote>` : '<p class="reserved">Pas de mood renseigné.</p>'}
       ${placesLine}
       ${eventsBlock(c, false)}
       ${milestonesOn(id, rpDay).map(m => `<p class="milestone">${icon('ring')}<span>${esc(msLabel(m))}</span></p>`).join('')}
@@ -2292,6 +2305,10 @@ function renderChar(id) {
       <div class="day-info">${chips}</div>
       ${HOMES[HOME_OF[id]]?.optIn ? `<label class="check-inline wx-toggle"><input type="checkbox" id="wx-${id}" ${weatherOn[HOME_OF[id]]?'checked':''}> Météo du jour</label>` : ''}
       </header>
+    <section class="rp-played"><label class="act"><input type="checkbox" id="rp-${id}" ${rpPlayed[id] ? 'checked' : ''}>${icon('star')}<span>Journée jouée en RP</span></label>
+      ${rpPlayed[id] ? `<label class="check-inline">avec <select id="rp-with-${id}"><option value="pnj">personne d'autre (seul·e ou PNJ)</option>
+        ${C.filter(x => x.id !== id).map(x => `<option value="${x.id}" ${rpPlayed[id] === x.id ? 'selected' : ''}>${x.name}</option>`).join('')}</select></label>
+      <p class="reserved">La fiche compte comme remplie${isChar(rpPlayed[id]) ? `, et celle ${deName(nameOf(rpPlayed[id]))} aussi` : ''}, même sans activités cochées.</p>` : ''}</section>
     <section><h2>Mood du jour</h2>
       <textarea id="mood-${id}" placeholder="Comment se sent ${c.name} aujourd'hui ?">${esc(s.mood)}</textarea></section>
     ${physSection(id)}
@@ -2470,6 +2487,8 @@ function renderChar(id) {
     state[id].loversOpen = true; renderChar(id);
   }));
   document.getElementById('violet-'+id)?.addEventListener('change', e => { s.violet = e.target.checked; renderChar(id); });
+  document.getElementById('rp-'+id)?.addEventListener('change', e => { setRp(id, e.target.checked, partnerOf(id)); renderNav(); renderChar(id); });
+  document.getElementById('rp-with-'+id)?.addEventListener('change', e => { setRp(id, true, e.target.value); renderNav(); renderChar(id); });
   document.getElementById('shell-'+id)?.addEventListener('change', e => { s.shell = e.target.checked; renderChar(id); });
   document.getElementById('film-'+id)?.addEventListener('change', e => { filmed[filmKey()] = e.target.checked; renderChar(id); });
   document.getElementById('protect-'+id)?.addEventListener('change', e => setProtect(id, e.target.checked));
