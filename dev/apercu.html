@@ -1532,6 +1532,7 @@ const SEES_BIRTHDAY = {
   tamachag:['javkhaanhun'], davaajav:['javkhaanhun', 'hokkyoku'], khokkutsai:['javkhaanhun'],
   ogloo:['taiga'],
   javkhaanhun:['tamachag', 'davaajav', 'khokkutsai'],
+  tengis:['ankhbayar'], ankhbayar:['tengis'],
 };
 const linkedTo = id => [...new Set([...[...PAIRS, ...FRIENDS].filter(p => p.includes(id)).map(p => p.find(x => x !== id)), ...(SEES_BIRTHDAY[id] || [])])];
 // Anniversaires de PNJ proches (enfants…), affichés sur les fiches indiquées.
