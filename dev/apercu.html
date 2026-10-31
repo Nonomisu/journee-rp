@@ -1621,6 +1621,15 @@ const dayRecord = (c, d) => {
 };
 const daysIn = (y, m) => new Date(y, m + 1, 0).getDate();
 const tally = arr => Object.entries(arr.reduce((o, x) => (o[x] = (o[x] || 0) + 1, o), {})).sort((a, b) => b[1] - a[1]);
+// Nuit chaude d'un personnage un jour donné : celle de sa fiche, ou celle cochée par son ou sa partenaire
+// (la fiche du partenaire suffit, même si la sienne n'a pas été remplie ce jour-là).
+const nightOn = (c, d) => {
+  const r = dayRecord(c, d); if (r?.hot) return { with: r.with };
+  if (d > rpDay || sameDay(d, rpDay) || typeof HISTORY === 'undefined') return null;
+  const k = keyOf(d), n = id => HISTORY[id]?.[k]?.night;
+  const p = C.find(x => x.id !== c.id && n(x.id)?.hot && n(x.id).with === c.id);
+  return p ? { with: p.id } : null;
+};
 const statsFor = (c, days) => {
   const recs = days.map(d => [d, dayRecord(c, d)]).filter(([, r]) => r);
   const temps = recs.filter(([, r]) => r.cond).map(([d, r]) => ({ d, max: r.cond.tp.max, min: r.cond.tp.min }));
@@ -1632,7 +1641,7 @@ const statsFor = (c, days) => {
     weather: tally(recs.filter(([, r]) => r.cond).map(([, r]) => r.cond.label)).slice(0, 2),
     hottest: temps.reduce((a, b) => !a || b.max > a.max ? b : a, null),
     coldest: temps.reduce((a, b) => !a || b.min < a.min ? b : a, null),
-    nights: recs.filter(([, r]) => r.hot).length, trips: recs.filter(([, r]) => r.trip).length,
+    nights: days.filter(d => nightOn(c, d)).length, trips: recs.filter(([, r]) => r.trip).length,
     phys: tally(recs.flatMap(([, r]) => r.phys)).slice(0, 2),
   };
 };
@@ -1879,7 +1888,7 @@ function renderHistory(id) {
         ${'<span></span>'.repeat(lead)}
         ${days.map(d => { const r = dayRecord(c, d), f = festivalFor(c, d, r || { real: sameDay(d, rpDay) }) || khurdanDays(c, d).length, bd = birthdaysOn(c.id, d).length, ms = milestonesOn(c.id, d).length;
           return `<button type="button" class="cal-day ${r ? 'filled' : ''} ${sameDay(d, rpDay) ? 'today' : ''} ${sel && sameDay(d, sel) ? 'sel' : ''} ${d > rpDay ? 'future' : ''}" data-day="${d.getDate()}" ${d > rpDay ? 'disabled' : ''}>
-            <span class="n">${d.getDate()}</span>${r?.cond ? icon(r.cond.icon) : ''}${r?.hot ? '<i class="heart"></i>' : ''}${f ? '<i class="fest-dot"></i>' : ''}${bd ? '<i class="bday-dot"></i>' : ''}${ms ? '<i class="ms-mark">✦</i>' : ''}</button>`; }).join('')}
+            <span class="n">${d.getDate()}</span>${r?.cond ? icon(r.cond.icon) : ''}${nightOn(c, d) ? '<i class="heart"></i>' : ''}${f ? '<i class="fest-dot"></i>' : ''}${bd ? '<i class="bday-dot"></i>' : ''}${ms ? '<i class="ms-mark">✦</i>' : ''}</button>`; }).join('')}
       </div>
       <p class="reserved cal-legend"><span class="key filled"></span> journée remplie · <i class="heart"></i> nuit chaude · <i class="fest-dot"></i> fête · <i class="bday-dot"></i> anniversaire · <i class="ms-mark">✦</i> moment marquant</p>
       ${sel ? `<div class="day-detail">
@@ -1893,7 +1902,7 @@ function renderHistory(id) {
           ${selRec.phys.length ? `<p class="where">${icon('heartbeat')}<span>${selRec.phys.map(p => physLabel(id, p)).join(', ')}</span></p>` : ''}
           ${selRec.trip ? `<p class="where">${icon('route')}<span>Voyage</span></p>` : ''}
           ${selRec.hot ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude</span></p>` : ''}`
-        : '<p class="reserved">Pas de fiche remplie ce jour-là.</p>'}
+        : `<p class="reserved">Pas de fiche remplie ce jour-là.</p>${(n => n ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${n.with ? ' avec ' + esc(whoLabel(n.with)) : ''}</span></p>` : '')(nightOn(c, sel))}`}
       </div>` : '<p class="reserved">Touche un jour pour revoir sa fiche.</p>'}
     </section>
 
