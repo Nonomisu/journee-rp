@@ -855,7 +855,14 @@ const filmed = {};   // clé du jour → true
 const filmKey = () => 'film:' + keyOf(rpDay);
 const canFilm = id => FILM_PAIR.includes(id) && nightOf(id).hot && nightOf(id).with === FILM_PAIR.find(x => x !== id);
 const isFilmed = id => canFilm(id) && !!filmed[filmKey()];
-const filmViews = () => { const r = seeded(filmKey() + ':vues'); return Math.round(Math.pow(10, 3 + r * 3.3)); };   // ~1 000 à ~2 000 000
+const viewsOf = k => Math.round(Math.pow(10, 3 + seeded('film:' + k + ':vues') * 3.3));   // ~1 000 à ~2 000 000, fixé par la date
+const filmViews = () => viewsOf(keyOf(rpDay));
+// Vidéos publiées dans l'année (pour le wrap) : jours où la nuit d'Echo et Prism a été filmée.
+const filmDays = y => Array.from({ length: 366 }, (_, i) => new Date(y, 0, 1 + i))
+  .filter(d => d.getFullYear() === y && d <= rpDay)
+  .filter(d => sameDay(d, rpDay) ? isFilmed(FILM_PAIR[0]) || isFilmed(FILM_PAIR[1])
+    : typeof HISTORY !== 'undefined' && FILM_PAIR.some(id => HISTORY[id]?.[keyOf(d)]?.film))
+  .map(d => ({ d, views: viewsOf(keyOf(d)) }));
 const viewsLabel = () => filmViews().toLocaleString('fr-FR') + ' vues';
 // Activités qui n'apparaissent que sous condition : Echo ne peut cocher « Plaisir en solo sur Moonstone »
 // que les jours où Prism a coché « Publication Moonstone ».
@@ -1203,6 +1210,15 @@ const wrapExtrasHtml = (c, y) => {
     </div>
     ${x.first ? `<div class="mood-pair"><div><span>Premier mood</span><q>${esc(x.first[1].mood)}</q><small>${fmtDay(x.first[0])}</small></div>
       <div><span>Dernier mood</span><q>${esc(x.last[1].mood)}</q><small>${fmtDay(x.last[0])}</small></div></div>` : ''}
+    ${(v => !FILM_PAIR.includes(c.id) || !v.length ? '' : (() => {
+      const top = v.reduce((a, b) => b.views > a.views ? b : a), flop = v.reduce((a, b) => b.views < a.views ? b : a);
+      const vues = n => n.toLocaleString('fr-FR') + ' vues';
+      return `<h3 class="wrap-sec">Vidéos en ligne</h3>
+    <div class="fx-grid">
+      ${card('Vidéos publiées', v.length, vues(v.reduce((s, x) => s + x.views, 0)) + ' au total')}
+      ${v.length === 1 ? card('Seule vidéo', vues(top.views), fmtDay(top.d))
+        : card('Top', vues(top.views), fmtDay(top.d)) + card('Flop', vues(flop.views), fmtDay(flop.d))}
+    </div>`; })())(filmDays(y))}
     <h3 class="wrap-sec">Voyages et météo</h3>
     <div class="fx-grid">
       ${card('Distance parcourue', x.km.toLocaleString('fr-FR') + ' km', x.mode ? 'surtout en ' + x.mode.toLowerCase() : 'sans quitter sa région')}
@@ -1959,6 +1975,7 @@ const entryOf = id => {
   ENTRY_KEYS.forEach(k => { if (s[k] !== undefined) o[k] = s[k]; });
   const n = nightOf(id);
   o.night = { hot: !!n.hot, with: n.hot ? (n.with || null) : null };   // pour l'historique
+  if (FILM_PAIR.includes(id)) o.film = isFilmed(id);                  // vidéo publiée (wrap d'Echo et Prism)
   return enc(o);
 };
 const isEmptyVal = v => v === '' || v === false || v === null || v === undefined || (Array.isArray(v) && !v.length)
@@ -1967,7 +1984,7 @@ const meaningful = e => !!e && (e.night?.hot || Object.entries(e).some(([k, v]) 
 const applyEntry = (id, e) => {
   const s = state[id];
   ENTRY_KEYS.forEach(k => delete s[k]);
-  const d = dec(e || {}); delete d.night;
+  const d = dec(e || {}); delete d.night; delete d.film;
   Object.assign(s, freshEntry(), d);
 };
 const charDocOf = c => enc({ addedActs: c.addedActs || [], removedActs: [...(c.removedActs || [])],

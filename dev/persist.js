@@ -24,6 +24,7 @@ const entryOf = id => {
   ENTRY_KEYS.forEach(k => { if (s[k] !== undefined) o[k] = s[k]; });
   const n = nightOf(id);
   o.night = { hot: !!n.hot, with: n.hot ? (n.with || null) : null };   // pour l'historique
+  if (FILM_PAIR.includes(id)) o.film = isFilmed(id);                  // vidéo publiée (wrap d'Echo et Prism)
   return enc(o);
 };
 const isEmptyVal = v => v === '' || v === false || v === null || v === undefined || (Array.isArray(v) && !v.length)
@@ -32,7 +33,7 @@ const meaningful = e => !!e && (e.night?.hot || Object.entries(e).some(([k, v]) 
 const applyEntry = (id, e) => {
   const s = state[id];
   ENTRY_KEYS.forEach(k => delete s[k]);
-  const d = dec(e || {}); delete d.night;
+  const d = dec(e || {}); delete d.night; delete d.film;
   Object.assign(s, freshEntry(), d);
 };
 const charDocOf = c => enc({ addedActs: c.addedActs || [], removedActs: [...(c.removedActs || [])],
