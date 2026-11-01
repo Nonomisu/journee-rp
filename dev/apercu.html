@@ -1645,7 +1645,7 @@ const dayRecord = (c, d) => {
   const s = state[c.id], city = defaultCity(c.id);
   const cond = city ? (() => { const tp = tempAt(city, d); return { ...cityWeather(city, tp, d), tp }; })() : null;
   if (sameDay(d, rpDay)) {
-    const filled = s.done || s.mood || s.checked.size || rpPlayed[c.id];
+    const filled = s.done || s.mood || s.checked.size || rpPlayed[c.id] || s.trip;
     return filled ? { rp: rpPlayed[c.id] || null, mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
       cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])], minutes: s.trip.minutes || 0, reason: s.trip.reason || '' } : null,
       phys: [...(s.phys || [])], mental: [...(s.mental || [])], notes: { ...(s.stateNotes || {}) }, real: true } : null;
@@ -2233,7 +2233,7 @@ function renderHome() {
           <span class="grp">${t.glyph} ${c.groups.join(' · ')}</span><span class="name">${c.name}</span>
           ${(w => w ? `<span class="wx">${icon(w.icon)}${w.label}</span>` : '')(weatherFor(c.id))}
           ${alerts[c.id] ? `<span class="card-alert">${icon('warn')}${esc(alerts[c.id])}</span>` : ''}
-          <span class="state ${s.done || rpPlayed[c.id] ? 'done' : ''}">${s.done ? '✓ Terminé' : rpPlayed[c.id] ? '✓ Jouée en RP' : (s.mood || s.checked.size ? 'En cours' : 'À remplir')}</span></button>`; }).join('')}
+          <span class="state ${s.done || rpPlayed[c.id] ? 'done' : ''}">${s.done ? '✓ Terminé' : rpPlayed[c.id] ? '✓ Jouée en RP' : (s.mood || s.checked.size || s.trip ? 'En cours' : 'À remplir')}</span></button>`; }).join('')}
       ${filter !== 'elle' ? SOON.map(n => `<div class="card soon" style="${vars(THEMES.alamhigo)}"><span class="grp">À venir</span><span class="name">${n}</span></div>`).join('') : ''}
     </div>`;
 }
@@ -2248,6 +2248,7 @@ function renderChar(id) {
   const live = k => (c.acts[k] || []).filter(a => !removed.has(a));
   const cats = catsOf(c).filter(k => live(k).length || (s.manageActs && !CATS[k]));
   [...s.checked].forEach(l => { if (!actAvailable(id, l)) s.checked.delete(l); });
+  if (s.checked.delete('Voyage')) delete s.slots['Voyage'];
   if (activeContract(id) && !s.contractOff) s.checked.add(CONTRACT_ACT);
   if (!activeContract(id)) s.checked.delete(CONTRACT_ACT);
   const actRow = (label, special) => {
@@ -2380,7 +2381,6 @@ function renderChar(id) {
     </section>
     <section><h2>Activités</h2>
       ${cats.length ? '' : `<p class="reserved">Liste d'activités à définir. En attendant, utilise le champ « Activité spéciale » et coche « L'ajouter aussi à la liste ».</p>`}
-      <div class="cat"><h3>Déplacement</h3>${actRow('Voyage')}</div>
       ${cats.map(k => `<div class="cat">${s.manageActs && s.renaming === k
         ? `<div class="special-row"><input type="text" id="rename-${id}" value="${esc(catLabel(c, k))}" aria-label="Nouveau nom"><button type="button" class="btn" data-rename-ok="${k}">OK</button><button type="button" class="link small" data-rename-cancel>Annuler</button></div>`
         : `<h3>${esc(catLabel(c, k))}${s.manageActs ? ` <button type="button" class="link small" data-rename="${k}">Renommer</button>` : ''}</h3>`}${s.manageActs
@@ -2470,9 +2470,8 @@ function renderChar(id) {
   const setTrip = on => {
     if (on && !s.trip) {
       s.trip = { from:{ region: s.region || homeRegion(id), places: new Set(s.places) }, to:{ region:null, places: new Set() }, modes: new Set() };
-      s.checked.add('Voyage');
     } else if (!on && s.trip) {
-      s.trip = null; s.checked.delete('Voyage'); delete s.slots['Voyage'];
+      s.trip = null;
     }
     renderChar(id);
   };

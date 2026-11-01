@@ -11,7 +11,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   const order = await p.$$eval('#view > section h2', h => h.map(x => x.textContent));
   console.log('Ordre :', order.slice(order.indexOf('Activités'), order.indexOf('Activités') + 2));
   await p.check('#trip-tamachag'); await p.waitForTimeout(200);
-  console.log('Voyage coché dans les activités :', await p.isChecked('[data-act="Voyage"]'), '| note Lieux :', (await p.textContent('#view')).includes('se renseignent dans la section « Voyage »'));
+  console.log('Activité Voyage absente :', !(await p.$('[data-act="Voyage"]')), '| fiche en cours :', await p.evaluate(() => !!dayRecord(C.find(c => c.id === 'tamachag'), rpDay)), '| note Lieux :', (await p.textContent('#view')).includes('se renseignent dans la section « Voyage »'));
   await p.click('[data-leg="to"][data-region="othard"]').catch(() => {}); await p.waitForTimeout(150);
   const zoneBtn = await p.$('[data-leg="to"][data-zone="yanxia"]'); if (zoneBtn) { await zoneBtn.click(); await p.waitForTimeout(150); }
   await p.fill('#trip-h-tamachag', '3'); await p.fill('#trip-m-tamachag', '30'); await p.dispatchEvent('#trip-m-tamachag', 'input');
