@@ -1,0 +1,31 @@
+// Catégories d’activités personnalisées : création, déplacement, enregistrement, suppression.
+const { chromium } = require('playwright'); const fs = require('fs'); const path = require('path');
+(async () => { const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 420, height: 900 } });
+  await ctx.route('https://www.gstatic.com/firebasejs/13.1.0/*', r => r.fulfill({ body: fs.readFileSync(path.join(path.join(__dirname, 'mockfb'), r.request().url().split('/').pop())), contentType: 'application/javascript' }));
+  await ctx.route('**fonts.googleapis.com**', r => r.fulfill({ body: '', contentType: 'text/css' }));
+  const errs = [];
+  const open = async (n, e) => { const p = await ctx.newPage(); p.on('pageerror', x => errs.push(n + ': ' + x.message));
+    await p.addInitScript(([a, c]) => { window.name = a; window.MOCK_EMAIL = c; }, [n, e]);
+    await p.goto('http://localhost:8765/'); await p.waitForTimeout(400); await p.click('#login-btn'); await p.waitForSelector('#login[hidden]', { state: 'attached' }); return p; };
+  const seed = await ctx.newPage(); await seed.goto('http://localhost:8765/icon.svg'); await seed.evaluate(() => localStorage.removeItem('mockdb')); await seed.close();
+  let p = await open('ct', process.env.NONO_EMAIL);
+  const cats = async pg => pg.$$eval('.cat', cs => cs.map(c => c.querySelector('h3').textContent + ' : ' + [...c.querySelectorAll('[data-act]')].map(x => x.dataset.act).join(', ')));
+  await p.evaluate(() => go('eoor')); await p.click('#manage-acts-eoor'); await p.waitForTimeout(200);
+  await p.fill('#newcat-eoor', 'Loisirs'); await p.click('#newcat-add-eoor'); await p.waitForTimeout(200);
+  console.log('Catégorie vide affichée :', (await p.textContent('#view')).includes('Catégorie vide'));
+  const key = await p.evaluate(() => C.find(c => c.id === 'eoor').customCats[0].key);
+  await p.selectOption('[data-act-cat="Balade à moto"]', key); await p.waitForTimeout(200);
+  await p.selectOption('[data-act-cat="Soirée barbecue"]', key); await p.waitForTimeout(200);
+  await p.selectOption('[data-act-cat="Rédige un rapport"]', 'quotidien'); await p.waitForTimeout(200);
+  await p.click('#manage-acts-eoor'); await p.waitForTimeout(1200);
+  console.log('Après déplacement :', await cats(p));
+  await p.close(); p = await open('ct2', process.env.NONO_EMAIL); await p.evaluate(() => go('eoor')); await p.waitForTimeout(200);
+  console.log('Après réouverture :', (await cats(p)).filter(x => /Loisirs|Quotidien/.test(x)));
+  const jy = await open('cj', 'jynette@example.com'); await jy.evaluate(() => go('eoor')); await jy.waitForTimeout(200);
+  console.log('Chez Jynette (lecture) :', await jy.evaluate(() => C.find(c => c.id === 'eoor').acts[C.find(c => c.id === 'eoor').customCats[0].key]));
+  // Supprimer une catégorie vide
+  await p.click('#manage-acts-eoor'); await p.fill('#newcat-eoor', 'Temporaire'); await p.click('#newcat-add-eoor'); await p.waitForTimeout(200);
+  await p.click('[data-cat-del]'); await p.waitForTimeout(200);
+  console.log('Catégories après suppression :', await p.evaluate(() => C.find(c => c.id === 'eoor').customCats.map(x => x.label)));
+  console.log('Gérer visible chez Ogloo (Jynette, sans activités) :', !!(await jy.evaluate(() => { go('ogloo'); return document.getElementById('manage-acts-ogloo'); })));
+  console.log('erreurs :', errs.length ? errs : 'aucune'); await b.close(); })().catch(e => { console.error('ÉCHEC', e.message); process.exit(1); });

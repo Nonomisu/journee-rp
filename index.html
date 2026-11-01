@@ -370,6 +370,9 @@ button.link { background: none; border: 0; padding: 0; color: var(--gold); text-
 .news li button { text-decoration: none; color: var(--dim); font-size: .95rem; text-align: left; }
 .news li.unread button { color: var(--text); font-weight: 500; }
 .news li.unread::before { content: "● "; color: #d8708a; }
+.act.manage { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; }
+.act.manage span { flex: 1 1 10rem; }
+.cat-move { max-width: 11rem; }
 .news-day summary { cursor: pointer; color: var(--dim); font-size: .9rem; }
 .news-day[open] summary { margin-bottom: .4rem; }
 .news-day small { color: var(--dim); font-variant-numeric: tabular-nums; margin-right: .25rem; }
@@ -582,6 +585,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=87bb8c76aa" charset="utf-8"></script>
+<script src="app.js?v=c3752f3ce3" charset="utf-8"></script>
 <script type="module" src="sync.js?v=c45c93b7fa"></script>
 

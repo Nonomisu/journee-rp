@@ -15,6 +15,16 @@ const THEMES = {
   kha:      { cls: 't-kha', bg:'#111012', gold:'#d0483d', text:'#eee7e2', dim:'#a39893', rule:'rgba(208,72,61,.32)', display:'"Alegreya SC", serif', glyph:'<svg class="eg-svg" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.4" y="1.8" width="11.2" height="20.4" rx="5.6" fill="none" stroke="currentColor" stroke-width="1.8"/><g fill="none" stroke="#c9a27a" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="7" r="2.2"/><path d="M12 4.8v4.4M9.8 7h4.4"/><path d="M9.6 15l2.4-4 2.4 4z"/><path d="M10 18.6h4"/></g></svg>' },   // Davaajav : cartouche à glyphes
 };
 const CATS = { quotidien:'Quotidien', metier:'Charge & métier', liens:'Liens' };
+// Catégories propres à un personnage (c.customCats) et activités déplacées d'une catégorie à l'autre (c.actCat),
+// enregistrées sur la fiche du personnage.
+const catsOf = c => [...Object.keys(CATS), ...(c.customCats || []).map(x => x.key)];
+const catLabel = (c, k) => CATS[k] || c.customCats?.find(x => x.key === k)?.label || k;
+const pullAct = (c, a) => Object.values(c.acts).forEach(l => { const i = l.indexOf(a); if (i >= 0) l.splice(i, 1); });
+const moveAct = (c, a, k) => { pullAct(c, a); (c.acts[k] ||= []).push(a); (c.actCat ||= {})[a] = k; };
+const applyActLayout = c => Object.entries(c.actCat || {}).forEach(([a, k]) => {
+  if (!catsOf(c).includes(k) || !Object.values(c.acts).some(l => l.includes(a))) return;
+  pullAct(c, a); (c.acts[k] ||= []).push(a);
+});
 const C = [
   { id:'eoor', name:'Eoor', surname:'Silvershard', groups:['Principaux'], theme:'alamhigo', player:'corentin', acts:{
     quotidien:['Méditation (tradition de Rhalgr)','Entraînement monial','Mécanique : entretien des motos','Balade à moto','Session hammam','Pique une tête dans sa piscine','Grosse session cuisine','Visite touristique'],
@@ -1619,7 +1629,7 @@ function renderChar(id) {
   // Activités retirées de la liste (ex. : Inkaraa arrête de tatouer) : masquées, l'historique est conservé.
   const removed = c.removedActs ||= new Set();
   const live = k => (c.acts[k] || []).filter(a => !removed.has(a));
-  const cats = Object.keys(CATS).filter(k => live(k).length);
+  const cats = catsOf(c).filter(k => live(k).length || (s.manageActs && !CATS[k]));
   [...s.checked].forEach(l => { if (!actAvailable(id, l)) s.checked.delete(l); });
   if (activeContract(id) && !s.contractOff) s.checked.add(CONTRACT_ACT);
   if (!activeContract(id)) s.checked.delete(CONTRACT_ACT);
@@ -1758,11 +1768,16 @@ function renderChar(id) {
     <section><h2>Activités</h2>
       ${cats.length ? '' : `<p class="reserved">Liste d'activités à définir. En attendant, utilise le champ « Activité spéciale » et coche « L'ajouter aussi à la liste ».</p>`}
       <div class="cat"><h3>Déplacement</h3>${actRow('Voyage')}</div>
-      ${cats.map(k => `<div class="cat"><h3>${CATS[k]}</h3>${s.manageActs
-        ? live(k).map(a => `<div class="act manage"><span>${esc(a)}</span><button type="button" class="link small" data-act-remove="${esc(a)}">Retirer</button></div>`).join('')
+      ${cats.map(k => `<div class="cat"><h3>${esc(catLabel(c, k))}</h3>${s.manageActs
+        ? (live(k).length ? live(k).map(a => `<div class="act manage"><span>${esc(a)}</span>
+            <select class="cat-move" data-act-cat="${esc(a)}" aria-label="Catégorie de ${esc(a)}">${catsOf(c).map(x => `<option value="${x}" ${x === k ? 'selected' : ''}>${esc(catLabel(c, x))}</option>`).join('')}</select>
+            <button type="button" class="link small" data-act-remove="${esc(a)}">Retirer</button></div>`).join('')
+          : `<p class="reserved">Catégorie vide : déplace-y des activités. <button type="button" class="link small" data-cat-del="${k}">Supprimer la catégorie</button></p>`)
         : live(k).filter(a => actAvailable(id, a)).map(a => actRow(a)).join('')}</div>`).join('')}
+      ${s.manageActs ? `<div class="special-row new-cat"><input type="text" id="newcat-${id}" placeholder="Nouvelle catégorie (ex. : Loisirs)">
+        <button type="button" class="btn" id="newcat-add-${id}">Créer</button></div>` : ''}
       ${s.manageActs && removed.size ? `<div class="cat removed-acts"><h3>Retirées de la liste</h3>${[...removed].map(a => `<div class="act manage"><span>${esc(a)}</span><button type="button" class="link small" data-act-restore="${esc(a)}">Remettre</button></div>`).join('')}</div>` : ''}
-      ${cats.length || removed.size ? `<button type="button" class="link small manage-toggle" id="manage-acts-${id}">${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités'}</button>` : ''}
+      ${canEdit(id) ? `<button type="button" class="link small manage-toggle" id="manage-acts-${id}">${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités et les catégories'}</button>` : ''}
       ${s.specials.length ? `<div class="cat"><h3>Spéciales du jour</h3>${s.specials.map(a => actRow(a, true)).join('')}</div>` : ''}
       ${babysitBlock(id, true)}
     </section>
@@ -1951,6 +1966,13 @@ function renderChar(id) {
     renderChar(id);
   }));
   document.getElementById('manage-acts-'+id)?.addEventListener('click', () => { s.manageActs = !s.manageActs; renderChar(id); });
+  document.querySelectorAll('[data-act-cat]').forEach(sel => sel.addEventListener('change', () => { moveAct(c, sel.dataset.actCat, sel.value); renderChar(id); }));
+  document.querySelectorAll('[data-cat-del]').forEach(b => b.addEventListener('click', () => { c.customCats = (c.customCats || []).filter(x => x.key !== b.dataset.catDel); renderChar(id); }));
+  document.getElementById('newcat-add-'+id)?.addEventListener('click', () => {
+    const v = document.getElementById('newcat-'+id).value.trim(); if (!v) return;
+    if (catsOf(c).some(k => catLabel(c, k).toLowerCase() === v.toLowerCase())) return;
+    (c.customCats ||= []).push({ key: 'cat-' + Date.now().toString(36), label: v }); renderChar(id);
+  });
   document.querySelectorAll('[data-act-remove]').forEach(b => b.addEventListener('click', () => {
     const l = b.dataset.actRemove; c.removedActs.add(l); s.checked.delete(l); delete s.slots[l]; renderChar(id); }));
   document.querySelectorAll('[data-act-restore]').forEach(b => b.addEventListener('click', () => { c.removedActs.delete(b.dataset.actRestore); renderChar(id); }));
@@ -2026,7 +2048,7 @@ const applyEntry = (id, e) => {
   Object.assign(s, freshEntry(), d);
 };
 const charDocOf = c => enc({ addedActs: c.addedActs || [], removedActs: [...(c.removedActs || [])],
-  addedRegions: [...(c.added || [])], customPlaces: c.customPlaces || [] });
+  addedRegions: [...(c.added || [])], customPlaces: c.customPlaces || [], customCats: c.customCats || [], actCat: c.actCat || {} });
 const applyChar = (c, d) => {
   if (!d) return;
   (d.addedActs || []).forEach(a => { if (!allActs(c).includes(a)) (c.acts.quotidien ||= []).push(a); });
@@ -2035,6 +2057,7 @@ const applyChar = (c, d) => {
   (d.addedRegions || []).forEach(r => { if (REGIONS[r] && !c.regions.includes(r)) { c.regions = REGION_ORDER.filter(x => x === r || c.regions.includes(x)); (c.added ||= new Set()).add(r); } });
   c.customPlaces = [...(d.customPlaces || [])];
   c.customPlaces.forEach(p => { PLACE_REGION[p.name] ||= p.region; if (p.zone) ZONE_OF[p.name] ||= p.zone; if (!c.places.includes(p.name)) c.places.push(p.name); });
+  c.customCats = [...(d.customCats || [])]; c.actCat = { ...(d.actCat || {}) }; applyActLayout(c);
 };
 const globalOf = () => enc({ lovers: LOVERS, protect: lastProtect, alerts, events: EVENTS, arcs: ARCS, arcSeq,
   milestones: MILESTONES, contracts: CONTRACTS, workdays: WORKDAYS });

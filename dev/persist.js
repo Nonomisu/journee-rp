@@ -38,7 +38,7 @@ const applyEntry = (id, e) => {
   Object.assign(s, freshEntry(), d);
 };
 const charDocOf = c => enc({ addedActs: c.addedActs || [], removedActs: [...(c.removedActs || [])],
-  addedRegions: [...(c.added || [])], customPlaces: c.customPlaces || [] });
+  addedRegions: [...(c.added || [])], customPlaces: c.customPlaces || [], customCats: c.customCats || [], actCat: c.actCat || {} });
 const applyChar = (c, d) => {
   if (!d) return;
   (d.addedActs || []).forEach(a => { if (!allActs(c).includes(a)) (c.acts.quotidien ||= []).push(a); });
@@ -47,6 +47,7 @@ const applyChar = (c, d) => {
   (d.addedRegions || []).forEach(r => { if (REGIONS[r] && !c.regions.includes(r)) { c.regions = REGION_ORDER.filter(x => x === r || c.regions.includes(x)); (c.added ||= new Set()).add(r); } });
   c.customPlaces = [...(d.customPlaces || [])];
   c.customPlaces.forEach(p => { PLACE_REGION[p.name] ||= p.region; if (p.zone) ZONE_OF[p.name] ||= p.zone; if (!c.places.includes(p.name)) c.places.push(p.name); });
+  c.customCats = [...(d.customCats || [])]; c.actCat = { ...(d.actCat || {}) }; applyActLayout(c);
 };
 const globalOf = () => enc({ lovers: LOVERS, protect: lastProtect, alerts, events: EVENTS, arcs: ARCS, arcSeq,
   milestones: MILESTONES, contracts: CONTRACTS, workdays: WORKDAYS });
