@@ -1050,7 +1050,7 @@ const PHYS = ['En forme', 'Douleur', 'Maladie', 'État second', 'En manque'];
 const MENTAL = ['Bon moral', 'Petit moral', 'Nervosité', 'Inspiré', 'Flemme', 'Productif', 'Esprit travaillé'];
 const MORAL = ['Bon moral', 'Petit moral'];
 const MENTAL_EXCL = [MORAL, ['Flemme', 'Productif']];
-// États à préciser : un champ apparaît quand ils sont cochés.
+// Chaque état coché a un champ de précision ; ces exemples s'affichent dans le champ.
 const STATE_HINT = { 'Douleur':'blessure, articulation, nuit rigoureuse…', 'État second':"consommation d'alcool, de stupéfiant…",
   'En manque':'faim, sommeil, sexe, alcool, drogue…', 'Nervosité':'anxiété, stress, tension…', 'Esprit travaillé':'par le travail, la situation, une dispute…' };
 // Libellés accordés : les personnages de Jynette sont au féminin.
@@ -1539,7 +1539,7 @@ const huntText = h => !h ? '' : h.catches.length ? h.catches.map(c => (c.qty > 1
 const statesBlock = id => { const s = state[id]; s.phys ||= new Set(); s.mental ||= new Set(); s.stateNotes ||= {};
   const group = (title, list, set, attr) => `<h3 class="state-h">${title}</h3>
     <div class="place-list" role="group" aria-label="${title}">${list.map(p => `<button type="button" ${attr}="${p}" aria-pressed="${set.has(p)}">${esc(physLabel(id, p))}</button>`).join('')}</div>
-    ${list.filter(p => set.has(p) && STATE_HINT[p]).map(p => `<input type="text" class="state-note" data-state-note="${p}" placeholder="${esc(physLabel(id, p))} : à préciser (ex. : ${STATE_HINT[p]})" value="${esc(s.stateNotes[p] || '')}">`).join('')}`;
+    ${list.filter(p => set.has(p)).map(p => `<input type="text" class="state-note" data-state-note="${p}" placeholder="${esc(physLabel(id, p))} : ${STATE_HINT[p] ? `à préciser (ex. : ${STATE_HINT[p]})` : 'précision (facultatif)'}" value="${esc(s.stateNotes[p] || '')}">`).join('')}`;
   return group('État physique', PHYS, s.phys, 'data-phys') + group('État mental', MENTAL, s.mental, 'data-mental'); };
 const shotSection = id => { const s = state[id];
   return `<section><h2>Capture du jour</h2>
