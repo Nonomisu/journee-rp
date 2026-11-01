@@ -2,8 +2,8 @@
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg'];
-const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false });
+  'details', 'mental', 'stateNotes', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg'];
+const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{} });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }
   : Array.isArray(v) ? v.map(enc)
@@ -36,6 +36,8 @@ const applyEntry = (id, e) => {
   ENTRY_KEYS.forEach(k => delete s[k]);
   const d = dec(e || {}); delete d.night; delete d.film; delete d.rp;
   Object.assign(s, freshEntry(), d);
+  // Anciennes fiches : le moral était rangé avec l'état physique.
+  MORAL.forEach(m => { if (s.phys?.has?.(m)) { s.phys.delete(m); s.mental.add(m); } });
 };
 const charDocOf = c => enc({ addedActs: c.addedActs || [], removedActs: [...(c.removedActs || [])],
   addedRegions: [...(c.added || [])], customPlaces: c.customPlaces || [], customCats: c.customCats || [], actCat: c.actCat || {}, catNames: c.catNames || {} });

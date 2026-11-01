@@ -107,7 +107,8 @@ js = js[:a] + """  if (d > rpDay) return null;
   return { rp, mood: e.mood || '', acts: [...(e.checked || [])], slots: e.slots || {}, place: [...(e.places || [])][0] || '', region: e.region || homeRegion(c.id),
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
     tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])] } : null,
-    phys: [...(e.phys || [])], real: true };
+    phys: [...(e.phys || [])].filter(p => !MORAL.includes(p)), mental: [...(e.mental || []), ...[...(e.phys || [])].filter(p => MORAL.includes(p))],
+    notes: e.stateNotes || {}, real: true };
 };
 // Journées enregistrées, par personnage puis par date (clé keyOf) — remplies par sync.js.
 const HISTORY = {};

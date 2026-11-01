@@ -108,6 +108,7 @@ ICONS.zone = '<path d="M3 19 9.5 8l4 6.5 2.5-4L21 19z"/>';
 ICONS.star = '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>';
 ICONS.camera = '<path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>';
 ICONS.heartbeat = '<path d="M3 12h4l2-4 3 8 2-5 1.5 1H21"/>';
+ICONS.brain = '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 3 3h1V4H9zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-3 3h-1V4h1z"/>';
 ICONS.cake = '<path d="M4 20h16v-7H4z"/><path d="M4 15.5c2 1.3 4 1.3 6 0s4-1.3 6 0 3 1.3 4 0"/><path d="M12 13V9.5M12 7.5c-.9-.9-.9-2 0-3.5.9 1.5.9 2.6 0 3.5z"/>';
 ICONS.ring = '<circle cx="12" cy="14.5" r="6"/><path d="M9.5 4.5h5L16 7l-4 2.5L8 7z"/>';
 ICONS.target = '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>';
@@ -1035,13 +1036,21 @@ const birthdaysOn = (id, d) => [...[id, ...linkedTo(id)].filter(x => BIRTHDAYS[x
   .map(([n, [m, day]]) => 'Anniversaire ' + (/^[aeiouéè]/i.test(n) ? "d'" : 'de ') + n + (day !== d.getDate() ? ` (${day} en réalité)` : ''));
 const specialDays = (c, d, rec) => [...khurdanDays(c, d), ...birthdaysOn(c.id, d), ...(f => f ? [f.name] : [])(festivalFor(c, d, rec))];
 
-// ---------- État physique ----------
-// Le moral (bon / petit) s'ajoute à l'état physique : les deux s'excluent l'un l'autre, mais pas « En forme ».
+// ---------- États du jour : physique et mental ----------
+// « En forme » exclut les autres états physiques ; Bon moral / Petit moral et Flemme / Productif s'excluent.
+const PHYS = ['En forme', 'Douleur', 'Maladie', 'État second', 'En manque'];
+const MENTAL = ['Bon moral', 'Petit moral', 'Nervosité', 'Inspiré', 'Flemme', 'Productif', 'Esprit travaillé'];
 const MORAL = ['Bon moral', 'Petit moral'];
-const PHYS = ['En forme', ...MORAL, 'Fatigue', 'Épuisement', 'Blessure', 'Maladie', 'Ivresse', 'Gueule de bois', 'Faim', 'Éprouvé de la nuit'];
+const MENTAL_EXCL = [MORAL, ['Flemme', 'Productif']];
+// États à préciser : un champ apparaît quand ils sont cochés.
+const STATE_HINT = { 'Douleur':'blessure, articulation, nuit rigoureuse…', 'État second':"consommation d'alcool, de stupéfiant…",
+  'En manque':'faim, sommeil, sexe, alcool, drogue…', 'Nervosité':'anxiété, stress, tension…', 'Esprit travaillé':'par le travail, la situation, une dispute…' };
 // Libellés accordés : les personnages de Jynette sont au féminin.
 const isFem = id => C.find(c => c.id === id)?.player === 'elle';
-const physLabel = (id, p) => p === 'Éprouvé de la nuit' && isFem(id) ? 'Éprouvée de la nuit' : p;
+const FEM_LABEL = { 'Éprouvé de la nuit':'Éprouvée de la nuit', 'Inspiré':'Inspirée', 'Productif':'Productive' };
+const physLabel = (id, p) => isFem(id) && FEM_LABEL[p] || p;
+const stateText = (id, p, notes) => physLabel(id, p) + (notes?.[p] ? ` (${notes[p]})` : '');
+const statesLine = (id, list, notes, ico) => list?.length ? `<p class="where">${icon(ico)}<span>${esc(list.map(p => stateText(id, p, notes)).join(', '))}</span></p>` : '';
 
 // ---------- Arcs narratifs (durent au-delà d'une journée) ----------
 let arcSeq = 1;
@@ -1066,7 +1075,7 @@ const dayRecord = (c, d) => {
     const filled = s.done || s.mood || s.checked.size || rpPlayed[c.id];
     return filled ? { rp: rpPlayed[c.id] || null, mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
       cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])] } : null,
-      phys: [...(s.phys || [])], real: true } : null;
+      phys: [...(s.phys || [])], mental: [...(s.mental || [])], notes: { ...(s.stateNotes || {}) }, real: true } : null;
   }
   if (d > rpDay) return null;
   const e0 = HISTORY[c.id]?.[keyOf(d)];
@@ -1077,7 +1086,8 @@ const dayRecord = (c, d) => {
   return { rp, mood: e.mood || '', acts: [...(e.checked || [])], slots: e.slots || {}, place: [...(e.places || [])][0] || '', region: e.region || homeRegion(c.id),
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
     tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])] } : null,
-    phys: [...(e.phys || [])], real: true };
+    phys: [...(e.phys || [])].filter(p => !MORAL.includes(p)), mental: [...(e.mental || []), ...[...(e.phys || [])].filter(p => MORAL.includes(p))],
+    notes: e.stateNotes || {}, real: true };
 };
 // Journées enregistrées, par personnage puis par date (clé keyOf) — remplies par sync.js.
 const HISTORY = {};
@@ -1104,7 +1114,8 @@ const statsFor = (c, days) => {
     hottest: temps.reduce((a, b) => !a || b.max > a.max ? b : a, null),
     coldest: temps.reduce((a, b) => !a || b.min < a.min ? b : a, null),
     nights: days.filter(d => nightOn(c, d)).length, trips: recs.filter(([, r]) => r.trip).length,
-    phys: tally(recs.flatMap(([, r]) => r.phys)).slice(0, 2),
+    phys: tally(recs.flatMap(([, r]) => r.phys.map(p => physLabel(c.id, p)))).slice(0, 2),
+    mental: tally(recs.flatMap(([, r]) => (r.mental || []).map(p => physLabel(c.id, p)))).slice(0, 2),
   };
 };
 // Wrap annuel : proposé (notification + envoi Discord) à partir du 26 décembre.
@@ -1208,7 +1219,7 @@ const battleHtml = (c, x) => {
   // Rivaux : toutes les personnes indiquées dans « La nuit » au fil de l'année.
   const rivals = nightPartners(c, x);
   const counts = rivals.map(id => ({ id, n: hotDays.filter(([, r]) => (r.with || partnerOf(c.id)) === id).length,
-    rough: hotDays.filter(([, r]) => (r.with || partnerOf(c.id)) === id && r.phys.includes('Éprouvé de la nuit')).length }));
+    rough: hotDays.filter(([, r]) => (r.with || partnerOf(c.id)) === id && (r.phys.includes('Éprouvé de la nuit') || (r.phys.includes('Douleur') && /nuit/i.test(r.notes?.Douleur || '')))).length }));
   const [ra, rb] = [...counts].sort((p, q) => q.rough - p.rough);
   const total = counts.reduce((a, b) => a + b.n, 0) || 1;
   const [a, b] = [...counts].sort((p, q) => q.n - p.n);
@@ -1373,7 +1384,7 @@ function renderHistory(id) {
           ${selRec.cond ? `<p class="where">${icon(selRec.cond.icon)}<span>${selRec.cond.label} · ${deg(selRec.cond.tp.max)} / ${deg(selRec.cond.tp.min)}</span></p>` : ''}
           ${selRec.place ? `<p class="where">${icon('pin')}<span>${esc(selRec.place)}</span></p>` : ''}
           ${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(esc).join(' · ')}</span></p>` : ''}
-          ${selRec.phys.length ? `<p class="where">${icon('heartbeat')}<span>${selRec.phys.map(p => physLabel(id, p)).join(', ')}</span></p>` : ''}
+          ${statesLine(id, selRec.phys, selRec.notes, 'heartbeat')}${statesLine(id, selRec.mental, selRec.notes, 'brain')}
           ${selRec.trip ? `<p class="where">${icon('route')}<span>Voyage</span></p>` : ''}
           ${selRec.hot ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${selRec.with ? ' avec ' + esc(whoLabel(selRec.with)) : ''}</span></p>` : (n => n ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${n.with ? ' avec ' + esc(whoLabel(n.with)) : ''}</span></p>` : '')(nightOn(c, sel))}`
         : `<p class="reserved">Pas de fiche remplie ce jour-là.</p>${(n => n ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${n.with ? ' avec ' + esc(whoLabel(n.with)) : ''}</span></p>` : '')(nightOn(c, sel))}`}
@@ -1389,6 +1400,7 @@ function renderHistory(id) {
         ${st.weather.length ? `<div><dt>Météo</dt><dd>${listOf(st.weather)}</dd></div>` : ''}
         ${st.hottest ? `<div><dt>Températures</dt><dd>de ${deg(st.coldest.min)} (${fmtDay(st.coldest.d)}) à ${deg(st.hottest.max)} (${fmtDay(st.hottest.d)})</dd></div>` : ''}
         ${st.phys.length ? `<div><dt>État physique</dt><dd>${listOf(st.phys)}</dd></div>` : ''}
+        ${st.mental.length ? `<div><dt>État mental</dt><dd>${listOf(st.mental)}</dd></div>` : ''}
         <div><dt>Nuits chaudes</dt><dd>${st.nights}</dd></div>
         ${st.trips ? `<div><dt>Voyages</dt><dd>${st.trips}</dd></div>` : ''}
       </dl>
@@ -1507,11 +1519,11 @@ const huntFor = (id, label, day = rpDay) => {
   return { mode, catches: tally(catches.map(g => g.name)).map(([name, qty]) => ({ name, qty })) };
 };
 const huntText = h => !h ? '' : h.catches.length ? h.catches.map(c => (c.qty > 1 ? c.qty + ' × ' : '') + c.name).join(', ') : 'bredouille';
-const physSection = id => { const s = state[id]; s.phys ||= new Set();
-  return `<section><h2>État physique</h2>
-    <div class="place-list" role="group" aria-label="État physique">${PHYS.map(p => `<button type="button" data-phys="${p}" aria-pressed="${s.phys.has(p)}">${esc(physLabel(id, p))}</button>`).join('')}</div>
-    ${[...s.phys].some(p => p !== 'En forme' && p !== 'Bon moral') ? `<input type="text" id="physnote-${id}" placeholder="Précisions (ex. entorse à la cheville)" value="${esc(s.physNote || '')}">` : ''}
-  </section>`; };
+const statesBlock = id => { const s = state[id]; s.phys ||= new Set(); s.mental ||= new Set(); s.stateNotes ||= {};
+  const group = (title, list, set, attr) => `<h3 class="state-h">${title}</h3>
+    <div class="place-list" role="group" aria-label="${title}">${list.map(p => `<button type="button" ${attr}="${p}" aria-pressed="${set.has(p)}">${esc(physLabel(id, p))}</button>`).join('')}</div>
+    ${list.filter(p => set.has(p) && STATE_HINT[p]).map(p => `<input type="text" class="state-note" data-state-note="${p}" placeholder="${esc(physLabel(id, p))} : à préciser (ex. : ${STATE_HINT[p]})" value="${esc(s.stateNotes[p] || '')}">`).join('')}`;
+  return group('État physique', PHYS, s.phys, 'data-phys') + group('État mental', MENTAL, s.mental, 'data-mental'); };
 const shotSection = id => { const s = state[id];
   return `<section><h2>Capture du jour</h2>
     ${s.shot ? `<figure class="shot"><img src="${s.shot}" alt="Capture du jour de ${esc(C.find(x => x.id === id).name)}"><figcaption><button type="button" class="link" id="shot-off-${id}">Retirer la capture</button></figcaption></figure>`
@@ -1541,12 +1553,17 @@ const bindDaySections = id => {
   const s = state[id], list = arcsOf(id), find = aid => list.find(a => a.id === aid);
   document.querySelectorAll('[data-phys]').forEach(b => b.addEventListener('click', () => {
     const p = b.dataset.phys;
-    if (s.phys.has(p)) s.phys.delete(p);
-    else if (MORAL.includes(p)) { MORAL.forEach(m => s.phys.delete(m)); s.phys.add(p); }
-    else { if (p === 'En forme') [...s.phys].forEach(x => { if (!MORAL.includes(x)) s.phys.delete(x); }); else s.phys.delete('En forme'); s.phys.add(p); }
+    if (s.phys.has(p)) { s.phys.delete(p); delete s.stateNotes[p]; }
+    else { if (p === 'En forme') [...s.phys].forEach(x => { s.phys.delete(x); delete s.stateNotes[x]; }); else s.phys.delete('En forme'); s.phys.add(p); }
     renderChar(id);
   }));
-  document.getElementById('physnote-' + id)?.addEventListener('input', e => s.physNote = e.target.value);
+  document.querySelectorAll('[data-mental]').forEach(b => b.addEventListener('click', () => {
+    const p = b.dataset.mental;
+    if (s.mental.has(p)) { s.mental.delete(p); delete s.stateNotes[p]; }
+    else { MENTAL_EXCL.filter(g => g.includes(p)).flat().forEach(x => { s.mental.delete(x); delete s.stateNotes[x]; }); s.mental.add(p); }
+    renderChar(id);
+  }));
+  document.querySelectorAll('[data-state-note]').forEach(i => i.addEventListener('input', () => { s.stateNotes[i.dataset.stateNote] = i.value.trim(); }));
   document.getElementById('shot-' + id)?.addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;
     const rd = new FileReader(); rd.onload = () => { s.shot = rd.result; renderChar(id); }; rd.readAsDataURL(f);
@@ -1710,7 +1727,8 @@ function renderChar(id) {
       ${placesLine}
       ${eventsBlock(c, false)}
       ${milestonesOn(id, rpDay).map(m => `<p class="milestone">${icon('ring')}<span>${esc(msLabel(m))}</span></p>`).join('')}
-      ${s.phys?.size ? `<p class="where">${icon('heartbeat')}<span>${[...s.phys].map(p => physLabel(id, p)).join(', ')}${s.physNote ? ' — ' + esc(s.physNote) : ''}</span></p>` : ''}
+      ${statesLine(id, [...(s.phys || [])], s.stateNotes, 'heartbeat').replace('</span></p>', s.physNote ? ' — ' + esc(s.physNote) + '</span></p>' : '</span></p>')}
+      ${statesLine(id, [...(s.mental || [])], s.stateNotes, 'brain')}
       ${isKhurdan(id) && s.violet ? `<p class="where">${icon('cloth')}<span>A porté du violet</span></p>` : ''}
       ${nightLine(id)}
       ${djLine(id)}
@@ -1753,8 +1771,8 @@ function renderChar(id) {
         ${C.filter(x => x.id !== id).map(x => `<option value="${x.id}" ${rpPlayed[id] === x.id ? 'selected' : ''}>${x.name}</option>`).join('')}</select></label>
       <p class="reserved">La fiche compte comme remplie${isChar(rpPlayed[id]) ? `, et celle ${deName(nameOf(rpPlayed[id]))} aussi` : ''}, même sans activités cochées.</p>` : ''}</section>
     <section><h2>Mood du jour</h2>
-      <textarea id="mood-${id}" placeholder="Comment se sent ${c.name} aujourd'hui ?">${esc(s.mood)}</textarea></section>
-    ${physSection(id)}
+      <textarea id="mood-${id}" placeholder="Comment se sent ${c.name} aujourd'hui ?">${esc(s.mood)}</textarea>
+      ${statesBlock(id)}</section>
     <section><h2>Lieux du jour</h2>
       <label class="check-inline"><input type="checkbox" id="trip-${id}" ${s.trip ? 'checked' : ''}>${icon('route')}Mode voyage</label>
       ${s.trip ? ['from', 'to'].map(leg => `<div class="leg"><h3>${leg === 'from' ? 'Départ' : 'Arrivée'}</h3>${picker(s.trip[leg], leg)}</div>`).join('') : `
@@ -2024,8 +2042,8 @@ initPlaces();
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg'];
-const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false });
+  'details', 'mental', 'stateNotes', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg'];
+const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{} });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }
   : Array.isArray(v) ? v.map(enc)
@@ -2058,6 +2076,8 @@ const applyEntry = (id, e) => {
   ENTRY_KEYS.forEach(k => delete s[k]);
   const d = dec(e || {}); delete d.night; delete d.film; delete d.rp;
   Object.assign(s, freshEntry(), d);
+  // Anciennes fiches : le moral était rangé avec l'état physique.
+  MORAL.forEach(m => { if (s.phys?.has?.(m)) { s.phys.delete(m); s.mental.add(m); } });
 };
 const charDocOf = c => enc({ addedActs: c.addedActs || [], removedActs: [...(c.removedActs || [])],
   addedRegions: [...(c.added || [])], customPlaces: c.customPlaces || [], customCats: c.customCats || [], actCat: c.actCat || {}, catNames: c.catNames || {} });
