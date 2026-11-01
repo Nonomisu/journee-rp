@@ -246,6 +246,12 @@ textarea { min-height: 4.5rem; resize: vertical; }
 ::placeholder { color: var(--dim); opacity: .8; }
 
 .cat { display: grid; gap: .35rem; }
+.cat.fold > summary { list-style: none; cursor: pointer; }
+.cat.fold > summary::-webkit-details-marker { display: none; }
+.cat.fold > summary h3::before { content: '▾'; display: inline-block; width: 1em; transition: transform .15s; }
+.cat.fold:not([open]) > summary h3::before { transform: rotate(-90deg); }
+.cat.fold h3 small { letter-spacing: .05em; text-transform: none; color: var(--gold); }
+.fold-all { text-align: right; }
 .cat h3 { margin: .5rem 0 .1rem; font: 500 .72rem/1 var(--ui); letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
 .act {
   display: flex; align-items: center; gap: .75rem; cursor: pointer;
@@ -588,6 +594,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=22e8d7acda" charset="utf-8"></script>
+<script src="app.js?v=4e072e6a27" charset="utf-8"></script>
 <script type="module" src="sync.js?v=c45c93b7fa"></script>
 

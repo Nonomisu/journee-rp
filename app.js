@@ -15,6 +15,10 @@ const THEMES = {
   kha:      { cls: 't-kha', bg:'#111012', gold:'#d0483d', text:'#eee7e2', dim:'#a39893', rule:'rgba(208,72,61,.32)', display:'"Alegreya SC", serif', glyph:'<svg class="eg-svg" viewBox="0 0 24 24" aria-hidden="true"><rect x="6.4" y="1.8" width="11.2" height="20.4" rx="5.6" fill="none" stroke="currentColor" stroke-width="1.8"/><g fill="none" stroke="#c9a27a" stroke-width="1.4" stroke-linecap="round"><circle cx="12" cy="7" r="2.2"/><path d="M12 4.8v4.4M9.8 7h4.4"/><path d="M9.6 15l2.4-4 2.4 4z"/><path d="M10 18.6h4"/></g></svg>' },   // Davaajav : cartouche à glyphes
 };
 const CATS = { quotidien:'Quotidien', metier:'Charge & métier', liens:'Liens' };
+// Catégories repliées (par personnage), gardées sur cet appareil.
+const FOLDED = (() => { try { return new Set(JSON.parse(localStorage.getItem('rp-folded') || '[]')); } catch { return new Set(); } })();
+const isFolded = (id, k) => FOLDED.has(id + ':' + k);
+const setFolded = (id, k, on) => { on ? FOLDED.add(id + ':' + k) : FOLDED.delete(id + ':' + k); try { localStorage.setItem('rp-folded', JSON.stringify([...FOLDED])); } catch {} };
 // Catégories propres à un personnage (c.customCats) et activités déplacées d'une catégorie à l'autre (c.actCat),
 // enregistrées sur la fiche du personnage.
 const catsOf = c => [...Object.keys(CATS), ...(c.customCats || []).map(x => x.key)];
@@ -1794,7 +1798,11 @@ function renderChar(id) {
     </section>
     <section><h2>Activités</h2>
       ${cats.length ? '' : `<p class="reserved">Liste d'activités à définir. En attendant, utilise le champ « Activité spéciale » et coche « L'ajouter aussi à la liste ».</p>`}
-      ${cats.map(k => `<div class="cat">${s.manageActs && s.renaming === k
+      ${!s.manageActs && cats.length > 1 ? `<div class="fold-all"><button type="button" class="link small" data-fold-all="1">Tout replier</button> · <button type="button" class="link small" data-fold-all="0">Tout déplier</button></div>` : ''}
+      ${cats.map(k => !s.manageActs ? (list => `<details class="cat fold" data-fold="${k}" ${isFolded(id, k) ? '' : 'open'}>
+        <summary><h3>${esc(catLabel(c, k))}<small>${list.filter(a => s.checked.has(a)).length ? ` · ${list.filter(a => s.checked.has(a)).length} cochée${list.filter(a => s.checked.has(a)).length > 1 ? 's' : ''}` : ''}</small></h3></summary>
+        ${list.map(a => actRow(a)).join('')}</details>`)(live(k).filter(a => actAvailable(id, a)))
+      : `<div class="cat">${s.manageActs && s.renaming === k
         ? `<div class="special-row"><input type="text" id="rename-${id}" value="${esc(catLabel(c, k))}" aria-label="Nouveau nom"><button type="button" class="btn" data-rename-ok="${k}">OK</button><button type="button" class="link small" data-rename-cancel>Annuler</button></div>`
         : `<h3>${esc(catLabel(c, k))}${s.manageActs ? ` <button type="button" class="link small" data-rename="${k}">Renommer</button>` : ''}</h3>`}${s.manageActs
         ? (live(k).length ? live(k).map(a => `<div class="act manage"><span>${esc(a)}</span>
@@ -2008,6 +2016,10 @@ function renderChar(id) {
     renderChar(id);
   }));
   document.getElementById('manage-acts-'+id)?.addEventListener('click', () => { s.manageActs = !s.manageActs; s.renaming = null; renderChar(id); });
+  document.querySelectorAll('details[data-fold]').forEach(d => d.addEventListener('toggle', () => setFolded(id, d.dataset.fold, !d.open)));
+  document.querySelectorAll('[data-fold-all]').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('details[data-fold]').forEach(d => { setFolded(id, d.dataset.fold, b.dataset.foldAll === '1'); d.open = b.dataset.foldAll !== '1'; });
+  }));
   document.querySelectorAll('[data-act-cat]').forEach(sel => sel.addEventListener('change', () => { moveAct(c, sel.dataset.actCat, sel.value); renderChar(id); }));
   document.querySelectorAll('[data-rename]').forEach(b => b.addEventListener('click', () => { s.renaming = b.dataset.rename; renderChar(id); document.getElementById('rename-'+id)?.focus(); }));
   document.querySelectorAll('[data-rename-cancel]').forEach(b => b.addEventListener('click', () => { s.renaming = null; renderChar(id); }));
