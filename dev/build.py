@@ -106,7 +106,7 @@ js = js[:a] + """  if (d > rpDay) return null;
   const e = e0 || {};
   return { rp, mood: e.mood || '', acts: [...(e.checked || [])], slots: e.slots || {}, place: [...(e.places || [])][0] || '', region: e.region || homeRegion(c.id),
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
-    tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])] } : null,
+    tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])], minutes: e.trip.minutes || 0, reason: e.trip.reason || '' } : null,
     phys: [...(e.phys || [])].filter(p => !MORAL.includes(p)), mental: [...(e.mental || []), ...[...(e.phys || [])].filter(p => MORAL.includes(p))],
     notes: e.stateNotes || {}, real: true };
 };

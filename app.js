@@ -681,6 +681,10 @@ const climatesFor = id => {
   return [...leg(t.from, 'Départ'), ...leg(t.to, 'Arrivée')];
 };
 const TRAVEL_MODES = ['Éthérite', 'Aéronef', 'Monture', 'Bateau'];
+// Durée d'un voyage (en minutes) : « 2 h 30 », « 45 min », « 3 j 4 h ».
+const fmtDur = m => { m = Math.round(m || 0); const j = Math.floor(m / 1440), h = Math.floor(m % 1440 / 60), mn = m % 60;
+  return j ? `${j} j${h ? ' ' + h + ' h' : ''}` : h ? `${h} h${mn ? ' ' + String(mn).padStart(2, '0') : ''}` : `${mn} min`; };
+const tripBits = t => [t.minutes ? fmtDur(t.minutes) : '', [...(t.modes || [])].join(', '), t.reason ? 'motif : ' + t.reason : ''].filter(Boolean).join(' · ');
 const zoneOf = T => T.zone && REGIONS[T.region]?.zones?.[T.zone];
 const legLabel = l => !l || !l.region ? '…' : l.places.size ? [...l.places].join(', ') : zoneOf(l)?.label || REGIONS[l.region].label;
 const climatesAt = (id, R, places, zone) => {
@@ -1074,7 +1078,7 @@ const dayRecord = (c, d) => {
   if (sameDay(d, rpDay)) {
     const filled = s.done || s.mood || s.checked.size || rpPlayed[c.id];
     return filled ? { rp: rpPlayed[c.id] || null, mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
-      cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])] } : null,
+      cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])], minutes: s.trip.minutes || 0, reason: s.trip.reason || '' } : null,
       phys: [...(s.phys || [])], mental: [...(s.mental || [])], notes: { ...(s.stateNotes || {}) }, real: true } : null;
   }
   if (d > rpDay) return null;
@@ -1085,7 +1089,7 @@ const dayRecord = (c, d) => {
   const e = e0 || {};
   return { rp, mood: e.mood || '', acts: [...(e.checked || [])], slots: e.slots || {}, place: [...(e.places || [])][0] || '', region: e.region || homeRegion(c.id),
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
-    tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])] } : null,
+    tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])], minutes: e.trip.minutes || 0, reason: e.trip.reason || '' } : null,
     phys: [...(e.phys || [])].filter(p => !MORAL.includes(p)), mental: [...(e.mental || []), ...[...(e.phys || [])].filter(p => MORAL.includes(p))],
     notes: e.stateNotes || {}, real: true };
 };
@@ -1207,6 +1211,12 @@ const wrapExtras = (c, y) => {
 };
 // Duo le plus chaud de l'année, toutes paires confondues.
 const hotDuoCache = {};
+// Temps de voyage cumulé dans l'année (minutes renseignées dans la section Voyage).
+const travelTime = (c, y) => Array.from({ length:366 }, (_, i) => new Date(y, 0, 1 + i)).filter(d => d.getFullYear() === y && d <= rpDay)
+  .reduce((a, d) => a + (dayRecord(c, d)?.tripInfo?.minutes || 0), 0);
+// Palme du plus grand voyageur / de la plus grande voyageuse : tous personnages confondus (mise en cache avec le duo).
+const topTraveler = y => hotDuoCache['travel:' + y] ||= C.map(c => ({ id: c.id, min: travelTime(c, y) })).filter(x => x.min > 0).sort((a, b) => b.min - a.min)[0] || null;
+const travelerTitle = id => isFem(id) ? 'Plus grande voyageuse' : 'Plus grand voyageur';
 const hottestDuo = y => hotDuoCache[y] ||= PAIRS.map(p => {
   const days = Array.from({ length:366 }, (_, i) => new Date(y, 0, 1 + i)).filter(d => d.getFullYear() === y && d <= rpDay);
   const n = days.filter(d => p.some(id => { const r = dayRecord(C.find(c => c.id === id), d); return r?.hot && (!r.with || p.includes(r.with)); })).length;   // nuits passées ensemble
@@ -1271,6 +1281,9 @@ const wrapExtrasHtml = (c, y) => {
     <h3 class="wrap-sec">Voyages et météo</h3>
     <div class="fx-grid">
       ${card('Distance parcourue', x.km.toLocaleString('fr-FR') + ' km', x.mode ? 'surtout en ' + x.mode.toLowerCase() : 'sans quitter sa région')}
+      ${(tt => tt ? card('Temps de voyage', fmtDur(tt), x.trips.length + ' voyage' + (x.trips.length > 1 ? 's' : '') + ' dans l\'année') : '')(travelTime(c, y))}
+      ${(w => !w ? '' : w.id === c.id ? card('🏆 ' + travelerTitle(c.id), 'de l\'année', 'Palme décernée : ' + fmtDur(w.min) + ' sur les routes')
+        : card(travelerTitle(w.id) + ' de l\'année', esc(nameOf(w.id)), fmtDur(w.min) + ' de voyage'))(topTraveler(y))}
       ${card('Régions visitées', x.regions.size, x.zones.size + ' zones et lieux distincts')}
       ${card('Chez soi', x.ratioHome + ' %', 'des journées dans sa région')}
       ${card('Sous la pluie', x.rain + ' jours', x.snow ? x.snow + ' jours de neige' : '')}
@@ -1385,7 +1398,7 @@ function renderHistory(id) {
           ${selRec.place ? `<p class="where">${icon('pin')}<span>${esc(selRec.place)}</span></p>` : ''}
           ${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(esc).join(' · ')}</span></p>` : ''}
           ${statesLine(id, selRec.phys, selRec.notes, 'heartbeat')}${statesLine(id, selRec.mental, selRec.notes, 'brain')}
-          ${selRec.trip ? `<p class="where">${icon('route')}<span>Voyage</span></p>` : ''}
+          ${selRec.trip ? `<p class="where">${icon('route')}<span>Voyage${selRec.tripInfo?.from ? ' : ' + esc(REGIONS[selRec.tripInfo.from]?.label || '') + (selRec.tripInfo.to ? ' → ' + esc(REGIONS[selRec.tripInfo.to]?.label || '') : '') : ''}${selRec.tripInfo && tripBits(selRec.tripInfo) ? ' · ' + esc(tripBits(selRec.tripInfo)) : ''}</span></p>` : ''}
           ${selRec.hot ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${selRec.with ? ' avec ' + esc(whoLabel(selRec.with)) : ''}</span></p>` : (n => n ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${n.with ? ' avec ' + esc(whoLabel(n.with)) : ''}</span></p>` : '')(nightOn(c, sel))}`
         : `<p class="reserved">Pas de fiche remplie ce jour-là.</p>${(n => n ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${n.with ? ' avec ' + esc(whoLabel(n.with)) : ''}</span></p>` : '')(nightOn(c, sel))}`}
       </div>` : '<p class="reserved">Touche un jour pour revoir sa fiche.</p>'}
@@ -1667,12 +1680,7 @@ function renderChar(id) {
     const detail = on && DETAIL_ACTS[label] ? `<input type="text" class="act-detail" data-detail="${esc(label)}" value="${esc(s.details?.[label] || '')}" placeholder="${DETAIL_ACTS[label]}">` : '';
     const slots = on ? `<div class="slots" role="group" aria-label="Moment de la journée">${SLOTS.map(sl => `<button type="button" data-slot="${sl.id}" data-for="${esc(label)}" aria-pressed="${(s.slots[label] || []).includes(sl.id)}" title="${sl.hint}">${icon(sl.icon)}${sl.label}</button>`).join('')}</div>` : '';
     const regionOpts = sel => c.regions.map(r => `<option value="${r}" ${sel === r ? 'selected' : ''}>${REGIONS[r].label}</option>`).join('');
-    const trip = label === 'Voyage' && on && s.trip ? `<div class="trip-row">
-        <label><span>De</span><select id="tripfrom-${id}">${regionOpts(s.trip.from.region)}</select></label>
-        <span class="arrow" aria-hidden="true">→</span>
-        <label><span>Vers</span><select id="tripto-${id}"><option value="">Arrivée…</option>${regionOpts(s.trip.to.region)}</select></label>
-      </div>
-      <div class="trip-row modes" role="group" aria-label="Moyen de transport">${TRAVEL_MODES.map(m => `<label class="check-inline"><input type="checkbox" data-mode="${m}" ${s.trip.modes?.has(m) ? 'checked' : ''}> ${m}</label>`).join('')}</div>` : '';
+    const trip = label === 'Voyage' && on && s.trip ? `<p class="act-detail">${icon('route')}<span>${(b => b ? esc(b) : 'Détails dans la section « Voyage », plus bas')(tripBits(s.trip))}</span></p>` : '';
     const hunt = on ? huntFor(id, label) : null;
     const huntRow = hunt ? `<p class="hunt ${hunt.catches.length ? '' : 'empty'}">${icon('target')}<span>${hunt.catches.length ? 'Prises : ' + esc(huntText(hunt)) : (isFem(id) ? 'Rentrée bredouille' : 'Rentré bredouille')}</span></p>` : '';
     return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${drawn}${detail}${contract}${trip}${slots}</div>`;
@@ -1697,7 +1705,7 @@ function renderChar(id) {
     return html;
   };
   const pathOf = T => T.region ? [REGIONS[T.region].label, zoneOf(T)?.label, [...T.places].join(', ')].filter(Boolean).join(' — ') : '…';
-  const placesLine = s.trip ? `<p class="where">${icon('route')}<span>${esc(pathOf(s.trip.from))} → ${esc(pathOf(s.trip.to))}</span></p>` : (s.region || s.places.size) ? `<p class="where">${icon('pin')}<span>${esc(pathOf(s))}</span></p>` : '';
+  const placesLine = s.trip ? `<p class="where">${icon('route')}<span>${esc(pathOf(s.trip.from))} → ${esc(pathOf(s.trip.to))}${tripBits(s.trip) ? '<small> · ' + esc(tripBits(s.trip)) + '</small>' : ''}</span></p>` : (s.region || s.places.size) ? `<p class="where">${icon('pin')}<span>${esc(pathOf(s))}</span></p>` : '';
   const timeline = (groups.length || s.places.size || s.region || s.trip) ? `<section><h2>Déroulé du jour</h2>${placesLine}<div class="timeline">${groups.map(({ sl, items }) => `
     <div class="period"><p class="period-head">${sl.icon ? icon(sl.icon) : ''}<span>${sl.label}</span>${sl.hint ? `<small>${sl.hint}</small>` : ''}</p>
     <ul>${items.map(l => `<li>${esc(dispLabel(l))}</li>`).join('')}</ul></div>`).join('')}</div></section>` : '';
@@ -1774,8 +1782,7 @@ function renderChar(id) {
       <textarea id="mood-${id}" placeholder="Comment se sent ${c.name} aujourd'hui ?">${esc(s.mood)}</textarea>
       ${statesBlock(id)}</section>
     <section><h2>Lieux du jour</h2>
-      <label class="check-inline"><input type="checkbox" id="trip-${id}" ${s.trip ? 'checked' : ''}>${icon('route')}Mode voyage</label>
-      ${s.trip ? ['from', 'to'].map(leg => `<div class="leg"><h3>${leg === 'from' ? 'Départ' : 'Arrivée'}</h3>${picker(s.trip[leg], leg)}</div>`).join('') : `
+      ${s.trip ? `<p class="reserved">${icon('route')} Journée de voyage : le départ et l'arrivée se renseignent dans la section « Voyage », après les activités.</p>` : `
       ${picker(s, '')}
       ${s.region ? `
         ${c.added?.has(s.region) ? `<button type="button" class="link" id="rmregion-${id}">Retirer ${REGIONS[s.region].label} de la fiche ${deName(c.name)}</button>` : ''}
@@ -1801,6 +1808,17 @@ function renderChar(id) {
       ${canEdit(id) ? `<button type="button" class="link small manage-toggle" id="manage-acts-${id}">${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités et les catégories'}</button>` : ''}
       ${s.specials.length ? `<div class="cat"><h3>Spéciales du jour</h3>${s.specials.map(a => actRow(a, true)).join('')}</div>` : ''}
       ${babysitBlock(id, true)}
+    </section>
+    <section class="trip-sec"><h2>Voyage</h2>
+      <label class="act"><input type="checkbox" id="trip-${id}" ${s.trip ? 'checked' : ''}>${icon('route')}<span>${c.name} a voyagé aujourd'hui</span></label>
+      ${s.trip ? `${['from', 'to'].map(leg => `<div class="leg"><h3>${leg === 'from' ? 'Départ' : 'Arrivée'}</h3>${picker(s.trip[leg], leg)}</div>`).join('')}
+      <h3>Durée du voyage</h3>
+      <div class="trip-row dur"><label><input type="number" min="0" max="240" inputmode="numeric" id="trip-h-${id}" value="${Math.floor((s.trip.minutes || 0) / 60) || ''}" placeholder="0"> h</label>
+        <label><input type="number" min="0" max="59" step="5" inputmode="numeric" id="trip-m-${id}" value="${(s.trip.minutes || 0) % 60 || ''}" placeholder="0"> min</label></div>
+      <h3>Mode de déplacement</h3>
+      <div class="trip-row modes" role="group" aria-label="Mode de déplacement">${TRAVEL_MODES.map(m => `<label class="check-inline"><input type="checkbox" data-mode="${m}" ${s.trip.modes?.has(m) ? 'checked' : ''}> ${m}</label>`).join('')}</div>
+      <h3>Motif du voyage</h3>
+      <input type="text" id="trip-reason-${id}" placeholder="Ex. : affaires de la tribu, rendre visite à un ami…" value="${esc(s.trip.reason || '')}">` : ''}
     </section>
     ${djBlock(id)}
     ${workdaysBlock(id)}
@@ -1886,6 +1904,10 @@ function renderChar(id) {
     const m = cb.dataset.mode; (s.trip.modes ||= new Set()); e.target.checked ? s.trip.modes.add(m) : s.trip.modes.delete(m);
   }));
   document.getElementById('trip-'+id)?.addEventListener('change', e => setTrip(e.target.checked));
+  const setDur = () => { const h = Math.max(0, +document.getElementById('trip-h-'+id).value || 0), m = Math.max(0, Math.min(59, +document.getElementById('trip-m-'+id).value || 0)); s.trip.minutes = h * 60 + m; };
+  document.getElementById('trip-h-'+id)?.addEventListener('input', setDur);
+  document.getElementById('trip-m-'+id)?.addEventListener('input', setDur);
+  document.getElementById('trip-reason-'+id)?.addEventListener('input', e => { s.trip.reason = e.target.value.trim(); });
   const setLegRegion = (leg, r) => { const L = s.trip[leg]; L.region = r || null; L.zone = null; L.places = new Set(); renderChar(id); };
   document.getElementById('tripfrom-'+id)?.addEventListener('change', e => setLegRegion('from', e.target.value));
   document.getElementById('tripto-'+id)?.addEventListener('change', e => setLegRegion('to', e.target.value));
