@@ -1473,9 +1473,15 @@ const MILESTONES = {};   // id → [{ key, type, note, with }]
 const milestonesOf = id => (MILESTONES[id] ||= []);
 const milestonesOn = (id, d) => milestonesOf(id).filter(m => m.key === keyOf(d));
 const msLabel = m => `${m.type}${m.with ? ' avec ' + whoLabel(m.with) : ''}${m.note ? ' — ' + m.note : ''}`;
-const milestoneSection = id => {
+// Ce qui se passe aujourd'hui autour du personnage (fêtes, anniversaires, jours khurdans).
+const dayHighlights = c => [
+  ...(f => f ? [['star', f.name]] : [])(inEorzeaToday(c.id) ? festivalOn(rpDay) : null),
+  ...khurdanDays(c, rpDay).map(x => [x.startsWith('Départ') ? 'route' : 'star', x]),
+  ...birthdaysOn(c.id, rpDay).map(x => ['cake', x]),
+].map(([ic, x]) => `<p class="where">${icon(ic)}<span>${esc(x)}</span></p>`).join('');
+const milestoneSection = (id, inner) => {
   const s = state[id], today = milestonesOn(id, rpDay), p = partnerOf(id);
-  return `<section><h2>Moment marquant</h2>
+  return `${inner ? '' : '<section><h2>Moment marquant</h2>'}
     ${today.map((m, i) => `<p class="milestone">${icon('ring')}<span>${esc(msLabel(m))}</span><button type="button" class="link small" data-ms-del="${i}" aria-label="Retirer">×</button></p>`).join('')}
     ${s.msOpen ? `<div class="event-form">
         <div class="place-list" role="group" aria-label="Type">${MILESTONE_TYPES.map(t => `<button type="button" data-ms-type="${t}" aria-pressed="${s.msType === t}">${t}</button>`).join('')}</div>
@@ -1483,7 +1489,7 @@ const milestoneSection = id => {
         ${p && SHARED_TYPES.includes(s.msType) ? `<label class="check-inline"><input type="checkbox" id="ms-with-${id}" checked> Avec ${nameOf(p)} (ajouté aussi sur sa fiche)</label>` : ''}
         <div class="special-row"><button type="button" class="btn" id="ms-save-${id}" ${s.msType ? '' : 'disabled'}>Enregistrer</button><button type="button" class="link" id="ms-cancel-${id}">Annuler</button></div>
       </div>` : `<button type="button" class="link alert-add" id="ms-add-${id}">${icon('ring')}Noter un moment marquant (mariage, naissance…)</button>`}
-  </section>`;
+  ${inner ? '' : '</section>'}`;
 };
 const bindMilestones = id => {
   const s = state[id];
@@ -1588,7 +1594,7 @@ const prevNightBlock = id => {
     ${filled ? `<button type="button" class="link small" id="prev-done-${id}">Terminé</button>` : ''}</div>`;
 };
 const statesBlock = id => { const s = state[id]; s.phys ||= new Set(); s.mental ||= new Set(); s.stateNotes ||= {};
-  const group = (title, list, set, attr) => `<h3 class="state-h">${title}</h3>
+  const group = (title, list, set, attr) => `<h3 class="state-h">${icon(title === 'État physique' ? 'heartbeat' : 'brain')}${title}</h3>
     <div class="place-list" role="group" aria-label="${title}">${list.map(p => `<button type="button" ${attr}="${p}" aria-pressed="${set.has(p)}">${esc(physLabel(id, p))}</button>`).join('')}</div>
     ${list.filter(p => set.has(p)).map(p => `<input type="text" class="state-note" data-state-note="${p}" placeholder="${esc(physLabel(id, p))} : ${STATE_HINT[p] ? `à préciser (ex. : ${STATE_HINT[p]})` : 'précision (facultatif)'}" value="${esc(s.stateNotes[p] || '')}">`).join('')}`;
   return group('État physique', PHYS, s.phys, 'data-phys') + group('État mental', MENTAL, s.mental, 'data-mental'); };
@@ -1783,6 +1789,9 @@ function renderCharNow(id) {
   const timeline = (groups.length || s.places.size || s.region || s.trip) ? `<section><h2>Déroulé du jour</h2>${placesLine}<div class="timeline">${groups.map(({ sl, items }) => `
     <div class="period"><p class="period-head">${sl.icon ? icon(sl.icon) : ''}<span>${sl.label}</span>${sl.hint ? `<small>${sl.hint}</small>` : ''}</p>
     <ul>${items.map(l => `<li>${esc(dispLabel(l))}</li>`).join('')}</ul></div>`).join('')}</div></section>` : '';
+  const chipsHead = `${c.groups.includes('Khurdans') ? `<span class="moon"><svg class="moon-ico" viewBox="0 0 24 24" aria-hidden="true">${MOON_ICONS[khurdanMoon[0]]}</svg>${khurdanMoon[1]}</span>` : ''}
+        ${conditionsFor(id).map(w => `<span class="wx">${icon(w.icon)}${w.label}${w.tp ? ` · ${deg(w.tp.max)}<small>/ ${deg(w.tp.min)}</small>` : ''}${w.where ? `<small>${w.where}</small>` : ''}</span>`).join('')}
+        ${snowCoverOn(TEMP_CITY(id), rpDay) ? `<span class="snowcover">${icon('ground')}${SNOW[TEMP_CITY(id)].eternal ? 'Neiges éternelles' : 'Sol enneigé'}</span>` : ''}`;
   const chips = `${c.groups.includes('Khurdans') ? `<span class="moon"><svg class="moon-ico" viewBox="0 0 24 24" aria-hidden="true">${MOON_ICONS[khurdanMoon[0]]}</svg>${khurdanMoon[1]}</span>` : ''}
         ${conditionsFor(id).map(w => `<span class="wx">${icon(w.icon)}${w.label}${w.tp ? ` · ${deg(w.tp.max)}<small>/ ${deg(w.tp.min)}</small>` : ''}${w.where ? `<small>${w.where}</small>` : ''}</span>`).join('')}
         ${(f => f ? `<span class="fest">${icon('star')}${f.name}</span>` : '')(inEorzeaToday(id) ? festivalOn(rpDay) : null)}
@@ -1808,6 +1817,7 @@ function renderCharNow(id) {
       ${!s.done && !s.mood && !s.checked.size && !rpPlayed[id] ? `<p class="reserved">${c.name} n'a pas encore rempli sa journée.</p>` : s.mood ? `<blockquote class="recap-mood">${esc(s.mood)}</blockquote>` : '<p class="reserved">Pas de mood renseigné.</p>'}
       ${placesLine}
       ${eventsBlock(c, false)}
+      ${(s.dayEvents || []).map(x => `<p class="where">${icon('star')}<span>${esc(x)}</span></p>`).join('')}
       ${milestonesOn(id, rpDay).map(m => `<p class="milestone">${icon('ring')}<span>${esc(msLabel(m))}</span></p>`).join('')}
       ${statesLine(id, [...(s.phys || [])], s.stateNotes, 'heartbeat').replace('</span></p>', s.physNote ? ' — ' + esc(s.physNote) + '</span></p>' : '</span></p>')}
       ${statesLine(id, [...(s.mental || [])], s.stateNotes, 'brain')}
@@ -1819,6 +1829,7 @@ function renderCharNow(id) {
       ${groups.length ? `<ul class="recap-list">${groups.map(({ sl, items }) => `<li>
         <span class="recap-when">${sl.icon ? icon(sl.icon) : ''}${sl.label}</span>
         <span class="recap-what">${items.map(l => esc(dispLabel(l))).join(' · ')}</span></li>`).join('')}</ul>` : ''}
+      ${s.infos?.trim() ? `<div class="recap-infos"><span>Informations</span><p>${esc(s.infos.trim())}</p></div>` : ''}
       ${s.shot ? `<img class="recap-shot" src="${s.shot}" alt="Capture du jour">` : ''}
       ${readOnly ? `<footer class="recap-foot"><span>${s.done ? '✓ Journée terminée' : 'Journée en cours'}</span></footer>` : `<footer class="recap-foot"><span>✓ Journée validée${window.RP_DISCORD ? RP_DISCORD.status(id) : ''}</span>
         <span class="foot-btns"><button type="button" class="btn" id="png-${id}">${icon('camera')}Image du récap</button>
@@ -1834,19 +1845,9 @@ function renderCharNow(id) {
   document.getElementById('view').innerHTML = `
     ${tabsHtml(id)}
     ${alertBlock(id, true)}
-    ${eventsBlock(c, true)}
-    ${s.eventEdit ? `<div class="event-form">
-        <h3>Nouvel événement</h3>
-        <input type="text" id="ev-label-${id}" placeholder="Ex. : Fête de la Lune de la mésange">
-        <label class="check-inline">Pour la catégorie
-          <select id="ev-group-${id}">${c.groups.map(g => `<option value="${esc(g)}" ${g === s.eventGroup ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select></label>
-        ${(members => members.length > 1 ? `<p class="reserved">Personnages non concernés (exil, absence…) :</p>
-          <div class="place-list">${members.map(m => `<label class="check-inline"><input type="checkbox" data-ev-except="${m.id}"> ${m.name}</label>`).join('')}</div>` : '')(C.filter(m => m.groups.includes(s.eventGroup || c.groups[0])))}
-        <div class="special-row"><button type="button" class="btn" id="ev-create-${id}">Créer l'événement</button><button type="button" class="link" id="ev-cancel-${id}">Annuler</button></div>
-      </div>` : `<button type="button" class="link alert-add" id="ev-add-${id}">${icon('flag')}Ajouter un événement de groupe</button>`}
     <header><p class="kicker">${t.glyph} ${c.groups.join(' · ')}</p><h1>${c.name}${c.surname ? `<small>${c.surname}</small>` : ''}</h1>
       <p class="date">${today}<br>${eorzeaDate}</p>
-      <div class="day-info">${chips}</div>
+      <div class="day-info">${chipsHead}</div>
       ${HOMES[HOME_OF[id]]?.optIn ? `<label class="check-inline wx-toggle"><input type="checkbox" id="wx-${id}" ${weatherOn[HOME_OF[id]]?'checked':''}> Météo du jour</label>` : ''}
       </header>
     <section class="rp-played"><label class="act"><input type="checkbox" id="rp-${id}" ${rpPlayed[id] ? 'checked' : ''}>${icon('star')}<span>Journée jouée en RP</span></label>
@@ -1854,7 +1855,6 @@ function renderCharNow(id) {
         ${C.filter(x => x.id !== id).map(x => `<option value="${x.id}" ${rpPlayed[id] === x.id ? 'selected' : ''}>${x.name}</option>`).join('')}</select></label>
       <p class="reserved">La fiche compte comme remplie${isChar(rpPlayed[id]) ? `, et celle ${deName(nameOf(rpPlayed[id]))} aussi` : ''}, même sans activités cochées.</p>` : ''}</section>
     <section><h2>Mood du jour</h2>
-      <textarea id="mood-${id}" placeholder="Comment se sent ${c.name} aujourd'hui ?">${esc(s.mood)}</textarea>
       ${statesBlock(id)}</section>
     <section><h2>Lieux du jour</h2>
       ${s.trip ? `<p class="reserved">${icon('route')} Journée de voyage : le départ et l'arrivée se renseignent dans la section « Voyage », après les activités.</p>` : `
@@ -1879,12 +1879,11 @@ function renderCharNow(id) {
         : `<h3>${esc(catLabel(c, k))}${s.manageActs ? ` <button type="button" class="link small" data-rename="${k}">Renommer</button>` : ''}</h3>`}${s.manageActs
         ? (live(k).length ? live(k).map(a => `<div class="act manage"><span>${esc(a)}</span>
             <select class="cat-move" data-act-cat="${esc(a)}" aria-label="Catégorie de ${esc(a)}">${catsOf(c).map(x => `<option value="${x}" ${x === k ? 'selected' : ''}>${esc(catLabel(c, x))}</option>`).join('')}</select>
-            <button type="button" class="link small" data-act-remove="${esc(a)}">Retirer</button></div>`).join('')
+            ${s.actDel === a ? `<button type="button" class="link small danger" data-act-remove="${esc(a)}">Confirmer la suppression</button>` : `<button type="button" class="link small" data-act-del="${esc(a)}">Supprimer</button>`}</div>`).join('')
           : `<p class="reserved">Catégorie vide : déplace-y des activités. <button type="button" class="link small" data-cat-del="${k}">Supprimer la catégorie</button></p>`)
         : live(k).filter(a => actAvailable(id, a)).map(a => actRow(a)).join('')}</div>`).join('')}
       ${s.manageActs ? `<div class="special-row new-cat"><input type="text" id="newcat-${id}" placeholder="Nouvelle catégorie (ex. : Loisirs)">
         <button type="button" class="btn" id="newcat-add-${id}">Créer</button></div>` : ''}
-      ${s.manageActs && removed.size ? `<div class="cat removed-acts"><h3>Retirées de la liste</h3>${[...removed].map(a => `<div class="act manage"><span>${esc(a)}</span><button type="button" class="link small" data-act-restore="${esc(a)}">Remettre</button></div>`).join('')}</div>` : ''}
       ${canEdit(id) ? `<button type="button" class="link small manage-toggle" id="manage-acts-${id}">${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités et les catégories'}</button>` : ''}
       ${s.specials.length ? `<div class="cat"><h3>Spéciales du jour</h3>${s.specials.map(a => actRow(a, true)).join('')}</div>` : ''}
       ${babysitBlock(id, true)}
@@ -1931,14 +1930,38 @@ function renderCharNow(id) {
     </section>
     ${djBlock(id)}
     ${workdaysBlock(id)}
-    ${milestoneSection(id)}
+    <section class="faits"><h2>Faits notoires</h2>
+      <textarea id="mood-${id}" placeholder="Ce qui a marqué la journée ${deName(c.name)}…">${esc(s.mood)}</textarea></section>
+    <section class="events-sec"><h2>Événements importants</h2>
+      <p class="where">${icon('cake')}<span>${today} · ${eorzeaDate}</span></p>
+      ${dayHighlights(c)}
+      ${eventsBlock(c, true)}
+    ${s.eventEdit ? `<div class="event-form">
+        <h3>Nouvel événement</h3>
+        <input type="text" id="ev-label-${id}" placeholder="Ex. : Fête de la Lune de la mésange">
+        <label class="check-inline">Pour la catégorie
+          <select id="ev-group-${id}">${c.groups.map(g => `<option value="${esc(g)}" ${g === s.eventGroup ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select></label>
+        ${(members => members.length > 1 ? `<p class="reserved">Personnages non concernés (exil, absence…) :</p>
+          <div class="place-list">${members.map(m => `<label class="check-inline"><input type="checkbox" data-ev-except="${m.id}"> ${m.name}</label>`).join('')}</div>` : '')(C.filter(m => m.groups.includes(s.eventGroup || c.groups[0])))}
+        <div class="special-row"><button type="button" class="btn" id="ev-create-${id}">Créer l'événement</button><button type="button" class="link" id="ev-cancel-${id}">Annuler</button></div>
+      </div>` : `<button type="button" class="link alert-add" id="ev-add-${id}">${icon('flag')}Ajouter un événement de groupe</button>`}
+      ${(s.dayEvents || []).map((x, i) => `<p class="where">${icon('star')}<span>${esc(x)}</span><button type="button" class="link small" data-dayev-del="${i}" aria-label="Retirer">×</button></p>`).join('')}
+      <div class="special-row"><input type="text" id="dayev-${id}" placeholder="Événement sur mesure (ex. : arrivée d'une caravane au Ralliement)"><button type="button" class="btn" id="dayev-add-${id}">Ajouter</button></div>
+      <h3 class="chrono-sub">Moment marquant</h3>
+      ${milestoneSection(id, true)}
+    </section>
     ${arcsSection(id)}
+    <section class="infos-sec"><h2>Informations supplémentaires</h2>
+      <textarea id="infos-${id}" placeholder="Facultatif — utile pour les autres : un cheval libre à l'adoption chez les Khurdans, une annonce affichée…">${esc(s.infos || '')}</textarea></section>
     ${shotSection(id)}
     ${timeline}
     <button type="button" class="btn primary" id="done-${id}" ${s.done?'disabled':''}>${s.done ? '✓ Journée validée' : "J'ai terminé"}</button>
 `;
 
   document.getElementById('mood-'+id).addEventListener('input', e => s.mood = e.target.value);
+  document.getElementById('infos-'+id)?.addEventListener('input', e => s.infos = e.target.value);
+  document.getElementById('dayev-add-'+id)?.addEventListener('click', () => { const v = document.getElementById('dayev-'+id).value.trim(); if (!v) return; (s.dayEvents ||= []).push(v); renderChar(id); });
+  document.querySelectorAll('[data-dayev-del]').forEach(b => b.addEventListener('click', () => { s.dayEvents.splice(+b.dataset.dayevDel, 1); renderChar(id); }));
   bindTabs(id); bindDaySections(id); bindMilestones(id);
   document.getElementById('alert-add-'+id)?.addEventListener('click', () => { s.alertEdit = true; renderChar(id); });
   document.getElementById('alert-save-'+id)?.addEventListener('click', () => {
@@ -2131,11 +2154,14 @@ function renderCharNow(id) {
     (c.customCats ||= []).push({ key: 'cat-' + Date.now().toString(36), label: v }); renderChar(id);
   });
   document.querySelectorAll('[data-act-remove]').forEach(b => b.addEventListener('click', () => {
-    const l = b.dataset.actRemove; c.removedActs.add(l); s.checked.delete(l); delete s.slots[l]; renderChar(id); }));
-  document.querySelectorAll('[data-act-restore]').forEach(b => b.addEventListener('click', () => { c.removedActs.delete(b.dataset.actRestore); renderChar(id); }));
+    const l = b.dataset.actRemove; s.actDel = null;
+    // Définitif : retirée de la liste (et des activités ajoutées) ; masquée pour de bon si elle vient de la fiche de base.
+    c.removedActs.add(l); pullAct(c, l); c.addedActs = (c.addedActs || []).filter(x => x !== l); if (c.actCat) delete c.actCat[l];
+    s.checked.delete(l); delete s.slots[l]; renderChar(id); }));
+  document.querySelectorAll('[data-act-del]').forEach(b => b.addEventListener('click', () => { s.actDel = b.dataset.actDel; renderChar(id); }));
   document.getElementById('add-'+id).addEventListener('click', () => {
     const inp = document.getElementById('special-'+id), v = inp.value.trim(); if (!v) return;
-    if (document.getElementById('keep-'+id).checked) { (c.acts.quotidien ||= []).push(v); (c.addedActs ||= []).push(v); }
+    if (document.getElementById('keep-'+id).checked) { c.removedActs?.delete(v); (c.acts.quotidien ||= []).push(v); (c.addedActs ||= []).push(v); }
     else s.specials.push(v);
     s.checked.add(v); renderChar(id);
   });
@@ -2169,7 +2195,7 @@ initPlaces();
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'mental', 'stateNotes', 'nightStates', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg'];
+  'details', 'mental', 'stateNotes', 'nightStates', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg'];
 const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{}, nightStates:new Set() });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }

@@ -248,6 +248,10 @@ textarea { min-height: 4.5rem; resize: vertical; }
 /* La position de la page est gérée à chaque réaffichage (renderChar) : pas d'ancrage automatique du navigateur. */
 html, body, #view { overflow-anchor: none; }
 .cat { display: grid; gap: .35rem; }
+.state-h .ico { width: 1.35rem; height: 1.35rem; margin-right: .35rem; vertical-align: -2px; color: var(--gold); }
+.recap-infos { border-left: 2px solid var(--gold); padding: .3rem .8rem; }
+.recap-infos span { font: 500 .72rem/1 var(--ui); letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
+.recap-infos p { margin: .3rem 0 0; white-space: pre-line; }
 .chrono-part { display: grid; gap: .45rem; padding: .3rem 0 .9rem; border-bottom: 1px solid var(--rule); }
 .chrono-part:last-child { border-bottom: 0; }
 .chrono-h { margin: .6rem 0 .1rem; font: 500 .95rem/1.3 var(--display); letter-spacing: .06em; color: var(--gold); }
@@ -601,6 +605,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=cb5c42fba7" charset="utf-8"></script>
+<script src="app.js?v=197f0a1635" charset="utf-8"></script>
 <script type="module" src="sync.js?v=608ab108df"></script>
 
