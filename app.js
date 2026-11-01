@@ -947,8 +947,31 @@ const recapPng = async id => {
 };
 // Coquillage offert après une nuit chaude : affiché chez le ou la partenaire (« a reçu un coquillage au réveil »).
 const gotShell = id => { const n = nightOf(id); return n.hot && isChar(n.with) && isKhurdan(n.with) && !!state[n.with]?.shell && nightOf(n.with).with === id; };
+// ---------- Chronologie : états de la nuit (précédente et à venir) ----------
+// « Nuit chaude » garde toutes ses options ; les autres états se cumulent, sauf Nuit chaude / Nuit calme et Agité / Calme.
+const NIGHT_STATES = ['Nuit calme', 'Cauchemar', 'Insomnie', 'A été agité', 'A été pot de colle', 'A été calme', "N'a pas été au lit en même temps"];
+const NIGHT_EXCL = [['A été agité', 'A été calme']];
+const nightStatesText = (id, list) => [...(list || [])].map(x => physLabel(id, x)).join(', ');
+// Nuit précédente = la « nuit à venir » d'hier (même nuit), relue dans l'historique et modifiable ici.
+const prevDay = () => { const d = new Date(rpDay); d.setDate(d.getDate() - 1); return d; };
+const PREV_LOCAL = {};   // aperçu : pas d'historique réel
+const prevEntry = id => (typeof HISTORY !== 'undefined' ? HISTORY[id]?.[keyOf(prevDay())] : PREV_LOCAL[id]) || null;
+const setPrev = (id, patch) => {
+  const d = prevDay(), cur = typeof HISTORY !== 'undefined' ? ((HISTORY[id] ||= {})[keyOf(d)] ||= {}) : (PREV_LOCAL[id] ||= {});
+  Object.assign(cur, patch); window.RP_SYNC?.patchPast?.(id, d, patch);
+};
+const prevNight = id => {
+  const e = prevEntry(id), c = C.find(x => x.id === id);
+  const own = e?.night?.hot ? { with: e.night.with || null, own: true } : null;
+  const viaPartner = !own && typeof nightOn === 'function' && typeof HISTORY !== 'undefined' ? nightOn(c, prevDay()) : null;
+  return { hot: own || viaPartner, states: [...(e?.nightStates || [])] };
+};
+const prevNightLine = id => { const n = prevNight(id); if (!n.hot && !n.states.length) return '';
+  const bits = [n.hot ? 'Nuit chaude' + (n.hot.with ? ' avec ' + whoLabel(n.hot.with) : '') : '', nightStatesText(id, n.states)].filter(Boolean);
+  return `<p class="where">${icon('lips')}<span>Nuit précédente : ${esc(bits.join(' · '))}</span></p>`; };
 const nightLine = id => {
-  const n = nightOf(id); if (!n.hot) return '';
+  const n = nightOf(id), st = state[id].nightStates?.size ? nightStatesText(id, state[id].nightStates) : '';
+  if (!n.hot) return st ? `<p class="where night-line">${icon('lips')}<span>Nuit à venir : ${esc(st)}</span></p>` : '';
   const bits = ['Nuit chaude'];
   if (n.with) bits.push('avec ' + esc(whoLabel(n.with)));
   if (n.with === 'client' && state[id].returnHour != null) bits.push(`retour à ${state[id].returnHour} h`);
@@ -956,7 +979,8 @@ const nightLine = id => {
   if (gotShell(id)) bits.push('a reçu un coquillage au réveil');
   if (isFilmed(id)) bits.push(`filmé et publié en ligne (${viewsLabel()})`);
   if (n.isMan ? state[id].protect : n.with && (isChar(n.with) ? !isFem(n.with) && state[n.with].protect : n.with !== 'client' && pnjProtect(id, n.with))) bits.push('protégé');
-  return `<p class="where night-line">${icon('lips')}<span>${bits.join(' · ')}</span></p>`;
+  if (st) bits.push(esc(st));
+  return `<p class="where night-line">${icon('lips')}<span>Nuit à venir : ${bits.join(' · ')}</span></p>`;
 };
 
 // Situation spéciale (maladie, hospitalisation…) : reste affichée en haut de la fiche jusqu'à ce qu'on la retire.
@@ -1055,7 +1079,7 @@ const STATE_HINT = { 'Douleur':'blessure, articulation, nuit rigoureuse…', 'É
   'En manque':'faim, sommeil, sexe, alcool, drogue…', 'Nervosité':'anxiété, stress, tension…', 'Esprit travaillé':'par le travail, la situation, une dispute…' };
 // Libellés accordés : les personnages de Jynette sont au féminin.
 const isFem = id => C.find(c => c.id === id)?.player === 'elle';
-const FEM_LABEL = { 'Éprouvé de la nuit':'Éprouvée de la nuit', 'Inspiré':'Inspirée', 'Productif':'Productive' };
+const FEM_LABEL = { 'Éprouvé de la nuit':'Éprouvée de la nuit', 'Inspiré':'Inspirée', 'Productif':'Productive', 'A été agité':'A été agitée' };
 const physLabel = (id, p) => isFem(id) && FEM_LABEL[p] || p;
 const stateText = (id, p, notes) => physLabel(id, p) + (notes?.[p] ? ` (${notes[p]})` : '');
 const statesLine = (id, list, notes, ico) => list?.length ? `<p class="where">${icon(ico)}<span>${esc(list.map(p => stateText(id, p, notes)).join(', '))}</span></p>` : '';
@@ -1083,7 +1107,7 @@ const dayRecord = (c, d) => {
     const filled = s.done || s.mood || s.checked.size || rpPlayed[c.id] || s.trip;
     return filled ? { rp: rpPlayed[c.id] || null, mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
       cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])], minutes: s.trip.minutes || 0, reason: s.trip.reason || '' } : null,
-      phys: [...(s.phys || [])], mental: [...(s.mental || [])], notes: { ...(s.stateNotes || {}) }, real: true } : null;
+      phys: [...(s.phys || [])], mental: [...(s.mental || [])], nightStates: [...(s.nightStates || [])], notes: { ...(s.stateNotes || {}) }, real: true } : null;
   }
   if (d > rpDay) return null;
   const e0 = HISTORY[c.id]?.[keyOf(d)];
@@ -1095,7 +1119,7 @@ const dayRecord = (c, d) => {
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
     tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])], minutes: e.trip.minutes || 0, reason: e.trip.reason || '' } : null,
     phys: [...(e.phys || [])].filter(p => !MORAL.includes(p)), mental: [...(e.mental || []), ...[...(e.phys || [])].filter(p => MORAL.includes(p))],
-    notes: e.stateNotes || {}, real: true };
+    notes: e.stateNotes || {}, nightStates: [...(e.nightStates || [])], real: true };
 };
 // Journées enregistrées, par personnage puis par date (clé keyOf) — remplies par sync.js.
 const HISTORY = {};
@@ -1401,6 +1425,7 @@ function renderHistory(id) {
           ${selRec.cond ? `<p class="where">${icon(selRec.cond.icon)}<span>${selRec.cond.label} · ${deg(selRec.cond.tp.max)} / ${deg(selRec.cond.tp.min)}</span></p>` : ''}
           ${selRec.place ? `<p class="where">${icon('pin')}<span>${esc(selRec.place)}</span></p>` : ''}
           ${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(esc).join(' · ')}</span></p>` : ''}
+          ${selRec.nightStates?.length ? `<p class="where">${icon('lips')}<span>Nuit : ${esc(nightStatesText(id, selRec.nightStates))}</span></p>` : ''}
           ${statesLine(id, selRec.phys, selRec.notes, 'heartbeat')}${statesLine(id, selRec.mental, selRec.notes, 'brain')}
           ${selRec.trip ? `<p class="where">${icon('route')}<span>Voyage${selRec.tripInfo?.from ? ' : ' + esc(REGIONS[selRec.tripInfo.from]?.label || '') + (selRec.tripInfo.to ? ' → ' + esc(REGIONS[selRec.tripInfo.to]?.label || '') : '') : ''}${selRec.tripInfo && tripBits(selRec.tripInfo) ? ' · ' + esc(tripBits(selRec.tripInfo)) : ''}</span></p>` : ''}
           ${selRec.hot ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${selRec.with ? ' avec ' + esc(whoLabel(selRec.with)) : ''}</span></p>` : (n => n ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${n.with ? ' avec ' + esc(whoLabel(n.with)) : ''}</span></p>` : '')(nightOn(c, sel))}`
@@ -1536,6 +1561,23 @@ const huntFor = (id, label, day = rpDay) => {
   return { mode, catches: tally(catches.map(g => g.name)).map(([name, qty]) => ({ name, qty })) };
 };
 const huntText = h => !h ? '' : h.catches.length ? h.catches.map(c => (c.qty > 1 ? c.qty + ' × ' : '') + c.name).join(', ') : 'bredouille';
+const nightChips = (id, set, attr) => `<div class="place-list" role="group" aria-label="Déroulé de la nuit">${NIGHT_STATES.map(x =>
+  `<button type="button" ${attr}="${esc(x)}" aria-pressed="${set.has(x)}">${esc(physLabel(id, x))}</button>`).join('')}</div>`;
+const prevNightBlock = id => {
+  const s = state[id], n = prevNight(id), e = prevEntry(id), c = C.find(x => x.id === id);
+  const filled = n.hot || n.states.length;
+  const head = `<h3 class="chrono-h">Nuit précédente <small>${fmtDay(prevDay())}</small></h3>`;
+  if (filled && !s.prevEdit) return `<div class="chrono-part">${head}${prevNightLine(id).replace('Nuit précédente : ', '')}
+    <p class="reserved">Reprise de la nuit à venir de la veille. <button type="button" class="link small" id="prev-edit-${id}">Modifier</button></p></div>`;
+  const hotOwn = !!e?.night?.hot, w = e?.night?.with || '';
+  const opts = [...new Set([partnerOf(id), ...loversOf(id), ...(id === 'khopses' ? ['client'] : []), ...C.filter(x => x.id !== id).map(x => x.id)].filter(Boolean))];
+  return `<div class="chrono-part">${head}
+    ${n.hot && !n.hot.own ? `<p class="where">${icon('lips')}<span>Nuit chaude avec ${esc(whoLabel(n.hot.with))} <small>(indiquée sur la fiche ${deName(nameOf(n.hot.with))})</small></span></p>`
+      : `<label class="act night"><input type="checkbox" id="prev-hot-${id}" ${hotOwn ? 'checked' : ''}>${icon('lips')}<span>Nuit chaude</span></label>
+      ${hotOwn ? `<label class="check-inline">avec <select id="prev-with-${id}"><option value="">—</option>${opts.map(o => `<option value="${esc(o)}" ${o === w ? 'selected' : ''}>${esc(whoLabel(o))}</option>`).join('')}</select></label>` : ''}`}
+    ${nightChips(id, new Set(n.states), 'data-prev-night')}
+    ${filled ? `<button type="button" class="link small" id="prev-done-${id}">Terminé</button>` : ''}</div>`;
+};
 const statesBlock = id => { const s = state[id]; s.phys ||= new Set(); s.mental ||= new Set(); s.stateNotes ||= {};
   const group = (title, list, set, attr) => `<h3 class="state-h">${title}</h3>
     <div class="place-list" role="group" aria-label="${title}">${list.map(p => `<button type="button" ${attr}="${p}" aria-pressed="${set.has(p)}">${esc(physLabel(id, p))}</button>`).join('')}</div>
@@ -1667,6 +1709,7 @@ function renderChar(id) {
   const cats = catsOf(c).filter(k => live(k).length || (s.manageActs && !CATS[k]));
   [...s.checked].forEach(l => { if (!actAvailable(id, l)) s.checked.delete(l); });
   if (s.checked.delete('Voyage')) delete s.slots['Voyage'];
+  s.nightStates ||= new Set(); if (nightOf(id).hot) s.nightStates.delete('Nuit calme');
   if (activeContract(id) && !s.contractOff) s.checked.add(CONTRACT_ACT);
   if (!activeContract(id)) s.checked.delete(CONTRACT_ACT);
   const actRow = (label, special) => {
@@ -1743,6 +1786,7 @@ function renderChar(id) {
       ${statesLine(id, [...(s.phys || [])], s.stateNotes, 'heartbeat').replace('</span></p>', s.physNote ? ' — ' + esc(s.physNote) + '</span></p>' : '</span></p>')}
       ${statesLine(id, [...(s.mental || [])], s.stateNotes, 'brain')}
       ${isKhurdan(id) && s.violet ? `<p class="where">${icon('cloth')}<span>A porté du violet</span></p>` : ''}
+      ${prevNightLine(id)}
       ${nightLine(id)}
       ${djLine(id)}
       ${babysitBlock(id, false)}
@@ -1796,7 +1840,9 @@ function renderChar(id) {
         ${!REGIONS[s.region].zones || s.zone ? `<div class="special-row"><input type="text" id="place-${id}" placeholder="Autre lieu en ${zoneOf(s)?.label || REGIONS[s.region].label}"><button type="button" class="btn" id="addplace-${id}">Ajouter</button></div>` : ''}`
       : `<p class="reserved">Choisis d'abord la région du jour pour voir ses lieux.</p>`}`}
     </section>
-    <section><h2>Activités</h2>
+    <section class="chrono"><h2>Chronologie du jour</h2>
+    ${prevNightBlock(id)}
+    <div class="chrono-part"><h3 class="chrono-h">Activités</h3>
       ${cats.length ? '' : `<p class="reserved">Liste d'activités à définir. En attendant, utilise le champ « Activité spéciale » et coche « L'ajouter aussi à la liste ».</p>`}
       ${!s.manageActs && cats.length > 1 ? `<div class="fold-all"><button type="button" class="link small" data-fold-all="1">Tout replier</button> · <button type="button" class="link small" data-fold-all="0">Tout déplier</button></div>` : ''}
       ${cats.map(k => !s.manageActs ? (list => `<details class="cat fold" data-fold="${k}" ${isFolded(id, k) ? '' : 'open'}>
@@ -1816,28 +1862,14 @@ function renderChar(id) {
       ${canEdit(id) ? `<button type="button" class="link small manage-toggle" id="manage-acts-${id}">${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités et les catégories'}</button>` : ''}
       ${s.specials.length ? `<div class="cat"><h3>Spéciales du jour</h3>${s.specials.map(a => actRow(a, true)).join('')}</div>` : ''}
       ${babysitBlock(id, true)}
-    </section>
-    <section class="trip-sec"><h2>Voyage</h2>
-      <label class="act"><input type="checkbox" id="trip-${id}" ${s.trip ? 'checked' : ''}>${icon('route')}<span>${c.name} a voyagé aujourd'hui</span></label>
-      ${s.trip ? `${['from', 'to'].map(leg => `<div class="leg"><h3>${leg === 'from' ? 'Départ' : 'Arrivée'}</h3>${picker(s.trip[leg], leg)}</div>`).join('')}
-      <h3>Durée du voyage</h3>
-      <div class="trip-row dur"><label><input type="number" min="0" max="240" inputmode="numeric" id="trip-h-${id}" value="${Math.floor((s.trip.minutes || 0) / 60) || ''}" placeholder="0"> h</label>
-        <label><input type="number" min="0" max="59" step="5" inputmode="numeric" id="trip-m-${id}" value="${(s.trip.minutes || 0) % 60 || ''}" placeholder="0"> min</label></div>
-      <h3>Mode de déplacement</h3>
-      <div class="trip-row modes" role="group" aria-label="Mode de déplacement">${TRAVEL_MODES.map(m => `<label class="check-inline"><input type="checkbox" data-mode="${m}" ${s.trip.modes?.has(m) ? 'checked' : ''}> ${m}</label>`).join('')}</div>
-      <h3>Motif du voyage</h3>
-      <input type="text" id="trip-reason-${id}" placeholder="Ex. : affaires de la tribu, rendre visite à un ami…" value="${esc(s.trip.reason || '')}">` : ''}
-    </section>
-    ${djBlock(id)}
-    ${workdaysBlock(id)}
-    <section><h2>Activité spéciale</h2>
+      <h4 class="chrono-sub">Activité spéciale</h4>
       <div class="special-row"><input type="text" id="special-${id}" placeholder="Ex. : réception à l'ambassade">
         <button type="button" class="btn" id="add-${id}">Ajouter</button></div>
       <label class="check-inline"><input type="checkbox" id="keep-${id}"> L'ajouter aussi à la liste ${deName(c.name)}</label>
-    </section>
-    ${(n => `<section><h2>La nuit</h2>
+    </div>
+    ${(n => `<div class="chrono-part"><h3 class="chrono-h">Nuit à venir</h3>
       ${isKhurdan(id) ? `<label class="act"><input type="checkbox" id="violet-${id}" ${s.violet ? 'checked' : ''}>${icon('cloth')}<span>A porté du violet</span></label>` : ''}
-      <label class="act night"><input type="checkbox" id="hot-${id}" ${n.hot ? 'checked' : ''}>${icon('lips')}<span>La nuit a été chaude</span></label>
+      <label class="act night"><input type="checkbox" id="hot-${id}" ${n.hot ? 'checked' : ''}>${icon('lips')}<span>Nuit chaude</span></label>
       ${blockedWith(id, n.partner) ? `<p class="reserved">${nameOf(n.partner)} travaille ce soir (jour de travail récurrent).</p>` : ''}
       ${n.partnerAway ? `<p class="reserved">${nameOf(n.partner)} était avec ${esc(whoLabel(n.partnerAway))}${n.partnerAway === 'client' && state[n.partner].returnHour != null ? ` (retour à ${state[n.partner].returnHour} h)` : ''} cette nuit.</p>` : ''}
       ${n.hot ? `<div class="place-list" role="group" aria-label="Avec qui ?">
@@ -1857,7 +1889,22 @@ function renderChar(id) {
           : n.with && isChar(n.with) && !isFem(n.with)
             ? `<p class="check-inline info">${icon('shield')}${nameOf(n.with)} ${state[n.with].protect ? 'se protège' : 'ne se protège pas'} <small>(indiqué sur sa fiche)</small></p>`
             : n.with && !isChar(n.with) && n.with !== 'client' ? `<label class="check-inline"><input type="checkbox" id="protect-pnj-${id}" ${pnjProtect(id, n.with) ? 'checked' : ''}>${icon('shield')}${esc(n.with)} se protège</label>` : ''}` : ''}
-    </section>`)(nightOf(id))}
+      ${nightChips(id, s.nightStates, 'data-next-night')}
+    </div>`)(nightOf(id))}
+    </section>
+    <section class="trip-sec"><h2>Voyage</h2>
+      <label class="act"><input type="checkbox" id="trip-${id}" ${s.trip ? 'checked' : ''}>${icon('route')}<span>${c.name} a voyagé aujourd'hui</span></label>
+      ${s.trip ? `${['from', 'to'].map(leg => `<div class="leg"><h3>${leg === 'from' ? 'Départ' : 'Arrivée'}</h3>${picker(s.trip[leg], leg)}</div>`).join('')}
+      <h3>Durée du voyage</h3>
+      <div class="trip-row dur"><label><input type="number" min="0" max="240" inputmode="numeric" id="trip-h-${id}" value="${Math.floor((s.trip.minutes || 0) / 60) || ''}" placeholder="0"> h</label>
+        <label><input type="number" min="0" max="59" step="5" inputmode="numeric" id="trip-m-${id}" value="${(s.trip.minutes || 0) % 60 || ''}" placeholder="0"> min</label></div>
+      <h3>Mode de déplacement</h3>
+      <div class="trip-row modes" role="group" aria-label="Mode de déplacement">${TRAVEL_MODES.map(m => `<label class="check-inline"><input type="checkbox" data-mode="${m}" ${s.trip.modes?.has(m) ? 'checked' : ''}> ${m}</label>`).join('')}</div>
+      <h3>Motif du voyage</h3>
+      <input type="text" id="trip-reason-${id}" placeholder="Ex. : affaires de la tribu, rendre visite à un ami…" value="${esc(s.trip.reason || '')}">` : ''}
+    </section>
+    ${djBlock(id)}
+    ${workdaysBlock(id)}
     ${milestoneSection(id)}
     ${arcsSection(id)}
     ${shotSection(id)}
@@ -1960,7 +2007,28 @@ function renderChar(id) {
   document.querySelectorAll('[data-detail]').forEach(i => i.addEventListener('change', () => { (s.details ||= {})[i.dataset.detail] = i.value.trim(); renderChar(id); }));
   document.querySelectorAll('[data-door]').forEach(r => r.addEventListener('change', () => { setDoor(id, r.dataset.door); renderChar(id); }));
   document.getElementById('jais-'+id)?.addEventListener('change', e => { state[id].jais = e.target.checked; renderChar(id); });
-  document.getElementById('hot-'+id)?.addEventListener('change', e => { setNight(id, e.target.checked); renderChar(id); });
+  document.getElementById('hot-'+id)?.addEventListener('change', e => { setNight(id, e.target.checked); if (e.target.checked) s.nightStates.delete('Nuit calme'); renderChar(id); });
+  document.querySelectorAll('[data-next-night]').forEach(b => b.addEventListener('click', () => {
+    const x = b.dataset.nextNight;
+    if (s.nightStates.has(x)) s.nightStates.delete(x);
+    else { NIGHT_EXCL.filter(g => g.includes(x)).flat().forEach(y => s.nightStates.delete(y)); s.nightStates.add(x); if (x === 'Nuit calme' && nightOf(id).hot) setNight(id, false); }
+    renderChar(id);
+  }));
+  // Nuit précédente : enregistrée sur la journée d'hier (même nuit)
+  const prevStates = () => new Set(prevNight(id).states);
+  document.getElementById('prev-edit-'+id)?.addEventListener('click', () => { s.prevEdit = true; renderChar(id); });
+  document.getElementById('prev-done-'+id)?.addEventListener('click', () => { s.prevEdit = false; renderChar(id); });
+  document.getElementById('prev-hot-'+id)?.addEventListener('change', e => {
+    const st = prevStates(); if (e.target.checked) st.delete('Nuit calme');
+    s.prevEdit = true; setPrev(id, { night: { hot: e.target.checked, with: e.target.checked ? (partnerOf(id) || null) : null }, nightStates: [...st] }); renderChar(id);
+  });
+  document.getElementById('prev-with-'+id)?.addEventListener('change', e => { setPrev(id, { night: { hot: true, with: e.target.value || null } }); renderChar(id); });
+  document.querySelectorAll('[data-prev-night]').forEach(b => b.addEventListener('click', () => {
+    const x = b.dataset.prevNight, st = prevStates(), patch = {};
+    if (st.has(x)) st.delete(x);
+    else { NIGHT_EXCL.filter(g => g.includes(x)).flat().forEach(y => st.delete(y)); st.add(x); if (x === 'Nuit calme' && prevEntry(id)?.night?.hot) patch.night = { hot: false, with: null }; }
+    s.prevEdit = true; setPrev(id, { ...patch, nightStates: [...st] }); renderChar(id);
+  }));
   document.querySelectorAll('[data-workday]').forEach(b => b.addEventListener('click', () => { const d = +b.dataset.workday, w = WORKDAYS[id]; w.has(d) ? w.delete(d) : w.add(d); renderChar(id); }));
   document.querySelectorAll('[data-with]').forEach(b => b.addEventListener('click', () => { setNight(id, true, b.dataset.with); renderChar(id); }));
   // Ajout d'un amant : bouton « Ajouter » ou touche Entrée du clavier (téléphone compris).
@@ -2075,8 +2143,8 @@ initPlaces();
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'mental', 'stateNotes', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg'];
-const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{} });
+  'details', 'mental', 'stateNotes', 'nightStates', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg'];
+const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{}, nightStates:new Set() });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }
   : Array.isArray(v) ? v.map(enc)

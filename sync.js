@@ -76,6 +76,12 @@ window.RP_SYNC = {
   loadMonth: (y, m) => loadMonth(ymOf(y, m)),
   save: () => schedule(),
   saveNow: () => flush(),
+  // Nuit précédente : complète la journée d'hier (même nuit) sur la fiche du personnage.
+  patchPast: (id, d, patch) => {
+    if (!A.owned().includes(id)) return;
+    const ym = ymOf(d.getFullYear(), d.getMonth());
+    setDoc(monthRef(id, ym), { [String(d.getDate())]: JSON.parse(J(patch)) }, { merge: true }).catch(report);
+  },
   // Webhook Discord : rangé dans Firestore (lisible par les deux joueurs seulement), jamais dans le code.
   setWebhook: url => setDoc(doc(db, 'shared', 'discord'), { webhook: url }, { merge: true }),
   // Toute l'année (pour le wrap) : douze mois, tous personnages.
