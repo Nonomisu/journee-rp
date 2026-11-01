@@ -245,6 +245,8 @@ textarea, input[type=text] {
 textarea { min-height: 4.5rem; resize: vertical; }
 ::placeholder { color: var(--dim); opacity: .8; }
 
+/* La position de la page est gérée à chaque réaffichage (renderChar) : pas d'ancrage automatique du navigateur. */
+html, body, #view { overflow-anchor: none; }
 .cat { display: grid; gap: .35rem; }
 .chrono-part { display: grid; gap: .45rem; padding: .3rem 0 .9rem; border-bottom: 1px solid var(--rule); }
 .chrono-part:last-child { border-bottom: 0; }
@@ -599,6 +601,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=eb289d11d8" charset="utf-8"></script>
+<script src="app.js?v=cb5c42fba7" charset="utf-8"></script>
 <script type="module" src="sync.js?v=608ab108df"></script>
 

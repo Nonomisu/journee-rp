@@ -1707,7 +1707,24 @@ function renderHome() {
     ${me === 'corentin' && window.RP_DISCORD ? RP_DISCORD.settingsHtml() : ''}`;
 }
 
+// Réaffichage sans saut de page : la hauteur est gardée pendant le remplacement, et l'élément touché
+// (case, bouton…) reste au même endroit de l'écran.
+const anchorSel = el => !el || el === document.body ? null : el.id ? '#' + CSS.escape(el.id)
+  : [...el.attributes].filter(a => a.name.startsWith('data-')).map(a => `[${a.name}="${CSS.escape(a.value)}"]`).join('') || null;
 function renderChar(id) {
+  const view = document.getElementById('view'), sel = anchorSel(document.activeElement);
+  const before = sel && view.querySelector(sel)?.getBoundingClientRect().top, y = window.scrollY;
+  view.style.minHeight = view.offsetHeight + 'px';
+  try { renderCharNow(id); }
+  finally {
+    // La hauteur ne diminue pas tant qu'on reste sur la fiche (sinon le navigateur remonte la page quand
+    // un bloc se replie en bas) ; elle est libérée en changeant de page.
+    const el = sel && view.querySelector(sel);
+    if (el && before != null) { window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - before }); try { el.focus({ preventScroll: true }); } catch {} }
+    else window.scrollTo({ top: y });
+  }
+}
+function renderCharNow(id) {
   const c = C.find(x => x.id === id), t = THEMES[c.theme], s = state[id];
   if (s.view === 'history') return renderHistory(id);
   const loverMsg = s.loverMsg; s.loverMsg = null;
@@ -2125,7 +2142,7 @@ function renderChar(id) {
   document.getElementById('done-'+id).addEventListener('click', () => { s.done = true; s.doneAt ??= Date.now(); renderNav(); renderChar(id); window.RP_SYNC?.saveNow(); window.RP_DISCORD?.send(id); });
 }
 
-function go(id) { current = id; renderNav(); id === 'home' ? renderHome() : renderChar(id); window.scrollTo({ top:0 }); }
+function go(id) { document.getElementById('view').style.minHeight = ''; current = id; renderNav(); id === 'home' ? renderHome() : renderChar(id); window.scrollTo({ top:0 }); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-wrap-open]'); if (!b) return;
