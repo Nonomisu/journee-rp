@@ -195,6 +195,8 @@ function listen() {
     const d = s.data() || {}, ch = changedKeys(d, base.day);
     if (!Object.keys(ch).length) return;
     A.applyDay(ch); base.day = { ...base.day, ...clone(ch) }; A.rerender();
+    // Une nuit (ou une journée RP) cochée par l'autre joueur sur l'un de nos personnages : on met à jour sa fiche enregistrée.
+    if ('nights' in ch || 'rp' in ch) schedule();
   });
   onSnapshot(query(collection(db, 'news'), where('to', '==', me)), s => {
     if (s.metadata.hasPendingWrites) return;
