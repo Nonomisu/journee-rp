@@ -2489,7 +2489,9 @@ function renderCharNow(id) {
       ${s.manageActs ? `<div class="special-row new-cat"><input type="text" id="newcat-${id}" placeholder="Nouvelle catégorie (ex. : Loisirs)">
         <button type="button" class="btn" id="newcat-add-${id}">Créer</button></div>` : ''}
       ${canEdit(id) ? `<button type="button" class="link small manage-toggle" id="manage-acts-${id}">${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités et les catégories'}</button>` : ''}
-      ${s.specials.length ? `<div class="cat"><h3>Spéciales du jour</h3>${s.specials.map(a => actRow(a, true)).join('')}</div>` : ''}
+      ${s.specials.length ? `<div class="cat"><h3>Spéciales du jour</h3>${s.manageActs
+        ? s.specials.map(a => `<div class="act manage"><span>${esc(a)}</span>${s.actDel === 'spe:' + a ? `<button type="button" class="link small danger" data-special-remove="${esc(a)}">Confirmer la suppression</button>` : `<button type="button" class="link small" data-act-del="spe:${esc(a)}">Supprimer</button>`}</div>`).join('')
+        : s.specials.map(a => actRow(a, true)).join('')}</div>` : ''}
       ${babysitBlock(id, true)}
       <h4 class="chrono-sub">Activité spéciale</h4>
       <div class="special-row"><input type="text" id="special-${id}" placeholder="Ex. : réception à l'ambassade">
@@ -2763,6 +2765,8 @@ function renderCharNow(id) {
     // Définitif : retirée de la liste (et des activités ajoutées) ; masquée pour de bon si elle vient de la fiche de base.
     c.removedActs.add(l); pullAct(c, l); c.addedActs = (c.addedActs || []).filter(x => x !== l); if (c.actCat) delete c.actCat[l];
     s.checked.delete(l); delete s.slots[l]; renderChar(id); }));
+  document.querySelectorAll('[data-special-remove]').forEach(b => b.addEventListener('click', () => {
+    const l = b.dataset.specialRemove; s.actDel = null; s.specials = s.specials.filter(x => x !== l); s.checked.delete(l); delete s.slots[l]; renderChar(id); }));
   document.querySelectorAll('[data-act-del]').forEach(b => b.addEventListener('click', () => { s.actDel = b.dataset.actDel; renderChar(id); }));
   document.getElementById('add-'+id).addEventListener('click', () => {
     const inp = document.getElementById('special-'+id), v = inp.value.trim(); if (!v) return;
