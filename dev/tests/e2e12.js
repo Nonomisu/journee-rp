@@ -15,13 +15,13 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   await nono.evaluate(() => go('khokkutsai'));
   console.log('Section :', await nono.$eval('section.chrono h2', h => h.textContent), '|', await nono.$$eval('section.chrono .chrono-h', h => h.map(x => x.textContent.trim().replace(/\s+/g, ' '))));
   console.log('Nuit précédente :', (await nono.textContent('section.chrono .chrono-part')).replace(/\s+/g, ' ').trim().slice(0, 130));
-  await nono.click('#prev-edit-khokkutsai'); await nono.click('[data-prev-night="Insomnie"]'); await nono.click('[data-prev-night="A été pot de colle"]'); await nono.waitForTimeout(800);
+  await nono.click('#prev-edit-khokkutsai'); await nono.check('[data-prev-night="Insomnie"]'); await nono.check('[data-prev-night="A été pot de colle"]'); await nono.waitForTimeout(800);
   const db1 = JSON.parse(await nono.evaluate(() => localStorage.getItem('mockdb')));
   console.log('Hier enregistré :', JSON.stringify(db1['days/khokkutsai/months/2026-11']['14']));
   await nono.click('#prev-done-khokkutsai'); await nono.waitForTimeout(150);
   console.log('Résumé :', (await nono.textContent('section.chrono .chrono-part')).replace(/\s+/g, ' ').trim().slice(0, 140));
   // Nuit à venir : Nuit calme puis Nuit chaude → calme retiré ; Agité puis Calme → exclusif
-  await nono.click('[data-next-night="Nuit calme"]'); await nono.click('[data-next-night="A été agité"]'); await nono.click('[data-next-night="A été calme"]');
+  await nono.check('[data-next-night="Nuit calme"]'); await nono.check('[data-next-night="A été agité"]'); await nono.check('[data-next-night="A été calme"]');
   await nono.check('#hot-khokkutsai'); await nono.waitForTimeout(200);
   console.log('Nuit à venir :', await nono.evaluate(() => [...state.khokkutsai.nightStates]), '| chaude :', await nono.evaluate(() => nightOf('khokkutsai').hot));
   await nono.click('[data-act="Entraînement guerrier"]'); await nono.click('#done-khokkutsai'); await nono.waitForTimeout(1500);

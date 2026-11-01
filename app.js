@@ -117,6 +117,13 @@ ICONS.cake = '<path d="M4 20h16v-7H4z"/><path d="M4 15.5c2 1.3 4 1.3 6 0s4-1.3 6
 ICONS.ring = '<circle cx="12" cy="14.5" r="6"/><path d="M9.5 4.5h5L16 7l-4 2.5L8 7z"/>';
 ICONS.target = '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>';
 ICONS.eye = '<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
+// Icônes des états de nuit
+ICONS.ghost = '<path d="M6 20V10a6 6 0 0 1 12 0v10l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5z"/><circle cx="10" cy="10" r=".9" style="fill:currentColor"/><circle cx="14" cy="10" r=".9" style="fill:currentColor"/>';
+ICONS.wakeful = '<path d="M2 13s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 13 2 13z"/><circle cx="12" cy="13" r="2.6"/><path d="M12 2v2.5M5.5 4.5l1.3 2M18.5 4.5l-1.3 2"/>';
+ICONS.zigzag = '<path d="M3 8l3-3 3 3 3-3 3 3 3-3 3 3M3 16l3-3 3 3 3-3 3 3 3-3 3 3"/>';
+ICONS.cuddle = '<circle cx="8" cy="7" r="2.6"/><circle cx="16" cy="7" r="2.6"/><path d="M3.5 20c0-4 2-7 4.5-7 1.6 0 2.8.9 4 2.6 1.2-1.7 2.4-2.6 4-2.6 2.5 0 4.5 3 4.5 7"/>';
+ICONS.feather = '<path d="M20 4c-7 0-12 5-12 12v4M8 16h6M10 12h7c2-2 3-5 3-8"/>';
+ICONS.clock = '<circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/>';
 ICONS.bell = '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20a2 2 0 0 0 4 0"/>';
 ICONS.phone = '<path d="M7 3h4l1.5 5-2.5 1.5a11 11 0 0 0 4.5 4.5L16 11.5l5 1.5v4a2 2 0 0 1-2 2A16 16 0 0 1 5 5a2 2 0 0 1 2-2z"/>';
 ICONS.pacifier = '<path d=\"M10.3 8.6V5.4a1.7 1.7 0 0 1 3.4 0v3.2\"/><path d=\"M4.5 10.6c0-1.6 2.6-2.2 7.5-2.2s7.5.6 7.5 2.2-2.6 2.6-7.5 2.6-7.5-1-7.5-2.6z\"/><circle cx=\"8.3\" cy=\"10.8\" r=\".5\" style=\"fill:currentColor\"/><circle cx=\"15.7\" cy=\"10.8\" r=\".5\" style=\"fill:currentColor\"/><path d=\"M12 13.2v1.4\"/><circle cx=\"12\" cy=\"17.8\" r=\"3.2\"/>';
@@ -951,6 +958,7 @@ const gotShell = id => { const n = nightOf(id); return n.hot && isChar(n.with) &
 // « Nuit chaude » garde toutes ses options ; les autres états se cumulent, sauf Nuit chaude / Nuit calme et Agité / Calme.
 const NIGHT_STATES = ['Nuit calme', 'Cauchemar', 'Insomnie', 'A été agité', 'A été pot de colle', 'A été calme', "N'a pas été au lit en même temps"];
 const NIGHT_EXCL = [['A été agité', 'A été calme']];
+const NIGHT_ICON = { 'Nuit calme':'nuit', 'Cauchemar':'ghost', 'Insomnie':'wakeful', 'A été agité':'zigzag', 'A été pot de colle':'cuddle', 'A été calme':'feather', "N'a pas été au lit en même temps":'clock' };
 const nightStatesText = (id, list) => [...(list || [])].map(x => physLabel(id, x)).join(', ');
 // Nuit précédente = la « nuit à venir » d'hier (même nuit), relue dans l'historique et modifiable ici.
 const prevDay = () => { const d = new Date(rpDay); d.setDate(d.getDate() - 1); return d; };
@@ -1561,8 +1569,9 @@ const huntFor = (id, label, day = rpDay) => {
   return { mode, catches: tally(catches.map(g => g.name)).map(([name, qty]) => ({ name, qty })) };
 };
 const huntText = h => !h ? '' : h.catches.length ? h.catches.map(c => (c.qty > 1 ? c.qty + ' × ' : '') + c.name).join(', ') : 'bredouille';
-const nightChips = (id, set, attr) => `<div class="place-list" role="group" aria-label="Déroulé de la nuit">${NIGHT_STATES.map(x =>
-  `<button type="button" ${attr}="${esc(x)}" aria-pressed="${set.has(x)}">${esc(physLabel(id, x))}</button>`).join('')}</div>`;
+// Même présentation que « Nuit chaude » : cases à cocher avec une petite icône.
+const nightChips = (id, set, attr) => NIGHT_STATES.map(x =>
+  `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${set.has(x) ? 'checked' : ''}>${icon(NIGHT_ICON[x])}<span>${esc(physLabel(id, x))}</span></label>`).join('');
 const prevNightBlock = id => {
   const s = state[id], n = prevNight(id), e = prevEntry(id), c = C.find(x => x.id === id);
   const filled = n.hot || n.states.length;
@@ -2008,7 +2017,7 @@ function renderChar(id) {
   document.querySelectorAll('[data-door]').forEach(r => r.addEventListener('change', () => { setDoor(id, r.dataset.door); renderChar(id); }));
   document.getElementById('jais-'+id)?.addEventListener('change', e => { state[id].jais = e.target.checked; renderChar(id); });
   document.getElementById('hot-'+id)?.addEventListener('change', e => { setNight(id, e.target.checked); if (e.target.checked) s.nightStates.delete('Nuit calme'); renderChar(id); });
-  document.querySelectorAll('[data-next-night]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-next-night]').forEach(b => b.addEventListener('change', () => {
     const x = b.dataset.nextNight;
     if (s.nightStates.has(x)) s.nightStates.delete(x);
     else { NIGHT_EXCL.filter(g => g.includes(x)).flat().forEach(y => s.nightStates.delete(y)); s.nightStates.add(x); if (x === 'Nuit calme' && nightOf(id).hot) setNight(id, false); }
@@ -2023,7 +2032,7 @@ function renderChar(id) {
     s.prevEdit = true; setPrev(id, { night: { hot: e.target.checked, with: e.target.checked ? (partnerOf(id) || null) : null }, nightStates: [...st] }); renderChar(id);
   });
   document.getElementById('prev-with-'+id)?.addEventListener('change', e => { setPrev(id, { night: { hot: true, with: e.target.value || null } }); renderChar(id); });
-  document.querySelectorAll('[data-prev-night]').forEach(b => b.addEventListener('click', () => {
+  document.querySelectorAll('[data-prev-night]').forEach(b => b.addEventListener('change', () => {
     const x = b.dataset.prevNight, st = prevStates(), patch = {};
     if (st.has(x)) st.delete(x);
     else { NIGHT_EXCL.filter(g => g.includes(x)).flat().forEach(y => st.delete(y)); st.add(x); if (x === 'Nuit calme' && prevEntry(id)?.night?.hot) patch.night = { hot: false, with: null }; }
