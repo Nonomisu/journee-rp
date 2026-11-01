@@ -572,7 +572,8 @@ const CATS = { quotidien:'Quotidien', metier:'Charge & métier', liens:'Liens' }
 // Catégories propres à un personnage (c.customCats) et activités déplacées d'une catégorie à l'autre (c.actCat),
 // enregistrées sur la fiche du personnage.
 const catsOf = c => [...Object.keys(CATS), ...(c.customCats || []).map(x => x.key)];
-const catLabel = (c, k) => CATS[k] || c.customCats?.find(x => x.key === k)?.label || k;
+const catLabel = (c, k) => c.catNames?.[k] || CATS[k] || c.customCats?.find(x => x.key === k)?.label || k;   // c.catNames : noms changés des catégories de base
+const renameCat = (c, k, v) => { const x = c.customCats?.find(y => y.key === k); if (x) x.label = v; else if (v === CATS[k]) delete c.catNames?.[k]; else (c.catNames ||= {})[k] = v; };
 const pullAct = (c, a) => Object.values(c.acts).forEach(l => { const i = l.indexOf(a); if (i >= 0) l.splice(i, 1); });
 const moveAct = (c, a, k) => { pullAct(c, a); (c.acts[k] ||= []).push(a); (c.actCat ||= {})[a] = k; };
 const applyActLayout = c => Object.entries(c.actCat || {}).forEach(([a, k]) => {
@@ -2353,7 +2354,9 @@ function renderChar(id) {
     <section><h2>Activités</h2>
       ${cats.length ? '' : `<p class="reserved">Liste d'activités à définir. En attendant, utilise le champ « Activité spéciale » et coche « L'ajouter aussi à la liste ».</p>`}
       <div class="cat"><h3>Déplacement</h3>${actRow('Voyage')}</div>
-      ${cats.map(k => `<div class="cat"><h3>${esc(catLabel(c, k))}</h3>${s.manageActs
+      ${cats.map(k => `<div class="cat">${s.manageActs && s.renaming === k
+        ? `<div class="special-row"><input type="text" id="rename-${id}" value="${esc(catLabel(c, k))}" aria-label="Nouveau nom"><button type="button" class="btn" data-rename-ok="${k}">OK</button><button type="button" class="link small" data-rename-cancel>Annuler</button></div>`
+        : `<h3>${esc(catLabel(c, k))}${s.manageActs ? ` <button type="button" class="link small" data-rename="${k}">Renommer</button>` : ''}</h3>`}${s.manageActs
         ? (live(k).length ? live(k).map(a => `<div class="act manage"><span>${esc(a)}</span>
             <select class="cat-move" data-act-cat="${esc(a)}" aria-label="Catégorie de ${esc(a)}">${catsOf(c).map(x => `<option value="${x}" ${x === k ? 'selected' : ''}>${esc(catLabel(c, x))}</option>`).join('')}</select>
             <button type="button" class="link small" data-act-remove="${esc(a)}">Retirer</button></div>`).join('')
@@ -2551,8 +2554,17 @@ function renderChar(id) {
     if (s.slots[l].length) lastSlot[l] = s.slots[l]; else delete s.slots[l];
     renderChar(id);
   }));
-  document.getElementById('manage-acts-'+id)?.addEventListener('click', () => { s.manageActs = !s.manageActs; renderChar(id); });
+  document.getElementById('manage-acts-'+id)?.addEventListener('click', () => { s.manageActs = !s.manageActs; s.renaming = null; renderChar(id); });
   document.querySelectorAll('[data-act-cat]').forEach(sel => sel.addEventListener('change', () => { moveAct(c, sel.dataset.actCat, sel.value); renderChar(id); }));
+  document.querySelectorAll('[data-rename]').forEach(b => b.addEventListener('click', () => { s.renaming = b.dataset.rename; renderChar(id); document.getElementById('rename-'+id)?.focus(); }));
+  document.querySelectorAll('[data-rename-cancel]').forEach(b => b.addEventListener('click', () => { s.renaming = null; renderChar(id); }));
+  const renameOk = k => {
+    const v = document.getElementById('rename-'+id).value.trim(); if (!v) return;
+    if (catsOf(c).some(x => x !== k && catLabel(c, x).toLowerCase() === v.toLowerCase())) return;
+    renameCat(c, k, v); s.renaming = null; renderChar(id);
+  };
+  document.querySelectorAll('[data-rename-ok]').forEach(b => b.addEventListener('click', () => renameOk(b.dataset.renameOk)));
+  document.getElementById('rename-'+id)?.addEventListener('keydown', e => { if (e.key === 'Enter') renameOk(s.renaming); });
   document.querySelectorAll('[data-cat-del]').forEach(b => b.addEventListener('click', () => { c.customCats = (c.customCats || []).filter(x => x.key !== b.dataset.catDel); renderChar(id); }));
   document.getElementById('newcat-add-'+id)?.addEventListener('click', () => {
     const v = document.getElementById('newcat-'+id).value.trim(); if (!v) return;
