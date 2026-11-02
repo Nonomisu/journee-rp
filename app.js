@@ -962,7 +962,8 @@ const NIGHT_ICON = { 'Nuit calme':'nuit', 'Cauchemar':'ghost', 'Insomnie':'wakef
 const nightStatesText = (id, list, notes) => [...(list || [])].map(x => physLabel(id, x) + (notes?.[x] ? ` (${notes[x]})` : '')).join(', ');
 // Vie intime (Khurdans) : personnages concernés = les autres Khurdans et Davaajav ; ceux de l'autre joueur reçoivent une nouvelle.
 const INTIME_EXTRA = ['davaajav'];
-const intimeOptions = id => [...C.filter(x => x.groups.includes('Khurdans')).map(x => x.id), ...INTIME_EXTRA].filter(x => x !== id);
+// Fiches d'hommes : seulement les personnages féminins ; fiches de femmes : seulement les masculins.
+const intimeOptions = id => [...C.filter(x => x.groups.includes('Khurdans')).map(x => x.id), ...INTIME_EXTRA].filter(x => x !== id && isFem(x) !== isFem(id));
 const intimeKey = (id, x) => 'intime:' + keyOf(rpDay) + ':' + id + ':' + x;
 const intimeWithText = id => [...(state[id].intimeWith || [])].map(nameOf).join(', ');
 // Khurdans : « Détails et précisions » sous chaque choix de nuit coché (scope : 'next' ou 'prev').
