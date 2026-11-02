@@ -253,6 +253,8 @@ html, body, #view { overflow-anchor: none; }
 .recap-infos span { font: 500 .72rem/1 var(--ui); letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
 .recap-infos p { margin: .3rem 0 0; white-space: pre-line; }
 .night-more { display: grid; gap: .35rem; }
+.night-note { display: grid; gap: .3rem; text-align: left; font-size: .85rem; color: var(--dim); }
+.night-note textarea { min-height: 3.2rem; }
 .night-more > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem; padding: .45rem .2rem; color: var(--dim); font-size: .95rem; }
 .night-more > summary::-webkit-details-marker { display: none; }
 .night-more > summary::after { content: '▾'; margin-left: auto; transition: transform .15s; }
@@ -612,6 +614,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=7a56eedca9" charset="utf-8"></script>
+<script src="app.js?v=53d29af383" charset="utf-8"></script>
 <script type="module" src="sync.js?v=608ab108df"></script>
 
