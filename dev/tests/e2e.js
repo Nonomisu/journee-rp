@@ -8,7 +8,7 @@ const MOCK = path.join(__dirname, 'mockfb');
   const open = async (name, email) => {
     const p = await ctx.newPage();
     p.on('pageerror', e => errs.push(name + ': ' + e.message)); p.on('console', m => { if (m.type() === 'error') errs.push(name + ' console: ' + m.text()); });
-    await p.addInitScript(([n, e]) => { window.name = n; window.MOCK_EMAIL = e; }, [name, email]);
+    await p.addInitScript(([n, e]) => { try { localStorage.setItem('rp-night-open', JSON.stringify(['eoor','unegen','yasmeen','hokkyoku','tamachag','khokkutsai','ankhbayar','tengis','taiga','khubunjin','inkaraa','ogloo','javkhaanhun','davaajav','viggo','khopses','echo','prism'].flatMap(i => [i + ':data-next-night', i + ':data-prev-night']))); } catch {} window.name = n; window.MOCK_EMAIL = e; }, [name, email]);
     await p.goto('http://localhost:8765/'); await p.waitForTimeout(400);
     await p.click('#login-btn'); await p.waitForSelector('#login[hidden]', { state: 'attached', timeout: 5000 });
     return p;

@@ -6,7 +6,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   await ctx.route('**/html-to-image.js', r => r.fulfill({ body: fs.readFileSync(require.resolve('html-to-image/dist/html-to-image.js')), contentType: 'application/javascript' }));
   const errs = [];
   const open = async (n, e) => { const p = await ctx.newPage(); p.on('pageerror', x => errs.push(n + ': ' + x.message));
-    await p.addInitScript(([a, c]) => { window.name = a; window.MOCK_EMAIL = c; }, [n, e]);
+    await p.addInitScript(([a, c]) => { try { localStorage.setItem('rp-night-open', JSON.stringify(['eoor','unegen','yasmeen','hokkyoku','tamachag','khokkutsai','ankhbayar','tengis','taiga','khubunjin','inkaraa','ogloo','javkhaanhun','davaajav','viggo','khopses','echo','prism'].flatMap(i => [i + ':data-next-night', i + ':data-prev-night']))); } catch {} window.name = a; window.MOCK_EMAIL = c; }, [n, e]);
     await p.goto('http://localhost:8765/'); await p.waitForTimeout(400); await p.click('#login-btn'); await p.waitForSelector('#login[hidden]', { state: 'attached' }); return p; };
   const seed = await ctx.newPage(); await seed.goto('http://localhost:8765/icon.svg'); await seed.evaluate(() => localStorage.removeItem('mockdb')); await seed.close();
   const nono = await open('n5', process.env.NONO_EMAIL), jy = await open('j5', 'jynette@example.com');

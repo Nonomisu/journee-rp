@@ -23,6 +23,7 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   console.log('Résumé replié :', await nono.$$eval('details.night-more > summary', s => s.map(x => x.textContent.trim().replace(/\s+/g, ' '))));
   // Nuit à venir : Nuit calme puis Nuit chaude → calme retiré ; Agité puis Calme → exclusif
   await nono.check('[data-next-night="Nuit calme"]'); await nono.check('[data-next-night="A été agité"]'); await nono.check('[data-next-night="A été calme"]');
+  if (!(await nono.isVisible('#hot-khokkutsai'))) await nono.click('details[data-night-fold="khokkutsai:data-next-night"] > summary');
   await nono.check('#hot-khokkutsai'); await nono.waitForTimeout(200);
   console.log('Nuit à venir :', await nono.evaluate(() => [...state.khokkutsai.nightStates]), '| chaude :', await nono.evaluate(() => nightOf('khokkutsai').hot));
   await nono.click('[data-act="Entraînement guerrier"]'); await nono.click('#done-khokkutsai'); await nono.waitForTimeout(1500);
