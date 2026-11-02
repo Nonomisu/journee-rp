@@ -1576,8 +1576,14 @@ const huntFor = (id, label, day = rpDay) => {
 };
 const huntText = h => !h ? '' : h.catches.length ? h.catches.map(c => (c.qty > 1 ? c.qty + ' × ' : '') + c.name).join(', ') : 'bredouille';
 // Même présentation que « Nuit chaude » : cases à cocher avec une petite icône.
-const nightChips = (id, set, attr) => NIGHT_STATES.map(x =>
-  `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${set.has(x) ? 'checked' : ''}>${icon(NIGHT_ICON[x])}<span>${esc(physLabel(id, x))}</span></label>`).join('');
+// Repliées par défaut pour gagner de la place ; le titre rappelle ce qui est coché. État gardé sur l'appareil.
+const NIGHT_OPEN = (() => { try { return new Set(JSON.parse(localStorage.getItem('rp-night-open') || '[]')); } catch { return new Set(); } })();
+const setNightOpen = (k, on) => { on ? NIGHT_OPEN.add(k) : NIGHT_OPEN.delete(k); try { localStorage.setItem('rp-night-open', JSON.stringify([...NIGHT_OPEN])); } catch {} };
+const nightChips = (id, set, attr) => { const k = id + ':' + attr, on = NIGHT_STATES.filter(x => set.has(x));
+  return `<details class="night-more" data-night-fold="${k}" ${NIGHT_OPEN.has(k) ? 'open' : ''}>
+    <summary>${icon('nuit')}<span>Autres états de la nuit${on.length ? ` <small>· ${esc(on.map(x => physLabel(id, x)).join(', '))}</small>` : ''}</span></summary>
+    ${NIGHT_STATES.map(x => `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${set.has(x) ? 'checked' : ''}>${icon(NIGHT_ICON[x])}<span>${esc(physLabel(id, x))}</span></label>`).join('')}
+  </details>`; };
 const prevNightBlock = id => {
   const s = state[id], n = prevNight(id), e = prevEntry(id), c = C.find(x => x.id === id);
   const filled = n.hot || n.states.length;
@@ -2135,6 +2141,7 @@ function renderCharNow(id) {
     renderChar(id);
   }));
   document.getElementById('manage-acts-'+id)?.addEventListener('click', () => { s.manageActs = !s.manageActs; s.renaming = null; renderChar(id); });
+  document.querySelectorAll('details[data-night-fold]').forEach(d => d.addEventListener('toggle', () => setNightOpen(d.dataset.nightFold, d.open)));
   document.querySelectorAll('details[data-fold]').forEach(d => d.addEventListener('toggle', () => setFolded(id, d.dataset.fold, !d.open)));
   document.querySelectorAll('[data-fold-all]').forEach(b => b.addEventListener('click', () => {
     document.querySelectorAll('details[data-fold]').forEach(d => { setFolded(id, d.dataset.fold, b.dataset.foldAll === '1'); d.open = b.dataset.foldAll !== '1'; });

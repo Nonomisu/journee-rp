@@ -252,6 +252,13 @@ html, body, #view { overflow-anchor: none; }
 .recap-infos { border-left: 2px solid var(--gold); padding: .3rem .8rem; }
 .recap-infos span { font: 500 .72rem/1 var(--ui); letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
 .recap-infos p { margin: .3rem 0 0; white-space: pre-line; }
+.night-more { display: grid; gap: .35rem; }
+.night-more > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem; padding: .45rem .2rem; color: var(--dim); font-size: .95rem; }
+.night-more > summary::-webkit-details-marker { display: none; }
+.night-more > summary::after { content: '▾'; margin-left: auto; transition: transform .15s; }
+.night-more:not([open]) > summary::after { transform: rotate(-90deg); }
+.night-more > summary small { color: var(--gold); }
+.night-more[open] > summary { margin-bottom: .2rem; }
 .chrono-part { display: grid; gap: .45rem; padding: .3rem 0 .9rem; border-bottom: 1px solid var(--rule); }
 .chrono-part:last-child { border-bottom: 0; }
 .chrono-h { margin: .6rem 0 .1rem; font: 500 .95rem/1.3 var(--display); letter-spacing: .06em; color: var(--gold); }
@@ -605,6 +612,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=b459f0db75" charset="utf-8"></script>
+<script src="app.js?v=6f3c71b8d5" charset="utf-8"></script>
 <script type="module" src="sync.js?v=608ab108df"></script>
 
