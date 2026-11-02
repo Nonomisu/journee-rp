@@ -1731,12 +1731,30 @@ function renderHome() {
 // (case, bouton…) reste au même endroit de l'écran.
 const anchorSel = el => !el || el === document.body ? null : el.id ? '#' + CSS.escape(el.id)
   : [...el.attributes].filter(a => a.name.startsWith('data-')).map(a => `[${a.name}="${CSS.escape(a.value)}"]`).join('') || null;
+let lastPage = null;   // page affichée (personnage + vue) : la hauteur n'est gardée que sur la même page
+// Cale placée sous la fiche : compense ce qui disparaît (bloc replié, options masquées) pour que le navigateur
+// ne remonte pas la page. Une cale plutôt qu'une hauteur minimale : la fiche est une grille, qui s'étirerait.
+const spacer = () => { let s = document.getElementById('view-spacer');
+  if (!s) { s = document.createElement('div'); s.id = 'view-spacer'; s.setAttribute('aria-hidden', 'true'); document.getElementById('view').after(s); }
+  return s; };
+const fullH = () => document.getElementById('view').offsetHeight + spacer().offsetHeight;
+const holdHeight = h => { const sp = spacer(); sp.style.height = '0px'; sp.style.height = Math.max(0, h - document.getElementById('view').offsetHeight) + 'px'; };
+const resetSpacer = () => { spacer().style.height = '0px'; };
+// Blocs repliables (catégories, nuits…) : même compensation quand on les replie.
+let toggleH = null;
+document.addEventListener('click', e => { if (e.target.closest('#view summary')) toggleH = fullH(); }, true);
+document.addEventListener('toggle', e => { if (toggleH != null && e.target.closest?.('#view')) { holdHeight(toggleH); toggleH = null; } }, true);
+const pageKey = id => { const s = state[id]; return id + ':' + (s.view === 'history' ? 'history' : s.done || !canEdit(id) ? 'recap' : 'form'); };
 function renderChar(id) {
-  const view = document.getElementById('view'), sel = anchorSel(document.activeElement);
-  const before = sel && view.querySelector(sel)?.getBoundingClientRect().top, y = window.scrollY;
-  view.style.minHeight = view.offsetHeight + 'px';
-  try { renderCharNow(id); }
+  const view = document.getElementById('view');
+  if (lastPage !== pageKey(id)) {   // autre fiche ou autre vue (récap, historique…) : affichage neuf
+    resetSpacer(); renderCharNow(id); lastPage = pageKey(id); return;
+  }
+  const sel = anchorSel(document.activeElement);
+  const before = sel && view.querySelector(sel)?.getBoundingClientRect().top, y = window.scrollY, h = fullH();
+  try { renderCharNow(id); holdHeight(h); }
   finally {
+    if (lastPage !== pageKey(id)) { resetSpacer(); lastPage = pageKey(id); }   // la vue a changé pendant l'affichage
     // La hauteur ne diminue pas tant qu'on reste sur la fiche (sinon le navigateur remonte la page quand
     // un bloc se replie en bas) ; elle est libérée en changeant de page.
     const el = sel && view.querySelector(sel);
@@ -2188,7 +2206,7 @@ function renderCharNow(id) {
   document.getElementById('done-'+id).addEventListener('click', () => { s.done = true; s.doneAt ??= Date.now(); renderNav(); renderChar(id); window.RP_SYNC?.saveNow(); window.RP_DISCORD?.send(id); });
 }
 
-function go(id) { document.getElementById('view').style.minHeight = ''; current = id; renderNav(); id === 'home' ? renderHome() : renderChar(id); window.scrollTo({ top:0 }); }
+function go(id) { resetSpacer(); lastPage = null; current = id; renderNav(); id === 'home' ? renderHome() : renderChar(id); window.scrollTo({ top:0 }); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-wrap-open]'); if (!b) return;
