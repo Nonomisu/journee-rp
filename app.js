@@ -961,7 +961,7 @@ const NIGHT_EXCL = [['A été agité', 'A été calme']];
 const NIGHT_ICON = { 'Nuit calme':'nuit', 'Cauchemar':'ghost', 'Insomnie':'wakeful', 'A été agité':'zigzag', 'A été pot de colle':'cuddle', 'A été calme':'feather', "N'a pas été au lit en même temps":'clock' };
 const nightStatesText = (id, list, notes) => [...(list || [])].map(x => physLabel(id, x) + (notes?.[x] ? ` (${notes[x]})` : '')).join(', ');
 // Khurdans : « Détails et précisions » sous chaque choix de nuit coché (scope : 'next' ou 'prev').
-const nightNoteInput = (id, scope, key, v) => isKhurdan(id) ? `<input type="text" class="state-note night-note-in" data-night-note="${esc(key)}" data-night-scope="${scope}" placeholder="Détails et précisions (facultatif)" value="${esc(v || '')}">` : '';
+const nightNoteInput = () => '';   // remplacé par le bloc « Vie intime » (les précisions déjà saisies restent affichées)
 // Nuit précédente = la « nuit à venir » d'hier (même nuit), relue dans l'historique et modifiable ici.
 const prevDay = () => { const d = new Date(rpDay); d.setDate(d.getDate() - 1); return d; };
 const PREV_LOCAL = {};   // aperçu : pas d'historique réel
@@ -1120,7 +1120,7 @@ const dayRecord = (c, d) => {
     const filled = s.done || s.mood || s.checked.size || rpPlayed[c.id] || s.trip;
     return filled ? { rp: rpPlayed[c.id] || null, mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
       cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])], minutes: s.trip.minutes || 0, reason: s.trip.reason || '' } : null,
-      phys: [...(s.phys || [])], mental: [...(s.mental || [])], nightStates: [...(s.nightStates || [])], nightNote: s.nightNote || '', nightNotes: { ...(s.nightNotes || {}) }, notes: { ...(s.stateNotes || {}) }, real: true } : null;
+      phys: [...(s.phys || [])], mental: [...(s.mental || [])], nightStates: [...(s.nightStates || [])], nightNote: s.nightNote || '', nightNotes: { ...(s.nightNotes || {}) }, intime: s.intime || '', notes: { ...(s.stateNotes || {}) }, real: true } : null;
   }
   if (d > rpDay) return null;
   const e0 = HISTORY[c.id]?.[keyOf(d)];
@@ -1132,7 +1132,7 @@ const dayRecord = (c, d) => {
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
     tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])], minutes: e.trip.minutes || 0, reason: e.trip.reason || '' } : null,
     phys: [...(e.phys || [])].filter(p => !MORAL.includes(p)), mental: [...(e.mental || []), ...[...(e.phys || [])].filter(p => MORAL.includes(p))],
-    notes: e.stateNotes || {}, nightStates: [...(e.nightStates || [])], nightNote: e.nightNote || '', nightNotes: e.nightNotes || {}, real: true };
+    notes: e.stateNotes || {}, nightStates: [...(e.nightStates || [])], nightNote: e.nightNote || '', nightNotes: e.nightNotes || {}, intime: e.intime || '', real: true };
 };
 // Journées enregistrées, par personnage puis par date (clé keyOf) — remplies par sync.js.
 const HISTORY = {};
@@ -1439,6 +1439,7 @@ function renderHistory(id) {
           ${selRec.place ? `<p class="where">${icon('pin')}<span>${esc(selRec.place)}</span></p>` : ''}
           ${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(esc).join(' · ')}</span></p>` : ''}
           ${selRec.nightStates?.length || selRec.nightNote || selRec.nightNotes?.['Nuit chaude'] ? `<p class="where">${icon('lips')}<span>Nuit : ${esc([nightStatesText(id, selRec.nightStates, selRec.nightNotes), selRec.nightNote].filter(Boolean).join(' · '))}</span></p>` : ''}
+          ${selRec.intime ? `<p class="where">${icon('lips')}<span>Vie intime : ${esc(selRec.intime)}</span></p>` : ''}
           ${statesLine(id, selRec.phys, selRec.notes, 'heartbeat')}${statesLine(id, selRec.mental, selRec.notes, 'brain')}
           ${selRec.trip ? `<p class="where">${icon('route')}<span>Voyage${selRec.tripInfo?.from ? ' : ' + esc(REGIONS[selRec.tripInfo.from]?.label || '') + (selRec.tripInfo.to ? ' → ' + esc(REGIONS[selRec.tripInfo.to]?.label || '') : '') : ''}${selRec.tripInfo && tripBits(selRec.tripInfo) ? ' · ' + esc(tripBits(selRec.tripInfo)) : ''}</span></p>` : ''}
           ${selRec.hot ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${selRec.with ? ' avec ' + esc(whoLabel(selRec.with)) : ''}${selRec.nightNotes?.['Nuit chaude'] ? ' (' + esc(selRec.nightNotes['Nuit chaude']) + ')' : ''}</span></p>` : (n => n ? `<p class="where night-line">${icon('lips')}<span>Nuit chaude${n.with ? ' avec ' + esc(whoLabel(n.with)) : ''}</span></p>` : '')(nightOn(c, sel))}`
@@ -1862,6 +1863,7 @@ function renderCharNow(id) {
       ${statesLine(id, [...(s.mental || [])], s.stateNotes, 'brain')}
       ${isKhurdan(id) && s.violet ? `<p class="where">${icon('cloth')}<span>A porté du violet</span></p>` : ''}
       ${prevNightLine(id)}
+      ${isKhurdan(id) && s.intime?.trim() ? `<div class="recap-infos"><span>Vie intime</span><p>${esc(s.intime.trim())}</p></div>` : ''}
       ${nightLine(id)}
       ${djLine(id)}
       ${babysitBlock(id, false)}
@@ -1933,6 +1935,8 @@ function renderCharNow(id) {
         <button type="button" class="btn" id="add-${id}">Ajouter</button></div>
       <label class="check-inline"><input type="checkbox" id="keep-${id}"> L'ajouter aussi à la liste ${deName(c.name)}</label>
     </div>
+    ${isKhurdan(id) ? `<div class="chrono-part"><h3 class="chrono-h">Vie intime</h3>
+      <textarea id="intime-${id}" rows="3" placeholder="Ce qui s'est passé dans la vie intime ${deName(c.name)} aujourd'hui (facultatif)">${esc(s.intime || '')}</textarea></div>` : ''}
     ${(n => `<div class="chrono-part"><h3 class="chrono-h">Nuit à venir</h3>
       ${isKhurdan(id) ? `<label class="act"><input type="checkbox" id="violet-${id}" ${s.violet ? 'checked' : ''}>${icon('cloth')}<span>A porté du violet</span></label>` : ''}
       ${nightChips(id, s.nightStates, 'data-next-night', `
@@ -2003,6 +2007,7 @@ function renderCharNow(id) {
 
   document.getElementById('mood-'+id).addEventListener('input', e => s.mood = e.target.value);
   document.getElementById('infos-'+id)?.addEventListener('input', e => s.infos = e.target.value);
+  document.getElementById('intime-'+id)?.addEventListener('input', e => s.intime = e.target.value);
   document.getElementById('dayev-add-'+id)?.addEventListener('click', () => { const v = document.getElementById('dayev-'+id).value.trim(); if (!v) return; (s.dayEvents ||= []).push(v); renderChar(id); });
   document.querySelectorAll('[data-dayev-del]').forEach(b => b.addEventListener('click', () => { s.dayEvents.splice(+b.dataset.dayevDel, 1); renderChar(id); }));
   bindTabs(id); bindDaySections(id); bindMilestones(id);
@@ -2244,7 +2249,7 @@ initPlaces();
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg'];
+  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg'];
 const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{}, nightStates:new Set() });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }
