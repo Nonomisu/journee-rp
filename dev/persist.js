@@ -92,12 +92,20 @@ const todayOf = id => {
 const dayNum = String(rpDay.getDate());
 const curYm = `${rpDay.getFullYear()}-${String(rpDay.getMonth() + 1).padStart(2, '0')}`;
 let typingDirty = false;
+// Données reçues de l'autre joueur : réaffichage, sauf pendant une saisie de texte (repris quand on quitte le champ).
+// Une case à cocher ou un bouton qui garde le focus (Firefox) ne bloque pas le réaffichage.
+const isTyping = f => f && document.getElementById('view').contains(f)
+  && (f.tagName === 'TEXTAREA' || f.tagName === 'SELECT' || (f.tagName === 'INPUT' && !/^(checkbox|radio|button|submit|reset|range|color)$/.test(f.type)));
+let pointerDown = false;
+document.addEventListener('pointerdown', () => { pointerDown = true; }, true);
+document.addEventListener('pointerup', () => { pointerDown = false; if (typingDirty) setTimeout(rerender, 0); }, true);
 const rerender = () => {
-  const f = document.activeElement;
-  if (f && document.getElementById('view').contains(f) && /^(INPUT|TEXTAREA|SELECT)$/.test(f.tagName)) { typingDirty = true; return; }
+  if (isTyping(document.activeElement)) { typingDirty = true; return; }
+  // Jamais entre l'appui et le relâchement : la fiche serait remplacée sous le pointeur et le clic tomberait à côté.
+  if (pointerDown) { typingDirty = true; return; }
   typingDirty = false; renderNav(); current === 'home' ? renderHome() : renderChar(current);
 };
-document.addEventListener('focusout', () => setTimeout(() => { if (typingDirty) rerender(); }, 0));
+document.addEventListener('focusout', () => setTimeout(() => { if (typingDirty && !pointerDown) rerender(); }, 0));
 
 window.RP_APP = {
   ids: C.map(c => c.id),

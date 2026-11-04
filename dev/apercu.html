@@ -2443,7 +2443,13 @@ function renderNav() {
     });
   });
   list.innerHTML = html;
-  list.querySelector('[aria-current="true"]')?.scrollIntoView({ inline:'center', block:'nearest' });
+  // Centre le personnage actif dans la barre de puces, en ne faisant défiler QUE la barre (jamais la page).
+  const cur = list.querySelector('[aria-current="true"]');
+  for (let el = cur?.parentElement; el && el !== document.body && el !== document.documentElement; el = el.parentElement) {
+    const st = getComputedStyle(el), r = el.getBoundingClientRect(), cr = cur.getBoundingClientRect();
+    if (/(auto|scroll)/.test(st.overflowX) && el.scrollWidth > el.clientWidth) el.scrollLeft += (cr.left + cr.width / 2) - (r.left + r.width / 2);
+    if (/(auto|scroll)/.test(st.overflowY) && el.scrollHeight > el.clientHeight) el.scrollTop += (cr.top + cr.height / 2) - (r.top + r.height / 2);
+  }
 }
 
 function renderHome() {
