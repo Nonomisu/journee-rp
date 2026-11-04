@@ -2512,10 +2512,28 @@ function renderChar(id) {
     // La hauteur ne diminue pas tant qu'on reste sur la fiche (sinon le navigateur remonte la page quand
     // un bloc se replie en bas) ; elle est libérée en changeant de page.
     const el = sel && view.querySelector(sel);
-    if (el && before != null) { window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - before }); try { el.focus({ preventScroll: true }); } catch {} }
-    else window.scrollTo({ top: y });
+    if (el && before != null) { try { el.focus({ preventScroll: true }); } catch {} window.scrollTo({ top: window.scrollY + el.getBoundingClientRect().top - before }); holdPlace(sel, before); }
+    else { window.scrollTo({ top: y }); holdPlace(null, y); }
   }
 }
+// Garde-fou (Firefox notamment) : le navigateur peut encore déplacer la page juste après le réaffichage
+// (focus perdu, case remplacée…). Pendant un court instant, on remet l'élément touché à sa place ;
+// le moindre geste de l'utilisateur (molette, toucher, clavier) arrête aussitôt la correction.
+let placeGuard = null;
+const holdPlace = (sel, pos) => {
+  placeGuard?.stop();
+  const view = document.getElementById('view'), until = Date.now() + 700;
+  const fix = () => {
+    if (Date.now() > until) return stop();
+    const el = sel && view.querySelector(sel);
+    if (el) { const d = el.getBoundingClientRect().top - pos; if (Math.abs(d) > 2) window.scrollTo({ top: window.scrollY + d }); }
+    else if (!sel && Math.abs(window.scrollY - pos) > 2) window.scrollTo({ top: pos });
+  };
+  let raf = 0; const loop = () => { fix(); if (Date.now() <= until) raf = requestAnimationFrame(loop); };
+  const stop = () => { cancelAnimationFrame(raf); removeEventListener('scroll', fix); ['wheel', 'touchstart', 'keydown'].forEach(e => removeEventListener(e, stop, true)); placeGuard = null; };
+  addEventListener('scroll', fix); ['wheel', 'touchstart', 'keydown'].forEach(e => addEventListener(e, stop, true));
+  raf = requestAnimationFrame(loop); placeGuard = { stop };
+};
 function renderCharNow(id) {
   const c = C.find(x => x.id === id), t = THEMES[c.theme], s = state[id];
   if (s.view === 'history') return renderHistory(id);
