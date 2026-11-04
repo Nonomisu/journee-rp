@@ -1851,6 +1851,15 @@ function renderHome() {
 const anchorSel = el => !el || el === document.body ? null : el.id ? '#' + CSS.escape(el.id)
   : [...el.attributes].filter(a => a.name.startsWith('data-')).map(a => `[${a.name}="${CSS.escape(a.value)}"]`).join('') || null;
 let lastPage = null;   // page affichée (personnage + vue) : la hauteur n'est gardée que sur la même page
+// Dernier élément touché : Safari (iPhone, Mac) ne donne pas le focus aux cases ni aux boutons, donc on le note
+// au moment du toucher. Il sert de repère pendant quelques secondes (réaffichages qui suivent l'enregistrement).
+let touched = null;
+document.addEventListener('pointerdown', e => {
+  let el = e.target.closest?.('input, button, select, summary, textarea, label'); if (!el) return;
+  if (el.tagName === 'LABEL') el = el.querySelector('input, select') || el;
+  const sel = anchorSel(el); if (sel) touched = { sel, at: Date.now() };
+}, true);
+const anchorNow = () => (touched && Date.now() - touched.at < 6000 ? touched.sel : null) || anchorSel(document.activeElement);
 // Cale placée sous la fiche : compense ce qui disparaît (bloc replié, options masquées) pour que le navigateur
 // ne remonte pas la page. Une cale plutôt qu'une hauteur minimale : la fiche est une grille, qui s'étirerait.
 const spacer = () => { let s = document.getElementById('view-spacer');
@@ -1869,7 +1878,7 @@ function renderChar(id) {
   if (lastPage !== pageKey(id)) {   // autre fiche ou autre vue (récap, historique…) : affichage neuf
     resetSpacer(); renderCharNow(id); lastPage = pageKey(id); return;
   }
-  const sel = anchorSel(document.activeElement);
+  const sel = anchorNow();
   const before = sel && view.querySelector(sel)?.getBoundingClientRect().top, y = window.scrollY, h = fullH();
   try { renderCharNow(id); holdHeight(h); }
   finally {
