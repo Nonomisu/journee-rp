@@ -1899,22 +1899,6 @@ function renderChar(id) {
 // Garde-fou (Firefox notamment) : le navigateur peut encore déplacer la page juste après le réaffichage
 // (focus perdu, case remplacée…). Pendant un court instant, on remet l'élément touché à sa place ;
 // le moindre geste de l'utilisateur (molette, toucher, clavier) arrête aussitôt la correction.
-// ---------- Mouchard temporaire (?debug=scroll) : affiche ce qui fait bouger la page ----------
-(() => {
-  let on = false; try { on = new URLSearchParams(location.search).get('debug') === 'scroll'; } catch {}
-  if (!on) return;
-  const box = document.createElement('pre');
-  box.style.cssText = 'position:fixed;left:6px;bottom:6px;z-index:99999;max-width:min(96vw,760px);max-height:46vh;overflow:auto;margin:0;padding:6px 8px;background:#000d;color:#9f9;font:11px/1.35 monospace;white-space:pre-wrap;border:1px solid #9f9;border-radius:6px;pointer-events:none';
-  const lines = []; const t0 = performance.now();
-  const log = (...a) => { lines.push((((performance.now() - t0) / 1000).toFixed(2)) + 's ' + a.join(' ')); while (lines.length > 28) lines.shift(); box.textContent = lines.join('\n'); };
-  const where = () => (new Error().stack || '').split('\n').slice(2, 5).map(l => l.replace(/https?:\/\/[^ )]*\//g, '').trim()).join(' < ');
-  addEventListener('DOMContentLoaded', () => document.body.appendChild(box));
-  let last = scrollY;
-  addEventListener('scroll', () => { const d = Math.round(scrollY - last); if (Math.abs(d) > 20) log('SCROLL', Math.round(last), '→', Math.round(scrollY), '(' + d + ')', 'focus=' + (document.activeElement?.id || document.activeElement?.tagName)); last = scrollY; }, { passive: true });
-  const wrap = (obj, name) => { const f = obj[name]; obj[name] = function (...a) { log('appel', name, JSON.stringify(a[0] ?? '').slice(0, 60), '←', where()); return f.apply(this, a); }; };
-  wrap(window, 'scrollTo'); wrap(window, 'scrollBy'); wrap(Element.prototype, 'scrollIntoView'); wrap(HTMLElement.prototype, 'focus');
-  for (const ev of ['pointerdown', 'click', 'change', 'focusin', 'focusout', 'toggle']) addEventListener(ev, e => log(ev, e.target?.id || e.target?.dataset?.nextNight || e.target?.tagName, 'y=' + Math.round(scrollY)), true);
-})();
 let placeGuard = null;
 const holdPlace = (sel, pos) => {
   placeGuard?.stop();
