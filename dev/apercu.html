@@ -239,6 +239,8 @@ html, body, #view { overflow-anchor: none; }
 .recap-infos { border-left: 2px solid var(--gold); padding: .3rem .8rem; }
 .recap-infos span { font: 500 .72rem/1 var(--ui); letter-spacing: .18em; text-transform: uppercase; color: var(--dim); }
 .recap-infos p { margin: .3rem 0 0; white-space: pre-line; }
+.hunt-edit { display: grid; gap: .4rem; padding-left: 2.7rem; }
+.hunt-edit .hunt-qty { width: 4.5rem; flex: none; }
 .night-more { display: grid; gap: .35rem; }
 .night-note { display: grid; gap: .3rem; text-align: left; font-size: .85rem; color: var(--dim); }
 .night-note textarea { min-height: 3.2rem; }
@@ -1382,15 +1384,29 @@ const snowCoverOn = (city, day) => {
 const WINDY = { tehran:[2,3,4],  alps:[0,1,2,11], tahiti:[5,6,7],  varna:[0,1,11],  cancun:[8,9],  marrakech:[2,3,4], ulaanbaatar:[2,3,4,5], liujia:[0,1,2,3,11], rubis:[2,3,4,10], beijing:[3,4] };        // mois venteux (index 0 à 11)
 const FOGGY = { kyoto:[5,10],  kerala:[11,0,1],  moscow:[9,10], vietnam:[0,1], alps:[9,10],  varna:[10,11,0,1],  jungle:[0,1,10,11],  compiegne:[9,10,11,0,1], rubis:[3,4,5,6,11,0], beijing:[0,1,10,11], lisbon:[9,10,11,0], paris:[9,10,11,0,1] };
 const STORMY = { kyoto:[6,7,8],  tehran:[3,4],  kerala:[3,4,9,10], pondy:[9,10,11],  tahiti:[11,0,1,2], vietnam:[8,9,10], alps:[5,6,7], moscow:[5,6,7],  varna:[5,6], erzurum:[4,5],  cancun:[5,6,7,8,9], jungle:[4,5,6,7,8,9],  compiegne:[5,6,7], marrakech:[7,8], rubis:[5,6,7], mumbai:[5,9], beijing:[5,6,7], paris:[5,6,7], ulaanbaatar:[6,7] }; // pluies orageuses
+// Blizzards de la steppe : seulement en décembre et janvier, par épisodes de 1 à 3 jours,
+// environ 5 à 6 jours par mois (10 à 12 par an) ; une année sur dix environ est exceptionnelle (8 à 10 par mois).
+const BLIZZARD = { ulaanbaatar: { months: [11, 0], perMonth: [5, 6], wild: [8, 10], wildOdds: .1 } };
+const blizzCache = {};
+const blizzardDays = (city, y, m) => blizzCache[city + y + '-' + m] ||= (() => {
+  const B = BLIZZARD[city], days = new Set(); if (!B?.months.includes(m)) return days;
+  const wild = seeded(city + ':blizz-year:' + y) < B.wildOdds, [lo, hi] = wild ? B.wild : B.perMonth;
+  const n = lo + Math.floor(seeded(city + ':blizz-n:' + y + '-' + m) * (hi - lo + 1)), len = daysIn(y, m);
+  for (let i = 0; days.size < n && i < 60; i++) {
+    const start = 1 + Math.floor(seeded(city + ':blizz:' + y + '-' + m + ':' + i) * len), run = 1 + Math.floor(seeded(city + ':blizz-run:' + y + '-' + m + ':' + i) * 3);
+    for (let d = start; d < start + run && d <= len && days.size < n; d++) days.add(d);
+  }
+  return days; })();
 const cityWeather = (city, tp, day = rpDay) => {
   const m = day.getMonth(), dk = keyOf(day), dev = tp.max - CLIMATE[city][0][m];        // −3 à +3
+  if (BLIZZARD[city] && blizzardDays(city, day.getFullYear(), m).has(day.getDate())) return W.blizzard;
   let base = WET[city][m];
   // Steppe en hiver : on force un peu la neige pour l'ambiance (environ un jour sur trois ou quatre).
   if (SNOW[city]?.season.includes(m)) base = Math.max(base, SNOW[city].boost);
   const wet = Math.min(.95, Math.max(0, base * (1 - dev / 5)));
   const r = seeded(dk + ':w:' + city), r2 = seeded(dk + ':w2:' + city);
   if (r < wet) {
-    if (tp.max <= (SNOW[city]?.line ?? 1)) return tp.min <= -15 && r2 < .35 ? W.blizzard : W.snow;
+    if (tp.max <= (SNOW[city]?.line ?? 1)) return !BLIZZARD[city] && tp.min <= -15 && r2 < .35 ? W.blizzard : W.snow;
     return (STORMY[city] || []).includes(m) && r2 < .45 ? W.thunder : W.rain;
   }
   if ((FOGGY[city] || []).includes(m) && r2 < .25) return W.fog;
@@ -2224,8 +2240,14 @@ const huntYearHtml = (c, x) => {
     </div>
     ${h.byName.length ? `<table class="duel hunt-table"><thead><tr><th>Gibier</th><th>Nombre</th></tr></thead><tbody>${h.byName.map(([n, q]) => `<tr><th>${esc(n)}</th><td>${q}</td></tr>`).join('')}</tbody></table>` : ''}`;
 };
+// Prise choisie à la main (au lieu du tirage au sort) : gardée sur la journée (huntSet[activité] = [{ name, qty }]).
+const huntManual = (id, label, day) => sameDay(day, rpDay) ? state[id]?.huntSet?.[label]
+  : typeof HISTORY !== 'undefined' ? HISTORY[id]?.[keyOf(day)]?.huntSet?.[label] : null;
+const huntGame = (id, label) => { const h = HUNTS[id], mode = h?.acts[label]; return !mode ? [] : h.game.filter(g => mode === 'group' || !g.group).map(g => g.name); };
 const huntFor = (id, label, day = rpDay) => {
   const h = HUNTS[id], mode = h?.acts[label]; if (!mode) return null;
+  const man = huntManual(id, label, day);
+  if (Array.isArray(man)) return { mode, manual: true, catches: man.map(x => ({ name: x.name, qty: Math.max(1, +x.qty || 1) })) };
   const k = keyOf(day) + ':' + id + ':' + label;
   if (seeded(k + 'ok') >= h.odds[mode]) return { mode, catches: [] };          // bredouille
   const wOf = g => mode === 'solo' ? (g.group ? 0 : g.soloWeight ?? g.weight) : g.weight;
@@ -2462,13 +2484,23 @@ function renderCharNow(id) {
     const regionOpts = sel => c.regions.map(r => `<option value="${r}" ${sel === r ? 'selected' : ''}>${REGIONS[r].label}</option>`).join('');
     const trip = label === 'Voyage' && on && s.trip ? `<p class="act-detail">${icon('route')}<span>${(b => b ? esc(b) : 'Détails dans la section « Voyage », plus bas')(tripBits(s.trip))}</span></p>` : '';
     const hunt = on ? huntFor(id, label) : null;
-    const huntRow = hunt ? `<p class="hunt ${hunt.catches.length ? '' : 'empty'}">${icon('target')}<span>${hunt.catches.length ? 'Prises : ' + esc(huntText(hunt)) : (isFem(id) ? 'Rentrée bredouille' : 'Rentré bredouille')}</span></p>` : '';
+    const huntRow = hunt ? `<p class="hunt ${hunt.catches.length ? '' : 'empty'}">${icon('target')}<span>${hunt.catches.length ? 'Prises : ' + esc(huntText(hunt)) : (isFem(id) ? 'Rentrée bredouille' : 'Rentré bredouille')}</span></p>
+      <div class="hunt-edit"><div class="place-list" role="group" aria-label="Prise">
+        <button type="button" data-hunt-mode="${esc(label)}" data-v="draw" aria-pressed="${!hunt.manual}">Tirage au sort</button>
+        <button type="button" data-hunt-mode="${esc(label)}" data-v="manual" aria-pressed="${!!hunt.manual}">Je choisis la prise</button></div>
+      ${hunt.manual ? `${hunt.catches.map((x, i) => `<p class="where">${icon('target')}<span>${x.qty > 1 ? x.qty + ' × ' : ''}${esc(x.name)}</span><button type="button" class="link small" data-hunt-del="${esc(label)}" data-i="${i}" aria-label="Retirer">×</button></p>`).join('')}
+        <div class="special-row"><input type="text" list="game-${id}-${hunt.mode}" data-hunt-name="${esc(label)}" placeholder="Proie (ex. : Lièvre)">
+          <input type="number" min="1" max="20" value="1" data-hunt-qty="${esc(label)}" aria-label="Nombre" class="hunt-qty">
+          <button type="button" class="btn" data-hunt-add="${esc(label)}">Ajouter</button></div>
+        <datalist id="game-${id}-${hunt.mode}">${huntGame(id, label).map(g => `<option value="${esc(g)}">`).join('')}</datalist>
+        ${hunt.catches.length ? '' : '<p class="reserved">Aucune prise ajoutée : la chasse compte comme bredouille.</p>'}` : ''}</div>` : '';
     return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${drawn}${detail}${contract}${trip}${slots}</div>`;
   };
   const dispLabel = l => l === CONTRACT_ACT && activeContract(id) ? l + contractText(activeContract(id)) : s.details?.[l] && (DETAIL_ACTS[l] || RANDOM_ACTS[l]) ? `${l} : ${s.details[l]}` : huntFor(id, l) ? `${l} (${huntText(huntFor(id, l))})` : l === 'Voyage' && s.trip ? `Voyage${s.trip.modes?.size ? ` (${[...s.trip.modes].join(', ').toLowerCase()})` : ''} : ${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}` : l;
   const picked = [...s.checked];
   const byKey = {};
-  picked.forEach(l => { const sp = spanOf(s.slots[l] || []); (byKey[sp.key] ||= { sl:sp, items:[] }).items.push(l); });
+  // Une activité sur plusieurs périodes apparaît dans chacune (plus de période combinée « Aube → Matin »).
+  picked.forEach(l => { const ids = (s.slots[l] || []).filter(x => SLOTS.some(sl => sl.id === x)); (ids.length ? ids.map(x => spanOf([x])) : [spanOf([])]).forEach(sp => (byKey[sp.key] ||= { sl:sp, items:[] }).items.push(l)); });
   const groups = Object.values(byKey).sort((a, b) => a.sl.order - b.sl.order || a.sl.key.length - b.sl.key.length);
   const regLabel = s.region ? REGIONS[s.region].label : '';
   // Sélecteur Région → (Zone) → Lieux, pour la journée ou pour une étape de voyage.
@@ -2844,6 +2876,19 @@ function renderCharNow(id) {
     s.places.add(v); renderChar(id);
   });
   document.getElementById('wx-'+id)?.addEventListener('change', e => { weatherOn[HOME_OF[id]] = e.target.checked; renderChar(id); });
+  document.querySelectorAll('[data-hunt-mode]').forEach(b => b.addEventListener('click', () => {
+    const l = b.dataset.huntMode; s.huntSet ||= {};
+    if (b.dataset.v === 'draw') delete s.huntSet[l];
+    else if (!Array.isArray(s.huntSet[l])) s.huntSet[l] = (huntFor(id, l)?.catches || []).map(x => ({ ...x }));   // part du tirage, à modifier
+    renderChar(id);
+  }));
+  document.querySelectorAll('[data-hunt-add]').forEach(b => b.addEventListener('click', () => {
+    const l = b.dataset.huntAdd, row = b.closest('.special-row');
+    const name = row.querySelector('[data-hunt-name]').value.trim(), qty = Math.max(1, +row.querySelector('[data-hunt-qty]').value || 1); if (!name) return;
+    const list = (s.huntSet ||= {})[l] ||= [], same = list.find(x => x.name.toLowerCase() === name.toLowerCase());
+    same ? same.qty += qty : list.push({ name, qty }); renderChar(id);
+  }));
+  document.querySelectorAll('[data-hunt-del]').forEach(b => b.addEventListener('click', () => { s.huntSet[b.dataset.huntDel].splice(+b.dataset.i, 1); renderChar(id); }));
   document.querySelectorAll('[data-act]').forEach(cb => cb.addEventListener('change', e => {
     const l = e.target.dataset.act;
     if (l === 'Voyage') return setTrip(e.target.checked);
@@ -2851,7 +2896,7 @@ function renderCharNow(id) {
       if (e.target.checked && !activeContract(id)) CONTRACTS[id] = { start: isoDay(rpDay) };
       if (!e.target.checked && CONTRACTS[id]?.start === isoDay(rpDay)) delete CONTRACTS[id]; }   // contrat créé par erreur aujourd'hui
     if (e.target.checked) { s.checked.add(l); if (!s.slots[l] && guessSlot(l)) s.slots[l] = [...guessSlot(l)]; if (RANDOM_ACTS[l] && !s.details?.[l]) (s.details ||= {})[l] = drawFor(l); }
-    else { s.checked.delete(l); delete s.slots[l]; if (RANDOM_ACTS[l] && s.details) delete s.details[l]; }
+    else { s.checked.delete(l); delete s.slots[l]; if (RANDOM_ACTS[l] && s.details) delete s.details[l]; if (s.huntSet) delete s.huntSet[l]; }
     renderChar(id);
   }));
   document.querySelectorAll('[data-slot]').forEach(b => b.addEventListener('click', () => {
