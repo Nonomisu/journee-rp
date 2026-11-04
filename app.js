@@ -2251,7 +2251,12 @@ function renderCharNow(id) {
   }));
   document.querySelectorAll('[data-workday]').forEach(b => b.addEventListener('click', () => { const d = +b.dataset.workday, w = WORKDAYS[id]; w.has(d) ? w.delete(d) : w.add(d); renderChar(id); }));
   document.querySelectorAll('[data-with]').forEach(b => b.addEventListener('click', () => { setNight(id, true, b.dataset.with); renderChar(id); }));
-  document.getElementById('nef-on')?.addEventListener('change', e => { nefaste.on = e.target.checked; if (e.target.checked) nefaste.inj = true; renderChar(id); });
+  // Manifestation cochée sur la fiche d'Hokkyoku : nouvelle pour Unegen (partira à la validation, comme les autres).
+  document.getElementById('nef-on')?.addEventListener('change', e => {
+    nefaste.on = e.target.checked; const k = 'nef:' + keyOf(rpDay);
+    if (e.target.checked) { nefaste.inj = true; notify(NEF.host, NEF.partner, `Manifestation chez ${nameOf(NEF.host)} cette nuit : l'esprit s'est réveillé.`, k); }
+    else dropNews([k]);
+    renderChar(id); });
   const nefToggle = (list, x) => { const i = list.indexOf(x); i >= 0 ? list.splice(i, 1) : list.push(x); renderChar(id); };
   document.querySelectorAll('[data-nef-ctx]').forEach(b => b.addEventListener('change', () => nefToggle(nefaste.ctx, b.dataset.nefCtx)));
   document.querySelectorAll('[data-nef-host]').forEach(b => b.addEventListener('change', () => nefToggle(nefaste.host, b.dataset.nefHost)));
