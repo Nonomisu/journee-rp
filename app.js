@@ -1690,8 +1690,11 @@ const nightChips = (id, set, attr, hotHtml = '', question = 'Comment s\'est pass
   const on = [hotSum, ...NIGHT_STATES.filter(x => set.has(x)).map(x => x === 'Nuit calme' ? calmLabel(id, scope === 'next' ? calmWithOf(id) : prevEntry(id)?.calmWith) : physLabel(id, x))].filter(Boolean);
   return `<details class="night-more" data-night-fold="${k}" ${NIGHT_OPEN.has(k) ? 'open' : ''}>
     <summary>${icon('nuit')}<span>${question}${on.length ? ` <small>· ${esc(on.join(', '))}</small>` : ''}</span></summary>
-    ${hotHtml}
-    ${NIGHT_STATES.map(x => `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${set.has(x) ? 'checked' : ''}>${icon(NIGHT_ICON[x])}<span>${esc(physLabel(id, x))}</span></label>${set.has(x) ? nightNoteInput(id, scope, x, notes[x]) : ''}${x === 'Nuit calme' && set.has(x) ? calmWithPicker(id, scope) : ''}`).join('')}
+    <div class="night-kind"><h4 class="chrono-sub">Type de nuit</h4>
+      ${hotHtml}
+      ${['Nuit calme'].map(x => `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${set.has(x) ? 'checked' : ''}>${icon(NIGHT_ICON[x])}<span>${esc(physLabel(id, x))}</span></label>${set.has(x) ? nightNoteInput(id, scope, x, notes[x]) : ''}${x === 'Nuit calme' && set.has(x) ? calmWithPicker(id, scope) : ''}`).join('')}</div>
+    <div class="night-extra"><h4 class="chrono-sub">Et aussi… <small>(cumulables)</small></h4>
+      ${NIGHT_STATES.filter(x => x !== 'Nuit calme').map(x => `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${set.has(x) ? 'checked' : ''}>${icon(NIGHT_ICON[x])}<span>${esc(physLabel(id, x))}</span></label>${set.has(x) ? nightNoteInput(id, scope, x, notes[x]) : ''}${x === 'Nuit calme' && set.has(x) ? calmWithPicker(id, scope) : ''}`).join('')}</div>
     ${noteHtml}
   </details>`; };
 const prevNightBlock = id => {

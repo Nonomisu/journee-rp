@@ -256,6 +256,11 @@ html, body, #view { overflow-anchor: none; }
 .hunt-edit .hunt-qty { width: 4.5rem; flex: none; }
 .hook-row { display: grid; gap: .3rem; text-align: left; margin-top: .5rem; font-size: .9rem; }
 .night-more { display: grid; gap: .35rem; }
+.night-kind, .night-extra { display: grid; gap: .35rem; }
+.night-kind { padding: .5rem .6rem .7rem; border: 1px solid var(--gold); border-radius: 8px; background: color-mix(in srgb, var(--gold) 7%, transparent); }
+.night-extra { padding: .2rem .6rem .4rem; }
+.night-kind .chrono-sub, .night-extra .chrono-sub { margin-top: .2rem; }
+.night-extra .chrono-sub small { letter-spacing: .04em; text-transform: none; }
 .night-note { display: grid; gap: .3rem; text-align: left; font-size: .85rem; color: var(--dim); }
 .night-note textarea { min-height: 3.2rem; }
 .night-more > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem; padding: .45rem .2rem; color: var(--dim); font-size: .95rem; }
@@ -617,6 +622,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=6f1cb7ff29" charset="utf-8"></script>
+<script src="app.js?v=1a05665b46" charset="utf-8"></script>
 <script type="module" src="sync.js?v=071ffd2f77"></script>
 

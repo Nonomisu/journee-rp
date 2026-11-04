@@ -243,6 +243,11 @@ html, body, #view { overflow-anchor: none; }
 .hunt-edit .hunt-qty { width: 4.5rem; flex: none; }
 .hook-row { display: grid; gap: .3rem; text-align: left; margin-top: .5rem; font-size: .9rem; }
 .night-more { display: grid; gap: .35rem; }
+.night-kind, .night-extra { display: grid; gap: .35rem; }
+.night-kind { padding: .5rem .6rem .7rem; border: 1px solid var(--gold); border-radius: 8px; background: color-mix(in srgb, var(--gold) 7%, transparent); }
+.night-extra { padding: .2rem .6rem .4rem; }
+.night-kind .chrono-sub, .night-extra .chrono-sub { margin-top: .2rem; }
+.night-extra .chrono-sub small { letter-spacing: .04em; text-transform: none; }
 .night-note { display: grid; gap: .3rem; text-align: left; font-size: .85rem; color: var(--dim); }
 .night-note textarea { min-height: 3.2rem; }
 .night-more > summary { list-style: none; cursor: pointer; display: flex; align-items: center; gap: .5rem; padding: .45rem .2rem; color: var(--dim); font-size: .95rem; }
@@ -2305,8 +2310,11 @@ const nightChips = (id, set, attr, hotHtml = '', question = 'Comment s\'est pass
   const on = [hotSum, ...NIGHT_STATES.filter(x => set.has(x)).map(x => x === 'Nuit calme' ? calmLabel(id, scope === 'next' ? calmWithOf(id) : prevEntry(id)?.calmWith) : physLabel(id, x))].filter(Boolean);
   return `<details class="night-more" data-night-fold="${k}" ${NIGHT_OPEN.has(k) ? 'open' : ''}>
     <summary>${icon('nuit')}<span>${question}${on.length ? ` <small>· ${esc(on.join(', '))}</small>` : ''}</span></summary>
-    ${hotHtml}
-    ${NIGHT_STATES.map(x => `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${set.has(x) ? 'checked' : ''}>${icon(NIGHT_ICON[x])}<span>${esc(physLabel(id, x))}</span></label>${set.has(x) ? nightNoteInput(id, scope, x, notes[x]) : ''}${x === 'Nuit calme' && set.has(x) ? calmWithPicker(id, scope) : ''}`).join('')}
+    <div class="night-kind"><h4 class="chrono-sub">Type de nuit</h4>
+      ${hotHtml}
+      ${['Nuit calme'].map(x => `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${set.has(x) ? 'checked' : ''}>${icon(NIGHT_ICON[x])}<span>${esc(physLabel(id, x))}</span></label>${set.has(x) ? nightNoteInput(id, scope, x, notes[x]) : ''}${x === 'Nuit calme' && set.has(x) ? calmWithPicker(id, scope) : ''}`).join('')}</div>
+    <div class="night-extra"><h4 class="chrono-sub">Et aussi… <small>(cumulables)</small></h4>
+      ${NIGHT_STATES.filter(x => x !== 'Nuit calme').map(x => `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${set.has(x) ? 'checked' : ''}>${icon(NIGHT_ICON[x])}<span>${esc(physLabel(id, x))}</span></label>${set.has(x) ? nightNoteInput(id, scope, x, notes[x]) : ''}${x === 'Nuit calme' && set.has(x) ? calmWithPicker(id, scope) : ''}`).join('')}</div>
     ${noteHtml}
   </details>`; };
 const prevNightBlock = id => {
