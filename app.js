@@ -868,29 +868,29 @@ const setCalm = (id, on, w) => {
   }
 };
 const calmWithOf = id => calmBy[id]?.with || null;
-// ---------- Hokkyoku et Unegen : « Présence néfaste » (l'esprit d'Hokkyoku) les nuits passées ensemble ----------
-// Partagé entre les deux joueurs (jour : nefaste). Hokkyoku coche la présence, le contexte et ses réactions ;
+// ---------- Hokkyoku et Unegen : « Manifestation » (l'esprit d'Hokkyoku) les nuits passées ensemble ----------
+// Partagé entre les deux joueurs (jour : nefaste). Hokkyoku coche la manifestation, le contexte et ses réactions ;
 // Unegen coche son injection (cochée par défaut), affichée aussi sur la fiche d'Hokkyoku.
 const NEF = { host: 'hokkyoku', partner: 'unegen' };
-const NEF_CTX = ['Température glaciale', 'Atmosphère lugubre', 'Tatouage en surbrillance', "Agressivité de l'esprit sur l'hôte", "Agressivité de l'esprit sur autrui"];
+const NEF_CTX = ['Présence néfaste', 'Température glaciale', 'Atmosphère lugubre', 'Tatouage en surbrillance', "Agressivité de l'esprit sur l'hôte", "Agressivité de l'esprit sur autrui"];
 const NEF_HOST = ['Hokkyoku lutte', 'Prise de ses cachets'];
 const NEF_INJ = "Injection d'Unegen";
 const nefaste = { on: false, ctx: [], host: [], inj: true };
 const nefTogether = () => (nightOf(NEF.host).hot && nightOf(NEF.host).with === NEF.partner) || calmBy[NEF.host]?.with === NEF.partner;
 const nefActive = () => nefTogether() && nefaste.on;
-const nefText = () => !nefActive() ? '' : ['Présence néfaste' + (nefaste.ctx.length ? ' : ' + nefaste.ctx.join(', ') : ''),
+const nefText = () => !nefActive() ? '' : ['Manifestation' + (nefaste.ctx.length ? ' : ' + nefaste.ctx.join(', ') : ''),
   [...nefaste.host, ...(nefaste.inj ? [NEF_INJ] : [])].join(', ')].filter(Boolean).join(' · ');
 const nefLine = id => [NEF.host, NEF.partner].includes(id) && nefActive() ? `<p class="where">${icon('warn')}<span>${esc(nefText())}</span></p>` : '';
 const nefBlock = id => {
   if (![NEF.host, NEF.partner].includes(id) || !nefTogether()) return '';
   const box = (attr, x, on) => `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${on ? 'checked' : ''}>${icon('warn')}<span>${esc(x)}</span></label>`;
   if (id === NEF.host) return `<div class="nefaste">
-      <label class="act night"><input type="checkbox" id="nef-on" ${nefaste.on ? 'checked' : ''}>${icon('warn')}<span>Présence néfaste</span></label>
+      <label class="act night"><input type="checkbox" id="nef-on" ${nefaste.on ? 'checked' : ''}>${icon('warn')}<span>Manifestation</span></label>
       ${nefaste.on ? `<h4 class="chrono-sub">Contexte</h4>${NEF_CTX.map(x => box('data-nef-ctx', x, nefaste.ctx.includes(x))).join('')}
         <h4 class="chrono-sub">Réactions</h4>${NEF_HOST.map(x => box('data-nef-host', x, nefaste.host.includes(x))).join('')}
         <p class="where">${icon('warn')}<span>${esc(NEF_INJ)} : ${nefaste.inj ? 'oui' : 'non'} <small>(cochée sur la fiche ${deName(nameOf(NEF.partner))})</small></span></p>` : ''}</div>`;
   return !nefaste.on ? '' : `<div class="nefaste">
-      <p class="where">${icon('warn')}<span>Présence néfaste chez ${esc(nameOf(NEF.host))}${nefaste.ctx.length ? ' : ' + esc(nefaste.ctx.join(', ')) : ''}${nefaste.host.length ? ' · ' + esc(nefaste.host.join(', ')) : ''}</span></p>
+      <p class="where">${icon('warn')}<span>Manifestation chez ${esc(nameOf(NEF.host))}${nefaste.ctx.length ? ' : ' + esc(nefaste.ctx.join(', ')) : ''}${nefaste.host.length ? ' · ' + esc(nefaste.host.join(', ')) : ''}</span></p>
       <h4 class="chrono-sub">Réaction</h4>${box('data-nef-inj', NEF_INJ, nefaste.inj)}</div>`;
 };
 // Libellé « Nuit calme avec … » dans les résumés.

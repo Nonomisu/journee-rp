@@ -24,5 +24,5 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
   console.log('Chez Hokkyoku :', (await jy.textContent('.nefaste .where')).replace(/\s+/g, ' ').trim());
   await nono.check('[data-nef-inj]'); await nono.waitForTimeout(1200);
   await jy.click('#done-hokkyoku'); await jy.waitForTimeout(1200);
-  console.log('Récap Hokkyoku :', await jy.$$eval('#view .recap .where', ws => ws.map(w => w.textContent.trim()).filter(t => /néfaste/.test(t))));
+  console.log('Récap Hokkyoku :', await jy.$$eval('#view .recap .where', ws => ws.map(w => w.textContent.trim()).filter(t => /Manifestation/.test(t))));
   console.log('erreurs :', errs.length ? errs : 'aucune'); await b.close(); })().catch(e => { console.error('ÉCHEC', e.message); process.exit(1); });
