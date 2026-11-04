@@ -25,7 +25,8 @@ const entryOf = id => {
   const n = nightOf(id);
   o.night = { hot: !!n.hot, with: n.hot ? (n.with || null) : null };   // pour l'historique
   if (FILM_PAIR.includes(id)) o.film = isFilmed(id);
-  o.rp = rpPlayed[id] || null;                                        // journée jouée en RP (et avec qui)                  // vidéo publiée (wrap d'Echo et Prism)
+  o.rp = rpPlayed[id] || null;
+  o.calmWith = calmBy[id]?.with || null;                              // nuit calme : avec qui                                        // journée jouée en RP (et avec qui)                  // vidéo publiée (wrap d'Echo et Prism)
   return enc(o);
 };
 const isEmptyVal = v => v === '' || v === false || v === null || v === undefined || (Array.isArray(v) && !v.length)
@@ -34,7 +35,7 @@ const meaningful = e => !!e && (e.night?.hot || Object.entries(e).some(([k, v]) 
 const applyEntry = (id, e) => {
   const s = state[id];
   ENTRY_KEYS.forEach(k => delete s[k]);
-  const d = dec(e || {}); delete d.night; delete d.film; delete d.rp;
+  const d = dec(e || {}); delete d.night; delete d.film; delete d.rp; delete d.calmWith;
   Object.assign(s, freshEntry(), d);
   // Anciennes fiches : le moral était rangé avec l'état physique.
   MORAL.forEach(m => { if (s.phys?.has?.(m)) { s.phys.delete(m); s.mental.add(m); } });
@@ -65,7 +66,7 @@ const applyGlobal = g => {
   if ('contracts' in d) replaceObj(CONTRACTS, d.contracts);
   if ('workdays' in d) { replaceObj(WORKDAYS, d.workdays); WORKDAYS.khopses ||= new Set(); }
 };
-const dayOf = () => enc({ nights: nightsBy, filmed, weather: weatherOn, rp: rpPlayed,
+const dayOf = () => enc({ nights: nightsBy, calm: calmBy, filmed, weather: weatherOn, rp: rpPlayed,
   protect: Object.fromEntries(C.map(c => [c.id, !!state[c.id].protect])),
   shell: Object.fromEntries(C.map(c => [c.id, !!state[c.id].shell])) });
 // Heure de création d'une nouvelle venue de Firestore (horodatage serveur, ou texte ISO dans les tests).
@@ -75,6 +76,7 @@ const applyDay = g => {
   if ('nights' in d) replaceObj(nightsBy, d.nights);
   if ('filmed' in d) replaceObj(filmed, d.filmed);
   if ('rp' in d) replaceObj(rpPlayed, d.rp);
+  if ('calm' in d) { const was = new Set(Object.keys(calmBy)); replaceObj(calmBy, d.calm); C.forEach(c => { if (calmBy[c.id] || was.has(c.id)) syncCalmState(c.id); }); }
   if ('weather' in d) replaceObj(weatherOn, d.weather);
   if (d.protect) C.forEach(c => { if (c.id in d.protect) state[c.id].protect = !!d.protect[c.id]; });
   if (d.shell) C.forEach(c => { if (c.id in d.shell) state[c.id].shell = !!d.shell[c.id]; });
