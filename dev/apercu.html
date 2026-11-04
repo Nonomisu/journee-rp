@@ -250,6 +250,8 @@ html, body, #view { overflow-anchor: none; }
 .fold-all { display: flex; justify-content: flex-end; gap: .4rem; }
 .night-more { display: grid; gap: .35rem; }
 .night-kind, .night-extra { display: grid; gap: .35rem; }
+.night-kind-pick { display: grid; grid-template-columns: 1fr 1fr; gap: .35rem; }
+@media (max-width: 360px) { .night-kind-pick { grid-template-columns: 1fr; } }
 .night-kind { padding: .5rem .6rem .7rem; border: 1px solid var(--gold); border-radius: 8px; background: color-mix(in srgb, var(--gold) 7%, transparent); }
 .night-extra { padding: .2rem .6rem .4rem; }
 .night-kind .chrono-sub, .night-extra .chrono-sub { margin-top: .2rem; }
@@ -2330,8 +2332,8 @@ const nightChips = (id, set, attr, hotHtml = '', question = 'Comment s\'est pass
   return `<details class="night-more" data-night-fold="${k}" ${NIGHT_OPEN.has(k) ? 'open' : ''}>
     <summary>${icon('nuit')}<span>${question}${on.length ? ` <small>· ${esc(on.join(', '))}</small>` : ''}</span></summary>
     <div class="night-kind"><h4 class="chrono-sub">Type de nuit</h4>
-      ${hotHtml}
-      ${['Nuit calme'].map(x => `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${set.has(x) ? 'checked' : ''}>${icon(NIGHT_ICON[x])}<span>${esc(physLabel(id, x))}</span></label>${set.has(x) ? nightNoteInput(id, scope, x, notes[x]) : ''}${x === 'Nuit calme' && set.has(x) ? calmWithPicker(id, scope) : ''}`).join('')}</div>
+      ${(([hotLabel, hotOpts = '']) => `<div class="night-kind-pick">${hotLabel}<label class="act night"><input type="checkbox" ${attr}="Nuit calme" ${set.has('Nuit calme') ? 'checked' : ''}>${icon(NIGHT_ICON['Nuit calme'])}<span>${esc(physLabel(id, 'Nuit calme'))}</span></label></div>
+      ${hotOpts}${set.has('Nuit calme') ? nightNoteInput(id, scope, 'Nuit calme', notes['Nuit calme']) + calmWithPicker(id, scope) : ''}`)(hotHtml.split('<!--hot-opts-->'))}</div>
     <div class="night-extra"><h4 class="chrono-sub">Et aussi… <small>(cumulables)</small></h4>
       ${NIGHT_STATES.filter(x => x !== 'Nuit calme').map(x => `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${set.has(x) ? 'checked' : ''}>${icon(NIGHT_ICON[x])}<span>${esc(physLabel(id, x))}</span></label>${set.has(x) ? nightNoteInput(id, scope, x, notes[x]) : ''}${x === 'Nuit calme' && set.has(x) ? calmWithPicker(id, scope) : ''}`).join('')}</div>
     ${noteHtml}
@@ -2344,8 +2346,8 @@ const prevNightBlock = id => {
     <p class="reserved">Reprise de la nuit à venir de la veille. <button type="button" class="link small ico-btn" id="prev-edit-${id}" title="Modifier" aria-label="Modifier">${icon('pencil')}</button></p></div>`;
   const hotOwn = !!e?.night?.hot, w = e?.night?.with || '';
   const opts = [...new Set([partnerOf(id), ...loversOf(id), ...(id === 'khopses' ? ['client'] : []), ...C.filter(x => x.id !== id).map(x => x.id)].filter(Boolean))];
-  const hotHtml = n.hot && !n.hot.own ? `<p class="where">${icon('lips')}<span>Nuit chaude avec ${esc(whoLabel(n.hot.with))} <small>(indiquée sur la fiche ${deName(nameOf(n.hot.with))})</small></span></p>`
-      : `<label class="act night"><input type="checkbox" id="prev-hot-${id}" ${hotOwn ? 'checked' : ''}>${icon('lips')}<span>Nuit chaude</span></label>
+  const hotHtml = n.hot && !n.hot.own ? `<!--hot-opts--><p class="where">${icon('lips')}<span>Nuit chaude avec ${esc(whoLabel(n.hot.with))} <small>(indiquée sur la fiche ${deName(nameOf(n.hot.with))})</small></span></p>`
+      : `<label class="act night"><input type="checkbox" id="prev-hot-${id}" ${hotOwn ? 'checked' : ''}>${icon('lips')}<span>Nuit chaude</span></label><!--hot-opts-->
       ${hotOwn ? `<label class="check-inline">avec <select id="prev-with-${id}"><option value="">—</option>${opts.map(o => `<option value="${esc(o)}" ${o === w ? 'selected' : ''}>${esc(whoLabel(o))}</option>`).join('')}</select></label>` : ''}`;
   const hotNote = n.hot ? nightNoteInput(id, 'prev', 'Nuit chaude', n.notes['Nuit chaude']) : '';
   return `<div class="chrono-part">${head}
@@ -2753,7 +2755,7 @@ function renderCharNow(id) {
     ${(n => `<div class="chrono-part"><h3 class="chrono-h">Nuit à venir</h3>
       ${isKhurdan(id) ? `<label class="act"><input type="checkbox" id="violet-${id}" ${s.violet ? 'checked' : ''}>${icon('cloth')}<span>A porté du violet</span></label>` : ''}
       ${nightChips(id, s.nightStates, 'data-next-night', `
-      <label class="act night"><input type="checkbox" id="hot-${id}" ${n.hot ? 'checked' : ''}>${icon('lips')}<span>Nuit chaude</span></label>
+      <label class="act night"><input type="checkbox" id="hot-${id}" ${n.hot ? 'checked' : ''}>${icon('lips')}<span>Nuit chaude</span></label><!--hot-opts-->
       ${n.hot ? nightNoteInput(id, 'next', 'Nuit chaude', s.nightNotes?.['Nuit chaude']) : ''}
       ${blockedWith(id, n.partner) ? `<p class="reserved">${nameOf(n.partner)} travaille ce soir (jour de travail récurrent).</p>` : ''}
       ${n.partnerAway ? `<p class="reserved">${nameOf(n.partner)} était avec ${esc(whoLabel(n.partnerAway))}${n.partnerAway === 'client' && state[n.partner].returnHour != null ? ` (retour à ${state[n.partner].returnHour} h)` : ''} cette nuit.</p>` : ''}
