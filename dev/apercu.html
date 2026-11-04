@@ -1767,7 +1767,7 @@ const dayRecord = (c, d) => {
     const filled = s.done || s.mood || s.checked.size || rpPlayed[c.id] || s.trip;
     return filled ? { rp: rpPlayed[c.id] || null, mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
       cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])], minutes: s.trip.minutes || 0, reason: s.trip.reason || '' } : null,
-      phys: [...(s.phys || [])], mental: [...(s.mental || [])], nightStates: [...(s.nightStates || [])], nightNote: s.nightNote || '', nightNotes: { ...(s.nightNotes || {}) }, calmWith: calmWithOf(c.id), intime: s.intime || '', intimeWith: [...(s.intimeWith || [])], notes: { ...(s.stateNotes || {}) }, real: true } : null;
+      phys: [...(s.phys || [])], mental: [...(s.mental || [])], nightStates: [...(s.nightStates || [])], nightNote: s.nightNote || '', nightNotes: { ...(s.nightNotes || {}) }, calmWith: calmWithOf(c.id), intime: s.intime || '', faits: s.faits || '', intimeWith: [...(s.intimeWith || [])], notes: { ...(s.stateNotes || {}) }, real: true } : null;
   }
   if (d > rpDay) return null;
   const k = keyOf(d) + ':' + c.id, r = seeded(k);
@@ -2096,6 +2096,7 @@ function renderHistory(id) {
         <h3>${fmtDay(sel)}${specialDays(c, sel, selRec || { real: sameDay(sel, rpDay) }).map(x => ' · ' + esc(x)).join('')}</h3>
         ${selRec ? `
           ${selRec.mood ? `<p class="recap-mood small">${esc(selRec.mood)}</p>` : ''}
+          ${selRec.faits ? `<p class="where">${icon('star')}<span>Faits notoires : ${esc(selRec.faits)}</span></p>` : ''}
           ${selRec.cond ? `<p class="where">${icon(selRec.cond.icon)}<span>${selRec.cond.label} · ${deg(selRec.cond.tp.max)} / ${deg(selRec.cond.tp.min)}</span></p>` : ''}
           ${selRec.place ? `<p class="where">${icon('pin')}<span>${esc(selRec.place)}</span></p>` : ''}
           ${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(esc).join(' · ')}</span></p>` : ''}
@@ -2562,6 +2563,7 @@ function renderCharNow(id) {
       ${groups.length ? `<ul class="recap-list">${groups.map(({ sl, items }) => `<li>
         <span class="recap-when">${sl.icon ? icon(sl.icon) : ''}${sl.label}</span>
         <span class="recap-what">${items.map(l => esc(dispLabel(l))).join(' · ')}</span></li>`).join('')}</ul>` : ''}
+      ${s.faits?.trim() ? `<div class="recap-infos"><span>Faits notoires</span><p>${esc(s.faits.trim())}</p></div>` : ''}
       ${s.infos?.trim() ? `<div class="recap-infos"><span>Informations</span><p>${esc(s.infos.trim())}</p></div>` : ''}
       ${s.shot ? `<img class="recap-shot" src="${s.shot}" alt="Capture du jour">` : ''}
       ${readOnly ? `<footer class="recap-foot"><span>${s.done ? '✓ Journée terminée' : 'Journée en cours'}</span></footer>` : `<footer class="recap-foot"><span>✓ Récap envoyé sur Discord</span>
@@ -2589,6 +2591,7 @@ function renderCharNow(id) {
         ${C.filter(x => x.id !== id).map(x => `<option value="${x.id}" ${rpPlayed[id] === x.id ? 'selected' : ''}>${x.name}</option>`).join('')}</select></label>
       <p class="reserved">La fiche compte comme remplie${isChar(rpPlayed[id]) ? `, et celle ${deName(nameOf(rpPlayed[id]))} aussi` : ''}, même sans activités cochées.</p>` : ''}</section>
     <section><h2>Mood du jour</h2>
+      <textarea id="mood-${id}" placeholder="Comment se sent ${c.name} aujourd'hui ?">${esc(s.mood)}</textarea>
       ${statesBlock(id)}</section>
     <section><h2>Lieux du jour</h2>
       ${s.trip ? `<p class="reserved">${icon('route')} Journée de voyage : le départ et l'arrivée se renseignent dans la section « Voyage », après les activités.</p>` : `
@@ -2674,7 +2677,7 @@ function renderCharNow(id) {
     ${djBlock(id)}
     ${workdaysBlock(id)}
     <section class="faits"><h2>Faits notoires</h2>
-      <textarea id="mood-${id}" placeholder="Ce qui a marqué la journée ${deName(c.name)}…">${esc(s.mood)}</textarea></section>
+      <textarea id="faits-${id}" placeholder="Ce qui a marqué la journée ${deName(c.name)}…">${esc(s.faits || '')}</textarea></section>
     <section class="events-sec"><h2>Événements importants</h2>
       <p class="where">${icon('cake')}<span>${today} · ${eorzeaDate}</span></p>
       ${dayHighlights(c)}
@@ -2703,6 +2706,7 @@ function renderCharNow(id) {
 
   document.getElementById('mood-'+id).addEventListener('input', e => s.mood = e.target.value);
   document.getElementById('infos-'+id)?.addEventListener('input', e => s.infos = e.target.value);
+  document.getElementById('faits-'+id)?.addEventListener('input', e => s.faits = e.target.value);
   document.getElementById('intime-'+id)?.addEventListener('input', e => s.intime = e.target.value);
   document.querySelectorAll('[data-intime-with]').forEach(b => b.addEventListener('click', () => {
     const x = b.dataset.intimeWith; s.intimeWith ||= new Set();
