@@ -15,7 +15,7 @@ window.RP_PUSH = {
       unsupported: `<p class="reserved">Notifications : sur iPhone ou iPad, ouvre Journée RP depuis son icône sur l'écran d'accueil (iOS 16.4 ou plus) pour pouvoir les activer.</p>`,
       denied: `<p class="reserved">Notifications refusées sur cet appareil. Pour les réactiver : Réglages › Notifications › Journée RP.</p>`,
       off: `<button type="button" class="btn" id="push-on" ${pushView.busy ? 'disabled' : ''}>${icon('bell')}${pushView.busy ? 'Activation…' : 'Activer les notifications sur cet appareil'}</button>`,
-      on: `<p class="reserved">${icon('bell')} Notifications activées sur cet appareil ✓ <button type="button" class="link" id="push-off">Désactiver</button></p>`,
+      on: `<p class="reserved">${icon('bell')} Notifications activées sur cet appareil ✓ <button type="button" class="link ico-btn" id="push-off" title="Désactiver" aria-label="Désactiver les notifications">${icon('minus')}</button></p>`,
     }[st];
     return `<div class="push-set" style="margin-top:1rem">${body}${pushView.msg ? `<p class="reserved">${esc(pushView.msg)}</p>` : ''}</div>`;
   },

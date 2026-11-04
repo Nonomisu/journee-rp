@@ -255,6 +255,12 @@ html, body, #view { overflow-anchor: none; }
 .hunt-edit { display: grid; gap: .4rem; padding-left: 2.7rem; }
 .hunt-edit .hunt-qty { width: 4.5rem; flex: none; }
 .hook-row { display: grid; gap: .3rem; text-align: left; margin-top: .5rem; font-size: .9rem; }
+.link.ico-btn { display: inline-flex; align-items: center; justify-content: center; gap: .1rem; min-width: 2rem; min-height: 2rem; padding: .25rem .35rem;
+  border: 1px solid var(--rule); border-radius: 999px; color: var(--gold); text-decoration: none; vertical-align: middle; background: transparent; }
+.link.ico-btn:hover, .link.ico-btn:focus-visible { border-color: var(--gold); background: color-mix(in srgb, var(--gold) 10%, transparent); }
+.link.ico-btn .ico { width: 1.05rem; height: 1.05rem; margin: 0; }
+.link.ico-btn.danger { color: #d8708a; }
+.fold-all { display: flex; justify-content: flex-end; gap: .4rem; }
 .night-more { display: grid; gap: .35rem; }
 .night-kind, .night-extra { display: grid; gap: .35rem; }
 .night-kind { padding: .5rem .6rem .7rem; border: 1px solid var(--gold); border-radius: 8px; background: color-mix(in srgb, var(--gold) 7%, transparent); }
@@ -622,6 +628,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=1a05665b46" charset="utf-8"></script>
+<script src="app.js?v=92b28dd46f" charset="utf-8"></script>
 <script type="module" src="sync.js?v=071ffd2f77"></script>
 

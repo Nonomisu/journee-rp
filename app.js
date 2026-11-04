@@ -111,6 +111,17 @@ ICONS.flag = '<path d="M5 21V4"/><path d="M5 4h11l-2 4 2 4H5"/>';
 ICONS.zone = '<path d="M3 19 9.5 8l4 6.5 2.5-4L21 19z"/>';
 ICONS.star = '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>';
 ICONS.camera = '<path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>';
+ICONS.plus = '<path d="M12 5v14M5 12h14"/>';
+ICONS.minus = '<path d="M5 12h14"/>';
+ICONS.gear = '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/><circle cx="12" cy="12" r="6.2"/>';
+ICONS.pencil = '<path d="M4 20l1-4.5L15.5 5a2.1 2.1 0 0 1 3 3L8 18.5z"/><path d="M13.5 7l3 3"/>';
+ICONS.trash = '<path d="M4.5 7h15M9.5 7V4.5h5V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5"/>';
+ICONS.check = '<path d="M5 12.5l4.5 4.5L19 7.5"/>';
+ICONS.checks = '<path d="M2.5 12.5 6.5 16.5 14 8M10 15.5l1 1L21.5 6"/>';
+ICONS.cross = '<path d="M6 6l12 12M18 6 6 18"/>';
+ICONS.foldall = '<path d="M7 10l5-5 5 5M7 19l5-5 5 5"/>';
+ICONS.unfoldall = '<path d="M7 5l5 5 5-5M7 14l5 5 5-5"/>';
+ICONS.dice = '<rect x="4" y="4" width="16" height="16" rx="3"/><circle cx="9" cy="9" r="1" style="fill:currentColor"/><circle cx="15" cy="15" r="1" style="fill:currentColor"/><circle cx="15" cy="9" r="1" style="fill:currentColor"/><circle cx="9" cy="15" r="1" style="fill:currentColor"/>';
 ICONS.heartbeat = '<path d="M3 12h4l2-4 3 8 2-5 1.5 1H21"/>';
 ICONS.brain = '<path d="M9 4a3 3 0 0 0-3 3 3 3 0 0 0-2 5 3 3 0 0 0 2 5 3 3 0 0 0 3 3h1V4H9zM15 4a3 3 0 0 1 3 3 3 3 0 0 1 2 5 3 3 0 0 1-2 5 3 3 0 0 1-3 3h-1V4h1z"/>';
 ICONS.cake = '<path d="M4 20h16v-7H4z"/><path d="M4 15.5c2 1.3 4 1.3 6 0s4-1.3 6 0 3 1.3 4 0"/><path d="M12 13V9.5M12 7.5c-.9-.9-.9-2 0-3.5.9 1.5.9 2.6 0 3.5z"/>';
@@ -697,6 +708,8 @@ const fmtDur = m => { m = Math.round(m || 0); const j = Math.floor(m / 1440), h 
   return j ? `${j} j${h ? ' ' + h + ' h' : ''}` : h ? `${h} h${mn ? ' ' + String(mn).padStart(2, '0') : ''}` : `${mn} min`; };
 const tripBits = t => [t.minutes ? fmtDur(t.minutes) : '', [...(t.modes || [])].join(', '), t.reason ? 'motif : ' + t.reason : ''].filter(Boolean).join(' · ');
 const zoneOf = T => T.zone && REGIONS[T.region]?.zones?.[T.zone];
+// Régions où l'on peut cocher des lieux de plusieurs zones le même jour (ex. Sombrelinceul et La Noscea).
+const MULTI_ZONE = ['eorzea'];
 const legLabel = l => !l || !l.region ? '…' : l.places.size ? [...l.places].join(', ') : zoneOf(l)?.label || REGIONS[l.region].label;
 const climatesAt = (id, R, places, zone) => {
   const reg = REGIONS[R];
@@ -1078,14 +1091,14 @@ const EVENTS = [ { id:'couvre-feu', label:'Couvre-feu à Khurdan Iloh', group:'K
 const eventsFor = c => EVENTS.filter(e => e.active && c.groups.includes(e.group) && !(e.except || []).includes(c.id));
 const alertBlock = (id, editable) => {
   const a = alerts[id];
-  if (a) return `<div class="alert" role="note">${icon('warn')}<p><strong>Attention</strong>${esc(a)}</p>${editable ? `<button type="button" class="link" id="alert-off-${id}">Retirer</button>` : ''}</div>`;
+  if (a) return `<div class="alert" role="note">${icon('warn')}<p><strong>Attention</strong>${esc(a)}</p>${editable ? `<button type="button" class="link ico-btn" id="alert-off-${id}" title="Retirer" aria-label="Retirer">${icon('minus')}</button>` : ''}</div>`;
   if (!editable) return '';
   return state[id].alertEdit
     ? `<div class="alert edit">${icon('warn')}<input type="text" id="alert-text-${id}" placeholder="Ex. : hospitalisé après la chasse"><button type="button" class="btn" id="alert-save-${id}">Afficher</button></div>`
-    : `<button type="button" class="link alert-add" id="alert-add-${id}">${icon('warn')}Signaler une situation spéciale</button>`;
+    : `<button type="button" class="link alert-add ico-btn" id="alert-add-${id}" title="Signaler une situation spéciale" aria-label="Signaler une situation spéciale">${icon('plus')}${icon('warn')}</button>`;
 };
 const eventsBlock = (c, editable) => eventsFor(c).map(e => editable
-  ? `<div class="event">${icon('flag')}<label class="check-inline"><input type="checkbox" data-event="${e.id}" ${e.today ? 'checked' : ''}> ${esc(e.label)} — en vigueur aujourd'hui</label><button type="button" class="link" data-event-end="${e.id}">Fin de l'événement</button></div>`
+  ? `<div class="event">${icon('flag')}<label class="check-inline"><input type="checkbox" data-event="${e.id}" ${e.today ? 'checked' : ''}> ${esc(e.label)} — en vigueur aujourd'hui</label><button type="button" class="link ico-btn" data-event-end="${e.id}" title="Fin de l&#39;événement" aria-label="Fin de l&#39;événement">${icon('check')}</button></div>`
   : (e.today ? `<p class="where">${icon('flag')}<span>${esc(e.label)}</span></p>` : '')).join('');
 
 // ---------- Fêtes saisonnières de FFXIV ----------
@@ -1158,7 +1171,7 @@ const specialDays = (c, d, rec) => [...khurdanDays(c, d), ...birthdaysOn(c.id, d
 
 // ---------- États du jour : physique et mental ----------
 // « En forme » exclut les autres états physiques ; Bon moral / Petit moral et Flemme / Productif s'excluent.
-const PHYS = ['En forme', 'Douleur', 'Maladie', 'État second', 'En manque'];
+const PHYS = ['En forme', 'Fatigue', 'Douleur', 'Maladie', 'État second', 'En manque'];
 const MENTAL = ['Bon moral', 'Petit moral', 'Nervosité', 'Inspiré', 'Flemme', 'Productif', 'Esprit travaillé'];
 const MORAL = ['Bon moral', 'Petit moral'];
 const MENTAL_EXCL = [MORAL, ['Flemme', 'Productif']];
@@ -1576,8 +1589,8 @@ const milestoneSection = (id, inner) => {
         <div class="place-list" role="group" aria-label="Type">${MILESTONE_TYPES.map(t => `<button type="button" data-ms-type="${t}" aria-pressed="${s.msType === t}">${t}</button>`).join('')}</div>
         <input type="text" id="ms-note-${id}" placeholder="Précisions (facultatif)">
         ${p && SHARED_TYPES.includes(s.msType) ? `<label class="check-inline"><input type="checkbox" id="ms-with-${id}" checked> Avec ${nameOf(p)} (ajouté aussi sur sa fiche)</label>` : ''}
-        <div class="special-row"><button type="button" class="btn" id="ms-save-${id}" ${s.msType ? '' : 'disabled'}>Enregistrer</button><button type="button" class="link" id="ms-cancel-${id}">Annuler</button></div>
-      </div>` : `<button type="button" class="link alert-add" id="ms-add-${id}">${icon('ring')}Noter un moment marquant (mariage, naissance…)</button>`}
+        <div class="special-row"><button type="button" class="btn" id="ms-save-${id}" ${s.msType ? '' : 'disabled'}>Enregistrer</button><button type="button" class="link ico-btn" id="ms-cancel-${id}" title="Annuler" aria-label="Annuler">${icon('cross')}</button></div>
+      </div>` : `<button type="button" class="link alert-add ico-btn" id="ms-add-${id}" title="Noter un moment marquant (mariage, naissance…)" aria-label="Noter un moment marquant">${icon('plus')}${icon('ring')}</button>`}
   ${inner ? '' : '</section>'}`;
 };
 const bindMilestones = id => {
@@ -1702,7 +1715,7 @@ const prevNightBlock = id => {
   const filled = n.hot || n.states.length || n.note || Object.values(n.notes).some(Boolean);
   const head = `<h3 class="chrono-h">Nuit précédente <small>${fmtDay(prevDay())}</small></h3>`;
   if (filled && !s.prevEdit) return `<div class="chrono-part">${head}${prevNightLine(id).replace('Nuit précédente : ', '')}
-    <p class="reserved">Reprise de la nuit à venir de la veille. <button type="button" class="link small" id="prev-edit-${id}">Modifier</button></p></div>`;
+    <p class="reserved">Reprise de la nuit à venir de la veille. <button type="button" class="link small ico-btn" id="prev-edit-${id}" title="Modifier" aria-label="Modifier">${icon('pencil')}</button></p></div>`;
   const hotOwn = !!e?.night?.hot, w = e?.night?.with || '';
   const opts = [...new Set([partnerOf(id), ...loversOf(id), ...(id === 'khopses' ? ['client'] : []), ...C.filter(x => x.id !== id).map(x => x.id)].filter(Boolean))];
   const hotHtml = n.hot && !n.hot.own ? `<p class="where">${icon('lips')}<span>Nuit chaude avec ${esc(whoLabel(n.hot.with))} <small>(indiquée sur la fiche ${deName(nameOf(n.hot.with))})</small></span></p>`
@@ -1711,7 +1724,7 @@ const prevNightBlock = id => {
   const hotNote = n.hot ? nightNoteInput(id, 'prev', 'Nuit chaude', n.notes['Nuit chaude']) : '';
   return `<div class="chrono-part">${head}
     ${nightChips(id, new Set(n.states), 'data-prev-night', hotHtml + hotNote, 'Comment s\'est passée la nuit ?', n.hot ? 'Nuit chaude' + (n.hot.with ? ' avec ' + whoLabel(n.hot.with) : '') : '', '', n.notes)}
-    ${filled ? `<button type="button" class="link small" id="prev-done-${id}">Terminé</button>` : ''}</div>`;
+    ${filled ? `<button type="button" class="link small ico-btn" id="prev-done-${id}" title="Terminé" aria-label="Terminé">${icon('check')}</button>` : ''}</div>`;
 };
 const statesBlock = id => { const s = state[id]; s.phys ||= new Set(); s.mental ||= new Set(); s.stateNotes ||= {};
   const group = (title, list, set, attr) => `<h3 class="state-h">${icon(title === 'État physique' ? 'heartbeat' : 'brain')}${title}</h3>
@@ -1720,7 +1733,7 @@ const statesBlock = id => { const s = state[id]; s.phys ||= new Set(); s.mental 
   return group('État physique', PHYS, s.phys, 'data-phys') + group('État mental', MENTAL, s.mental, 'data-mental'); };
 const shotSection = id => { const s = state[id];
   return `<section><h2>Capture du jour</h2>
-    ${s.shot ? `<figure class="shot"><img src="${s.shot}" alt="Capture du jour de ${esc(C.find(x => x.id === id).name)}"><figcaption><button type="button" class="link" id="shot-off-${id}">Retirer la capture</button></figcaption></figure>`
+    ${s.shot ? `<figure class="shot"><img src="${s.shot}" alt="Capture du jour de ${esc(C.find(x => x.id === id).name)}"><figcaption><button type="button" class="link ico-btn" id="shot-off-${id}" title="Retirer la capture" aria-label="Retirer la capture">${icon('minus')}</button></figcaption></figure>`
       : `<label class="btn file-btn">${icon('camera')}Joindre une capture<input type="file" id="shot-${id}" accept="image/*" hidden></label>`}
   </section>`; };
 const arcsSection = id => {
@@ -1730,8 +1743,8 @@ const arcsSection = id => {
         ${s.arcEdit === a.id ? `<input type="text" id="arc-title-${a.id}" value="${esc(a.title)}"><button type="button" class="btn" data-arc-save="${a.id}">OK</button>`
           : `<label class="check-inline arc-title"><input type="checkbox" data-arc-done="${a.id}" ${a.done ? 'checked' : ''}><b>${esc(a.title)}</b></label>
              <span class="arc-progress">${a.steps.filter(x => x.done).length}/${a.steps.length}</span>
-             <button type="button" class="link" data-arc-edit="${a.id}">Modifier</button>
-             ${s.arcDel === a.id ? `<button type="button" class="link danger" data-arc-del-ok="${a.id}">Confirmer la suppression</button>` : `<button type="button" class="link" data-arc-del="${a.id}">Supprimer</button>`}`}
+             <button type="button" class="link ico-btn" data-arc-edit="${a.id}" title="Modifier" aria-label="Modifier">${icon('pencil')}</button>
+             ${s.arcDel === a.id ? `<button type="button" class="link danger" data-arc-del-ok="${a.id}">Confirmer la suppression</button>` : `<button type="button" class="link ico-btn" data-arc-del="${a.id}" title="Supprimer" aria-label="Supprimer">${icon('trash')}</button>`}`}
       </div>
       <ul class="arc-steps">${a.steps.map((st, i) => `<li><label class="check-inline"><input type="checkbox" data-step="${a.id}:${i}" ${st.done ? 'checked' : ''}> ${esc(st.t)}</label>
         <button type="button" class="link small" data-step-del="${a.id}:${i}" aria-label="Retirer l'étape">×</button></li>`).join('')}</ul>
@@ -1815,7 +1828,7 @@ function renderHome() {
     <header><p class="kicker">Journée RP</p><h1>Aujourd'hui</h1><p class="date">${today}<br>${eorzeaDate}</p>${(f => f ? `<p class="fest home-fest">${icon('star')}En Eorzea : ${f.name}</p>` : '')(festivalOn(rpDay))}</header>
     ${((unread, day) => `<section class="news"><h2>${icon('bell')}Nouvelles${unread.length ? ` <span class="badge">${unread.length}</span>` : ''}</h2>
       ${unread.length ? `<ul>${unread.slice(0, 8).map(n => `<li class="unread"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
-      <button type="button" class="link" id="news-read">Tout marquer comme lu</button>` : '<p class="reserved">Rien de nouveau pour l\'instant.</p>'}
+      <button type="button" class="link ico-btn" id="news-read" title="Tout marquer comme lu" aria-label="Tout marquer comme lu">${icon('checks')}</button>` : '<p class="reserved">Rien de nouveau pour l\'instant.</p>'}
       <details class="news-day"${newsDayOpen ? ' open' : ''}><summary>Nouvelles du jour (${day.length})</summary>
         ${day.length ? `<ul>${day.map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}"><small>${newsHour(n)}</small> ${esc(n.text)}</button></li>`).join('')}</ul>` : '<p class="reserved">Aucune nouvelle depuis 5 h ce matin.</p>'}</details>
       </section>`)(myNews().filter(n => !n.read), newsOfToday())}
@@ -1894,7 +1907,7 @@ function renderCharNow(id) {
         <label class="wide"><span>Lieu de la chasse</span><input type="text" data-contract="place" value="${esc(k.place || '')}" placeholder="Ex. : Mor Dhona"></label>
         ${k.days && k.n < k.days ? `<button type="button" class="link small wide" id="contract-end-${id}">Contrat terminé plus tôt (aujourd'hui)</button>` : ''}
       </div>` : '';
-    const drawn = on && RANDOM_ACTS[label] ? `<p class="act-detail drawn">${icon('star')}<span>${esc(s.details?.[label] || '…')}</span> <button type="button" class="link small" data-redraw="${esc(label)}">Autre tirage</button></p>` : '';
+    const drawn = on && RANDOM_ACTS[label] ? `<p class="act-detail drawn">${icon('star')}<span>${esc(s.details?.[label] || '…')}</span> <button type="button" class="link small ico-btn" data-redraw="${esc(label)}" title="Autre tirage" aria-label="Autre tirage">${icon('dice')}</button></p>` : '';
     const detail = on && DETAIL_ACTS[label] ? `<input type="text" class="act-detail" data-detail="${esc(label)}" value="${esc(s.details?.[label] || '')}" placeholder="${DETAIL_ACTS[label]}">` : '';
     const slots = on ? `<div class="slots" role="group" aria-label="Moment de la journée">${SLOTS.map(sl => `<button type="button" data-slot="${sl.id}" data-for="${esc(label)}" aria-pressed="${(s.slots[label] || []).includes(sl.id)}" title="${sl.hint}">${icon(sl.icon)}${sl.label}</button>`).join('')}</div>` : '';
     const regionOpts = sel => c.regions.map(r => `<option value="${r}" ${sel === r ? 'selected' : ''}>${REGIONS[r].label}</option>`).join('');
@@ -1925,6 +1938,8 @@ function renderCharNow(id) {
     let html = `<div class="place-list regions" role="group" aria-label="Région">${c.regions.map(r => `<button type="button"${L} data-region="${r}" aria-pressed="${T.region === r}">${icon('globe')}${REGIONS[r].label}${!leg && c.added?.has(r) ? '<small class="added">ajoutée</small>' : ''}</button>`).join('')}</div>`;
     if (!reg) return html;
     if (reg.zones) html += `<div class="place-list subs zones" role="group" aria-label="Zone">${Object.entries(reg.zones).filter(([z]) => !(HIDDEN_ZONES[id] || []).includes(z)).map(([z, zone]) => `<button type="button"${L} data-zone="${z}" aria-pressed="${T.zone === z}">${icon('zone')}${zone.label}</button>`).join('')}</div>`;
+    const elsewhere = !leg && reg.zones && MULTI_ZONE.includes(T.region) ? [...T.places].filter(pl => ZONE_OF[pl] && ZONE_OF[pl] !== T.zone) : [];
+    if (elsewhere.length) html += `<p class="reserved other-zones">Aussi aujourd'hui : ${elsewhere.map(pl => `<button type="button" class="link small" data-place="${esc(pl)}" title="Retirer ce lieu">${esc(pl)} <small>(${esc(reg.zones[ZONE_OF[pl]]?.label || '')})</small> ×</button>`).join(' ')}</p>`;
     if (reg.zones && !T.zone) return html;
     const base = reg.zones ? reg.zones[T.zone].places : reg.places;
     const own = c.places.filter(pl => PLACE_REGION[pl] === T.region && (!reg.zones || ZONE_OF[pl] === T.zone));
@@ -1932,7 +1947,15 @@ function renderCharNow(id) {
     if (subs.length) html += `<div class="place-list subs ${reg.zones ? 'deep' : ''}" role="group" aria-label="Lieux">${subs.map(pl => `<button type="button"${L} data-place="${esc(pl)}" aria-pressed="${T.places.has(pl)}">${icon('pin')}${esc(pl)}</button>`).join('')}</div>`;
     return html;
   };
-  const pathOf = T => T.region ? [REGIONS[T.region].label, zoneOf(T)?.label, [...T.places].join(', ')].filter(Boolean).join(' — ') : '…';
+  const pathOf = T => {
+    if (!T.region) return '…';
+    const R = REGIONS[T.region], by = {};
+    [...T.places].forEach(pl => (by[ZONE_OF[pl] || ''] ||= []).push(pl));
+    const zs = Object.keys(by);
+    if (R.zones && MULTI_ZONE.includes(T.region) && (zs.length > 1 || (zs[0] && zs[0] !== T.zone)))   // plusieurs zones : « Zone : lieux · Zone : lieux »
+      return R.label + ' — ' + zs.map(z => (R.zones[z]?.label ? R.zones[z].label + ' : ' : '') + by[z].join(', ')).join(' · ');
+    return [R.label, zoneOf(T)?.label, [...T.places].join(', ')].filter(Boolean).join(' — ');
+  };
   const placesLine = s.trip ? `<p class="where">${icon('route')}<span>${esc(pathOf(s.trip.from))} → ${esc(pathOf(s.trip.to))}${tripBits(s.trip) ? '<small> · ' + esc(tripBits(s.trip)) + '</small>' : ''}</span></p>` : (s.region || s.places.size) ? `<p class="where">${icon('pin')}<span>${esc(pathOf(s))}</span></p>` : '';
   const timeline = (groups.length || s.places.size || s.region || s.trip) ? `<section><h2>Déroulé du jour</h2>${placesLine}<div class="timeline">${groups.map(({ sl, items }) => `
     <div class="period"><p class="period-head">${sl.icon ? icon(sl.icon) : ''}<span>${sl.label}</span>${sl.hint ? `<small>${sl.hint}</small>` : ''}</p>
@@ -2012,7 +2035,7 @@ function renderCharNow(id) {
       ${s.trip ? `<p class="reserved">${icon('route')} Journée de voyage : le départ et l'arrivée se renseignent dans la section « Voyage », après les activités.</p>` : `
       ${picker(s, '')}
       ${s.region ? `
-        ${c.added?.has(s.region) ? `<button type="button" class="link" id="rmregion-${id}">Retirer ${REGIONS[s.region].label} de la fiche ${deName(c.name)}</button>` : ''}
+        ${c.added?.has(s.region) ? `<button type="button" class="link ico-btn" id="rmregion-${id}" title="Retirer ${REGIONS[s.region].label} de la fiche ${deName(c.name)}" aria-label="Retirer ${REGIONS[s.region].label} de la fiche">${icon('minus')}${icon('globe')}</button>` : ''}
         ${(more => s.region === 'autres' && more.length ? `<div class="more-regions"><p class="reserved">Ajouter une région existante à la fiche ${deName(c.name)} :</p>
           <div class="place-list">${more.map(r => `<button type="button" data-addregion="${r}">+ ${REGIONS[r].label}</button>`).join('')}</div></div>` : '')(REGION_ORDER.filter(r => !c.regions.includes(r)))}
         ${!REGIONS[s.region].zones || s.zone ? `<div class="special-row"><input type="text" id="place-${id}" placeholder="Autre lieu en ${zoneOf(s)?.label || REGIONS[s.region].label}"><button type="button" class="btn" id="addplace-${id}">Ajouter</button></div>` : ''}`
@@ -2022,23 +2045,23 @@ function renderCharNow(id) {
     ${prevNightBlock(id)}
     <div class="chrono-part"><h3 class="chrono-h">Activités</h3>
       ${cats.length ? '' : `<p class="reserved">Liste d'activités à définir. En attendant, utilise le champ « Activité spéciale » et coche « L'ajouter aussi à la liste ».</p>`}
-      ${!s.manageActs && cats.length > 1 ? `<div class="fold-all"><button type="button" class="link small" data-fold-all="1">Tout replier</button> · <button type="button" class="link small" data-fold-all="0">Tout déplier</button></div>` : ''}
+      ${!s.manageActs && cats.length > 1 ? `<div class="fold-all"><button type="button" class="link small ico-btn" data-fold-all="1" title="Tout replier" aria-label="Tout replier">${icon('foldall')}</button><button type="button" class="link small ico-btn" data-fold-all="0" title="Tout déplier" aria-label="Tout déplier">${icon('unfoldall')}</button></div>` : ''}
       ${cats.map(k => !s.manageActs ? (list => `<details class="cat fold" data-fold="${k}" ${isFolded(id, k) ? '' : 'open'}>
         <summary><h3>${esc(catLabel(c, k))}<small>${list.filter(a => s.checked.has(a)).length ? ` · ${list.filter(a => s.checked.has(a)).length} cochée${list.filter(a => s.checked.has(a)).length > 1 ? 's' : ''}` : ''}</small></h3></summary>
         ${list.map(a => actRow(a)).join('')}</details>`)(live(k).filter(a => actAvailable(id, a)))
       : `<div class="cat">${s.manageActs && s.renaming === k
-        ? `<div class="special-row"><input type="text" id="rename-${id}" value="${esc(catLabel(c, k))}" aria-label="Nouveau nom"><button type="button" class="btn" data-rename-ok="${k}">OK</button><button type="button" class="link small" data-rename-cancel>Annuler</button></div>`
-        : `<h3>${esc(catLabel(c, k))}${s.manageActs ? ` <button type="button" class="link small" data-rename="${k}">Renommer</button>` : ''}</h3>`}${s.manageActs
+        ? `<div class="special-row"><input type="text" id="rename-${id}" value="${esc(catLabel(c, k))}" aria-label="Nouveau nom"><button type="button" class="btn" data-rename-ok="${k}">OK</button><button type="button" class="link small ico-btn" data-rename-cancel title="Annuler" aria-label="Annuler">${icon('cross')}</button></div>`
+        : `<h3>${esc(catLabel(c, k))}${s.manageActs ? ` <button type="button" class="link small ico-btn" data-rename="${k}" title="Renommer" aria-label="Renommer">${icon('pencil')}</button>` : ''}</h3>`}${s.manageActs
         ? (live(k).length ? live(k).map(a => `<div class="act manage"><span>${esc(a)}</span>
             <select class="cat-move" data-act-cat="${esc(a)}" aria-label="Catégorie de ${esc(a)}">${catsOf(c).map(x => `<option value="${x}" ${x === k ? 'selected' : ''}>${esc(catLabel(c, x))}</option>`).join('')}</select>
-            ${s.actDel === a ? `<button type="button" class="link small danger" data-act-remove="${esc(a)}">Confirmer la suppression</button>` : `<button type="button" class="link small" data-act-del="${esc(a)}">Supprimer</button>`}</div>`).join('')
-          : `<p class="reserved">Catégorie vide : déplace-y des activités. <button type="button" class="link small" data-cat-del="${k}">Supprimer la catégorie</button></p>`)
+            ${s.actDel === a ? `<button type="button" class="link small danger" data-act-remove="${esc(a)}">Confirmer la suppression</button>` : `<button type="button" class="link small ico-btn" data-act-del="${esc(a)}" title="Supprimer" aria-label="Supprimer">${icon('trash')}</button>`}</div>`).join('')
+          : `<p class="reserved">Catégorie vide : déplace-y des activités. <button type="button" class="link small ico-btn" data-cat-del="${k}" title="Supprimer la catégorie" aria-label="Supprimer la catégorie">${icon('trash')}</button></p>`)
         : live(k).filter(a => actAvailable(id, a)).map(a => actRow(a)).join('')}</div>`).join('')}
       ${s.manageActs ? `<div class="special-row new-cat"><input type="text" id="newcat-${id}" placeholder="Nouvelle catégorie (ex. : Loisirs)">
         <button type="button" class="btn" id="newcat-add-${id}">Créer</button></div>` : ''}
-      ${canEdit(id) ? `<button type="button" class="link small manage-toggle" id="manage-acts-${id}">${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités et les catégories'}</button>` : ''}
+      ${canEdit(id) ? `<button type="button" class="link small manage-toggle ico-btn" id="manage-acts-${id}" title="${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités et les catégories'}" aria-label="${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités et les catégories'}">${icon(s.manageActs ? 'check' : 'gear')}</button>` : ''}
       ${s.specials.length ? `<div class="cat"><h3>Spéciales du jour</h3>${s.manageActs
-        ? s.specials.map(a => `<div class="act manage"><span>${esc(a)}</span>${s.actDel === 'spe:' + a ? `<button type="button" class="link small danger" data-special-remove="${esc(a)}">Confirmer la suppression</button>` : `<button type="button" class="link small" data-act-del="spe:${esc(a)}">Supprimer</button>`}</div>`).join('')
+        ? s.specials.map(a => `<div class="act manage"><span>${esc(a)}</span>${s.actDel === 'spe:' + a ? `<button type="button" class="link small danger" data-special-remove="${esc(a)}">Confirmer la suppression</button>` : `<button type="button" class="link small ico-btn" data-act-del="spe:${esc(a)}" title="Supprimer" aria-label="Supprimer">${icon('trash')}</button>`}</div>`).join('')
         : s.specials.map(a => actRow(a, true)).join('')}</div>` : ''}
       ${babysitBlock(id, true)}
       <h4 class="chrono-sub">Activité spéciale</h4>
@@ -2105,8 +2128,8 @@ function renderCharNow(id) {
           <select id="ev-group-${id}">${c.groups.map(g => `<option value="${esc(g)}" ${g === s.eventGroup ? 'selected' : ''}>${esc(g)}</option>`).join('')}</select></label>
         ${(members => members.length > 1 ? `<p class="reserved">Personnages non concernés (exil, absence…) :</p>
           <div class="place-list">${members.map(m => `<label class="check-inline"><input type="checkbox" data-ev-except="${m.id}"> ${m.name}</label>`).join('')}</div>` : '')(C.filter(m => m.groups.includes(s.eventGroup || c.groups[0])))}
-        <div class="special-row"><button type="button" class="btn" id="ev-create-${id}">Créer l'événement</button><button type="button" class="link" id="ev-cancel-${id}">Annuler</button></div>
-      </div>` : `<button type="button" class="link alert-add" id="ev-add-${id}">${icon('flag')}Ajouter un événement de groupe</button>`}
+        <div class="special-row"><button type="button" class="btn" id="ev-create-${id}">Créer l'événement</button><button type="button" class="link ico-btn" id="ev-cancel-${id}" title="Annuler" aria-label="Annuler">${icon('cross')}</button></div>
+      </div>` : `<button type="button" class="link alert-add ico-btn" id="ev-add-${id}" title="Ajouter un événement de groupe" aria-label="Ajouter un événement de groupe">${icon('plus')}${icon('flag')}</button>`}
       ${(s.dayEvents || []).map((x, i) => `<p class="where">${icon('star')}<span>${esc(x)}</span><button type="button" class="link small" data-dayev-del="${i}" aria-label="Retirer">×</button></p>`).join('')}
       <div class="special-row"><input type="text" id="dayev-${id}" placeholder="Événement sur mesure (ex. : arrivée d'une caravane au Ralliement)"><button type="button" class="btn" id="dayev-add-${id}">Ajouter</button></div>
       <h3 class="chrono-sub">Moment marquant</h3>
@@ -2194,7 +2217,8 @@ function renderCharNow(id) {
   document.querySelectorAll('[data-zone]').forEach(b => b.addEventListener('click', () => {
     const T = b.dataset.leg ? s.trip[b.dataset.leg] : s, z = b.dataset.zone;
     T.zone = T.zone === z ? null : z;
-    T.places = new Set([...T.places].filter(pl => ZONE_OF[pl] === T.zone));
+    // Eorzea : les lieux déjà cochés dans les autres zones restent ; ailleurs, une seule zone par jour.
+    if (!(T === s && MULTI_ZONE.includes(T.region))) T.places = new Set([...T.places].filter(pl => ZONE_OF[pl] === T.zone));
     renderChar(id);
   }));
   document.querySelectorAll('[data-place]').forEach(b => b.addEventListener('click', () => {
@@ -2775,7 +2799,7 @@ window.RP_PUSH = {
       unsupported: `<p class="reserved">Notifications : sur iPhone ou iPad, ouvre Journée RP depuis son icône sur l'écran d'accueil (iOS 16.4 ou plus) pour pouvoir les activer.</p>`,
       denied: `<p class="reserved">Notifications refusées sur cet appareil. Pour les réactiver : Réglages › Notifications › Journée RP.</p>`,
       off: `<button type="button" class="btn" id="push-on" ${pushView.busy ? 'disabled' : ''}>${icon('bell')}${pushView.busy ? 'Activation…' : 'Activer les notifications sur cet appareil'}</button>`,
-      on: `<p class="reserved">${icon('bell')} Notifications activées sur cet appareil ✓ <button type="button" class="link" id="push-off">Désactiver</button></p>`,
+      on: `<p class="reserved">${icon('bell')} Notifications activées sur cet appareil ✓ <button type="button" class="link ico-btn" id="push-off" title="Désactiver" aria-label="Désactiver les notifications">${icon('minus')}</button></p>`,
     }[st];
     return `<div class="push-set" style="margin-top:1rem">${body}${pushView.msg ? `<p class="reserved">${esc(pushView.msg)}</p>` : ''}</div>`;
   },
