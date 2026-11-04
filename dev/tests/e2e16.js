@@ -1,0 +1,28 @@
+// Hokkyoku et Unegen : présence néfaste (contexte, réactions, injection d’Unegen), partagée entre joueurs.
+const { chromium } = require('playwright'); const fs = require('fs'); const path = require('path');
+(async () => { const b = await chromium.launch(); const ctx = await b.newContext({ viewport: { width: 420, height: 900 } });
+  await ctx.route('https://www.gstatic.com/firebasejs/13.1.0/*', r => r.fulfill({ body: fs.readFileSync(path.join(path.join(__dirname, 'mockfb'), r.request().url().split('/').pop())), contentType: 'application/javascript' }));
+  await ctx.route('**fonts.googleapis.com**', r => r.fulfill({ body: '', contentType: 'text/css' }));
+  const errs = [];
+  const open = async (n, e) => { const p = await ctx.newPage(); p.on('pageerror', x => errs.push(n + ': ' + x.message));
+    await p.addInitScript(([a, c]) => { window.name = a; window.MOCK_EMAIL = c; localStorage.setItem('rp-night-open', JSON.stringify(['unegen:data-next-night', 'hokkyoku:data-next-night'])); }, [n, e]);
+    await p.goto('http://localhost:8765/'); await p.waitForTimeout(400); await p.click('#login-btn'); await p.waitForSelector('#login[hidden]', { state: 'attached' }); return p; };
+  const seed = await ctx.newPage(); await seed.goto('http://localhost:8765/icon.svg'); await seed.evaluate(() => localStorage.removeItem('mockdb')); await seed.close();
+  const nono = await open('n1', process.env.NONO_EMAIL), jy = await open('j1', 'jynette@example.com');
+  await jy.evaluate(() => go('hokkyoku')); console.log('Sans nuit ensemble : case ?', !!(await jy.$('#nef-on')));
+  await nono.evaluate(() => go('unegen')); await nono.check('#hot-unegen'); await nono.waitForTimeout(300);
+  if (await nono.$('[data-with="hokkyoku"]')) await nono.click('[data-with="hokkyoku"]');
+  await nono.waitForTimeout(1500);
+  await jy.evaluate(() => go('hokkyoku')); await jy.waitForTimeout(300);
+  console.log('Nuit chaude avec Unegen : case chez Hokkyoku ?', !!(await jy.$('#nef-on')));
+  await jy.check('#nef-on'); await jy.waitForTimeout(150);
+  await jy.check('[data-nef-ctx="Température glaciale"]'); await jy.check('[data-nef-ctx="Tatouage en surbrillance"]'); await jy.check('[data-nef-host="Prise de ses cachets"]'); await jy.waitForTimeout(1500);
+  await nono.evaluate(() => go('unegen')); await nono.waitForTimeout(300);
+  console.log('Chez Unegen :', (await nono.textContent('.nefaste')).replace(/\s+/g, ' ').trim(), '| injection cochée ?', await nono.isChecked("[data-nef-inj]"));
+  await nono.uncheck('[data-nef-inj]'); await nono.waitForTimeout(1500);
+  await jy.evaluate(() => go('hokkyoku')); await jy.waitForTimeout(300);
+  console.log('Chez Hokkyoku :', (await jy.textContent('.nefaste .where')).replace(/\s+/g, ' ').trim());
+  await nono.check('[data-nef-inj]'); await nono.waitForTimeout(1200);
+  await jy.click('#done-hokkyoku'); await jy.waitForTimeout(1200);
+  console.log('Récap Hokkyoku :', await jy.$$eval('#view .recap .where', ws => ws.map(w => w.textContent.trim()).filter(t => /néfaste/.test(t))));
+  console.log('erreurs :', errs.length ? errs : 'aucune'); await b.close(); })().catch(e => { console.error('ÉCHEC', e.message); process.exit(1); });

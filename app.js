@@ -868,6 +868,31 @@ const setCalm = (id, on, w) => {
   }
 };
 const calmWithOf = id => calmBy[id]?.with || null;
+// ---------- Hokkyoku et Unegen : « Présence néfaste » (l'esprit d'Hokkyoku) les nuits passées ensemble ----------
+// Partagé entre les deux joueurs (jour : nefaste). Hokkyoku coche la présence, le contexte et ses réactions ;
+// Unegen coche son injection (cochée par défaut), affichée aussi sur la fiche d'Hokkyoku.
+const NEF = { host: 'hokkyoku', partner: 'unegen' };
+const NEF_CTX = ['Température glaciale', 'Atmosphère lugubre', 'Tatouage en surbrillance', "Agressivité de l'esprit sur l'hôte", "Agressivité de l'esprit sur autrui"];
+const NEF_HOST = ['Hokkyoku lutte', 'Prise de ses cachets'];
+const NEF_INJ = "Injection d'Unegen";
+const nefaste = { on: false, ctx: [], host: [], inj: true };
+const nefTogether = () => (nightOf(NEF.host).hot && nightOf(NEF.host).with === NEF.partner) || calmBy[NEF.host]?.with === NEF.partner;
+const nefActive = () => nefTogether() && nefaste.on;
+const nefText = () => !nefActive() ? '' : ['Présence néfaste' + (nefaste.ctx.length ? ' : ' + nefaste.ctx.join(', ') : ''),
+  [...nefaste.host, ...(nefaste.inj ? [NEF_INJ] : [])].join(', ')].filter(Boolean).join(' · ');
+const nefLine = id => [NEF.host, NEF.partner].includes(id) && nefActive() ? `<p class="where">${icon('warn')}<span>${esc(nefText())}</span></p>` : '';
+const nefBlock = id => {
+  if (![NEF.host, NEF.partner].includes(id) || !nefTogether()) return '';
+  const box = (attr, x, on) => `<label class="act night"><input type="checkbox" ${attr}="${esc(x)}" ${on ? 'checked' : ''}>${icon('warn')}<span>${esc(x)}</span></label>`;
+  if (id === NEF.host) return `<div class="nefaste">
+      <label class="act night"><input type="checkbox" id="nef-on" ${nefaste.on ? 'checked' : ''}>${icon('warn')}<span>Présence néfaste</span></label>
+      ${nefaste.on ? `<h4 class="chrono-sub">Contexte</h4>${NEF_CTX.map(x => box('data-nef-ctx', x, nefaste.ctx.includes(x))).join('')}
+        <h4 class="chrono-sub">Réactions</h4>${NEF_HOST.map(x => box('data-nef-host', x, nefaste.host.includes(x))).join('')}
+        <p class="where">${icon('warn')}<span>${esc(NEF_INJ)} : ${nefaste.inj ? 'oui' : 'non'} <small>(cochée sur la fiche ${deName(nameOf(NEF.partner))})</small></span></p>` : ''}</div>`;
+  return !nefaste.on ? '' : `<div class="nefaste">
+      <p class="where">${icon('warn')}<span>Présence néfaste chez ${esc(nameOf(NEF.host))}${nefaste.ctx.length ? ' : ' + esc(nefaste.ctx.join(', ')) : ''}${nefaste.host.length ? ' · ' + esc(nefaste.host.join(', ')) : ''}</span></p>
+      <h4 class="chrono-sub">Réaction</h4>${box('data-nef-inj', NEF_INJ, nefaste.inj)}</div>`;
+};
 // Libellé « Nuit calme avec … » dans les résumés.
 const calmLabel = (id, w) => 'Nuit calme' + (w ? ' avec ' + whoLabel(w) : '');
 // Amants : ajoutables à tout moment depuis la fiche ; ils s'ajoutent aux choix de partenaire de la nuit.
@@ -1170,7 +1195,7 @@ const dayRecord = (c, d) => {
     const filled = s.done || s.mood || s.checked.size || rpPlayed[c.id] || s.trip;
     return filled ? { rp: rpPlayed[c.id] || null, mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
       cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])], minutes: s.trip.minutes || 0, reason: s.trip.reason || '' } : null,
-      phys: [...(s.phys || [])], mental: [...(s.mental || [])], nightStates: [...(s.nightStates || [])], nightNote: s.nightNote || '', nightNotes: { ...(s.nightNotes || {}) }, calmWith: calmWithOf(c.id), intime: s.intime || '', faits: s.faits || '', intimeWith: [...(s.intimeWith || [])], notes: { ...(s.stateNotes || {}) }, real: true } : null;
+      phys: [...(s.phys || [])], mental: [...(s.mental || [])], nightStates: [...(s.nightStates || [])], nightNote: s.nightNote || '', nightNotes: { ...(s.nightNotes || {}) }, calmWith: calmWithOf(c.id), intime: s.intime || '', nefaste: [NEF.host, NEF.partner].includes(c.id) ? nefText() : '', faits: s.faits || '', intimeWith: [...(s.intimeWith || [])], notes: { ...(s.stateNotes || {}) }, real: true } : null;
   }
   if (d > rpDay) return null;
   const e0 = HISTORY[c.id]?.[keyOf(d)];
@@ -1182,7 +1207,7 @@ const dayRecord = (c, d) => {
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
     tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])], minutes: e.trip.minutes || 0, reason: e.trip.reason || '' } : null,
     phys: [...(e.phys || [])].filter(p => !MORAL.includes(p)), mental: [...(e.mental || []), ...[...(e.phys || [])].filter(p => MORAL.includes(p))],
-    notes: e.stateNotes || {}, nightStates: [...(e.nightStates || [])], nightNote: e.nightNote || '', nightNotes: e.nightNotes || {}, calmWith: e.calmWith || null, intime: e.intime || '', faits: e.faits || '', intimeWith: [...(e.intimeWith || [])], real: true };
+    notes: e.stateNotes || {}, nightStates: [...(e.nightStates || [])], nightNote: e.nightNote || '', nightNotes: e.nightNotes || {}, calmWith: e.calmWith || null, intime: e.intime || '', nefaste: e.nefaste || '', faits: e.faits || '', intimeWith: [...(e.intimeWith || [])], real: true };
 };
 // Journées enregistrées, par personnage puis par date (clé keyOf) — remplies par sync.js.
 const HISTORY = {};
@@ -1490,6 +1515,7 @@ function renderHistory(id) {
           ${selRec.place ? `<p class="where">${icon('pin')}<span>${esc(selRec.place)}</span></p>` : ''}
           ${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(esc).join(' · ')}</span></p>` : ''}
           ${selRec.nightStates?.length || selRec.nightNote || selRec.nightNotes?.['Nuit chaude'] ? `<p class="where">${icon('lips')}<span>Nuit : ${esc([nightStatesText(id, selRec.nightStates, selRec.nightNotes, selRec.calmWith), selRec.nightNote].filter(Boolean).join(' · '))}</span></p>` : ''}
+          ${selRec.nefaste ? `<p class="where">${icon('warn')}<span>${esc(selRec.nefaste)}</span></p>` : ''}
           ${selRec.intime || selRec.intimeWith?.length ? `<p class="where">${icon('lips')}<span>Vie intime${selRec.intimeWith?.length ? ' avec ' + esc(selRec.intimeWith.filter(isChar).map(nameOf).join(', ')) : ''}${selRec.intime ? ' : ' + esc(selRec.intime) : ''}</span></p>` : ''}
           ${statesLine(id, selRec.phys, selRec.notes, 'heartbeat')}${statesLine(id, selRec.mental, selRec.notes, 'brain')}
           ${selRec.trip ? `<p class="where">${icon('route')}<span>Voyage${selRec.tripInfo?.from ? ' : ' + esc(REGIONS[selRec.tripInfo.from]?.label || '') + (selRec.tripInfo.to ? ' → ' + esc(REGIONS[selRec.tripInfo.to]?.label || '') : '') : ''}${selRec.tripInfo && tripBits(selRec.tripInfo) ? ' · ' + esc(tripBits(selRec.tripInfo)) : ''}</span></p>` : ''}
@@ -1942,6 +1968,7 @@ function renderCharNow(id) {
       ${statesLine(id, [...(s.mental || [])], s.stateNotes, 'brain')}
       ${isKhurdan(id) && s.violet ? `<p class="where">${icon('cloth')}<span>A porté du violet</span></p>` : ''}
       ${prevNightLine(id)}
+      ${nefLine(id)}
       ${isKhurdan(id) && (s.intime?.trim() || s.intimeWith?.size) ? `<div class="recap-infos"><span>Vie intime${s.intimeWith?.size ? ' · avec ' + esc(intimeWithText(id)) : ''}</span>${s.intime?.trim() ? `<p>${esc(s.intime.trim())}</p>` : ''}</div>` : ''}
       ${nightLine(id)}
       ${djLine(id)}
@@ -2046,6 +2073,7 @@ function renderCharNow(id) {
             ? `<p class="check-inline info">${icon('shield')}${nameOf(n.with)} ${state[n.with].protect ? 'se protège' : 'ne se protège pas'} <small>(indiqué sur sa fiche)</small></p>`
             : n.with && !isChar(n.with) && n.with !== 'client' ? `<label class="check-inline"><input type="checkbox" id="protect-pnj-${id}" ${pnjProtect(id, n.with) ? 'checked' : ''}>${icon('shield')}${esc(n.with)} se protège</label>` : ''}` : ''}
       `, 'Comment va se passer la nuit ?', n.hot ? 'Nuit chaude' + (n.with ? ' avec ' + whoLabel(n.with) : '') : '', '', s.nightNotes || {})}
+      ${nefBlock(id)}
     </div>`)(nightOf(id))}
     </section>
     <section class="trip-sec"><h2>Voyage</h2>
@@ -2223,6 +2251,11 @@ function renderCharNow(id) {
   }));
   document.querySelectorAll('[data-workday]').forEach(b => b.addEventListener('click', () => { const d = +b.dataset.workday, w = WORKDAYS[id]; w.has(d) ? w.delete(d) : w.add(d); renderChar(id); }));
   document.querySelectorAll('[data-with]').forEach(b => b.addEventListener('click', () => { setNight(id, true, b.dataset.with); renderChar(id); }));
+  document.getElementById('nef-on')?.addEventListener('change', e => { nefaste.on = e.target.checked; if (e.target.checked) nefaste.inj = true; renderChar(id); });
+  const nefToggle = (list, x) => { const i = list.indexOf(x); i >= 0 ? list.splice(i, 1) : list.push(x); renderChar(id); };
+  document.querySelectorAll('[data-nef-ctx]').forEach(b => b.addEventListener('change', () => nefToggle(nefaste.ctx, b.dataset.nefCtx)));
+  document.querySelectorAll('[data-nef-host]').forEach(b => b.addEventListener('change', () => nefToggle(nefaste.host, b.dataset.nefHost)));
+  document.querySelectorAll('[data-nef-inj]').forEach(b => b.addEventListener('change', e => { nefaste.inj = e.target.checked; renderChar(id); }));
   const pickCalm = (scope, w) => {
     if (scope === 'next') setCalm(id, true, w);
     else { s.prevEdit = true; setPrev(id, { calmWith: w || null }); }
@@ -2385,7 +2418,8 @@ const entryOf = id => {
   o.night = { hot: !!n.hot, with: n.hot ? (n.with || null) : null };   // pour l'historique
   if (FILM_PAIR.includes(id)) o.film = isFilmed(id);
   o.rp = rpPlayed[id] || null;
-  o.calmWith = calmBy[id]?.with || null;                              // nuit calme : avec qui                                        // journée jouée en RP (et avec qui)                  // vidéo publiée (wrap d'Echo et Prism)
+  o.calmWith = calmBy[id]?.with || null;
+  if (id === NEF.host || id === NEF.partner) o.nefaste = nefText() || null;   // présence néfaste (texte, pour l'historique)                              // nuit calme : avec qui                                        // journée jouée en RP (et avec qui)                  // vidéo publiée (wrap d'Echo et Prism)
   return enc(o);
 };
 const isEmptyVal = v => v === '' || v === false || v === null || v === undefined || (Array.isArray(v) && !v.length)
@@ -2394,7 +2428,7 @@ const meaningful = e => !!e && (e.night?.hot || Object.entries(e).some(([k, v]) 
 const applyEntry = (id, e) => {
   const s = state[id];
   ENTRY_KEYS.forEach(k => delete s[k]);
-  const d = dec(e || {}); delete d.night; delete d.film; delete d.rp; delete d.calmWith;
+  const d = dec(e || {}); delete d.night; delete d.film; delete d.rp; delete d.calmWith; delete d.nefaste;
   Object.assign(s, freshEntry(), d);
   // Anciennes fiches : le moral était rangé avec l'état physique.
   MORAL.forEach(m => { if (s.phys?.has?.(m)) { s.phys.delete(m); s.mental.add(m); } });
@@ -2425,7 +2459,7 @@ const applyGlobal = g => {
   if ('contracts' in d) replaceObj(CONTRACTS, d.contracts);
   if ('workdays' in d) { replaceObj(WORKDAYS, d.workdays); WORKDAYS.khopses ||= new Set(); }
 };
-const dayOf = () => enc({ nights: nightsBy, calm: calmBy, filmed, weather: weatherOn, rp: rpPlayed,
+const dayOf = () => enc({ nights: nightsBy, calm: calmBy, nefaste, filmed, weather: weatherOn, rp: rpPlayed,
   protect: Object.fromEntries(C.map(c => [c.id, !!state[c.id].protect])),
   shell: Object.fromEntries(C.map(c => [c.id, !!state[c.id].shell])) });
 // Heure de création d'une nouvelle venue de Firestore (horodatage serveur, ou texte ISO dans les tests).
@@ -2435,6 +2469,7 @@ const applyDay = g => {
   if ('nights' in d) replaceObj(nightsBy, d.nights);
   if ('filmed' in d) replaceObj(filmed, d.filmed);
   if ('rp' in d) replaceObj(rpPlayed, d.rp);
+  if ('nefaste' in d) Object.assign(nefaste, { on: false, ctx: [], host: [], inj: true }, d.nefaste);
   if ('calm' in d) { const was = new Set(Object.keys(calmBy)); replaceObj(calmBy, d.calm); C.forEach(c => { if (calmBy[c.id] || was.has(c.id)) syncCalmState(c.id); }); }
   if ('weather' in d) replaceObj(weatherOn, d.weather);
   if (d.protect) C.forEach(c => { if (c.id in d.protect) state[c.id].protect = !!d.protect[c.id]; });
