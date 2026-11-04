@@ -83,7 +83,7 @@ window.RP_SYNC = {
     setDoc(monthRef(id, ym), { [String(d.getDate())]: JSON.parse(J(patch)) }, { merge: true }).catch(report);
   },
   // Webhook Discord : rangé dans Firestore (lisible par les deux joueurs seulement), jamais dans le code.
-  setWebhook: url => setDoc(doc(db, 'shared', 'discord'), { webhook: url }, { merge: true }),
+  setWebhook: (url, player) => setDoc(doc(db, 'shared', 'discord'), player ? { webhooks: { [player]: url } } : { webhook: url }, { merge: true }),
   // Toute l'année (pour le wrap) : douze mois, tous personnages.
   loadYear: y => Promise.all(Array.from({ length: 12 }, (_, m) => ymOf(y, m)).filter(ym => ym <= A.ym).map(loadMonth)),
   // Wraps du 26 décembre : verrou partagé (shared/wraps-AAAA) pour qu'un seul appareil les envoie.
@@ -139,7 +139,7 @@ async function boot() {
     getDocs(query(collection(db, 'news'), where('to', '==', me))),
     getDoc(doc(db, 'shared', 'discord')),
   ]);
-  if (window.RP_DISCORD) window.RP_DISCORD.webhook = dc.data()?.webhook || null;
+  if (window.RP_DISCORD) { window.RP_DISCORD.webhook = dc.data()?.webhook || null; window.RP_DISCORD.webhooks = { ...(dc.data()?.webhooks || {}) }; }
   if (!g.exists()) await setDoc(gRef, {});
   if (!d.exists()) await setDoc(dRef, {});
   const chars = {};

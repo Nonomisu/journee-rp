@@ -40,8 +40,11 @@ const recapBlob = async () => {
   finally { card.classList.remove('capturing'); }
 };
 
+// Un salon par joueur : shared/discord → webhooks.corentin / webhooks.elle (l'ancien « webhook » unique sert de secours).
+const hookFor = player => window.RP_DISCORD.webhooks?.[player] || window.RP_DISCORD.webhook || null;
+const anyHook = () => !!(window.RP_DISCORD.webhook || Object.values(window.RP_DISCORD.webhooks || {}).some(Boolean));
 const sendDiscord = async id => {
-  const hook = window.RP_DISCORD.webhook;
+  const hook = hookFor(C.find(x => x.id === id)?.player);
   if (!hook || !owns(id) || !state[id].done) return;
   discordState[id] = 'sending'; if (current === id) rerender();
   try {
@@ -70,28 +73,30 @@ const sendDiscord = async id => {
 
 window.RP_DISCORD = {
   webhook: null,
+  webhooks: {},
   send: id => sendDiscord(id),
-  status: id => !window.RP_DISCORD.webhook ? '' : ({
+  status: id => !hookFor(C.find(x => x.id === id)?.player) ? '' : ({
     sending: ' · Envoi sur Discord…',
     sent: ' · Envoyé sur Discord',
     error: ' · Échec de l\'envoi sur Discord <button type="button" class="link" data-discord-retry="' + id + '">Réessayer</button>',
   })[discordState[id]] || (state[id].discordMsg ? ' · Envoyé sur Discord' : ''),
-  // Réglage (Nono uniquement) : coller l'adresse du webhook du salon.
-  settingsHtml: () => `<details class="discord-set"><summary>${icon('bell')}Discord ${window.RP_DISCORD.webhook ? '· relié ✓' : '· à relier'}</summary>
-    <p class="reserved">Adresse du webhook du salon (Paramètres du salon → Intégrations → Webhooks → Copier l'URL du webhook).</p>
-    <div class="special-row"><input type="url" id="discord-hook" placeholder="https://discord.com/api/webhooks/…" value="${window.RP_DISCORD.webhook ? '••••••••' : ''}">
-    <button type="button" class="btn" id="discord-save">Enregistrer</button></div>
+  // Réglage (Nono uniquement) : un webhook par salon — fiches de Nono, fiches de Jynette.
+  settingsHtml: () => `<details class="discord-set"><summary>${icon('bell')}Discord ${anyHook() ? '· relié ✓' : '· à relier'}</summary>
+    <p class="reserved">Adresse du webhook de chaque salon (Paramètres du salon → Intégrations → Webhooks → Copier l'URL du webhook).</p>
+    ${[['corentin', 'Salon des fiches de Nono'], ['elle', 'Salon des fiches de Jynette']].map(([pl, lb]) => `<label class="hook-row"><span>${lb}${window.RP_DISCORD.webhooks?.[pl] ? ' ✓' : window.RP_DISCORD.webhook ? ' <small>(salon commun pour l\'instant)</small>' : ''}</span>
+    <div class="special-row"><input type="url" id="discord-hook-${pl}" placeholder="https://discord.com/api/webhooks/…" value="${window.RP_DISCORD.webhooks?.[pl] ? '••••••••' : ''}">
+    <button type="button" class="btn" data-discord-save="${pl}">Enregistrer</button></div></label>`).join('')}
     <p class="reserved" id="discord-msg"></p></details>`,
 };
 document.addEventListener('click', async e => {
   const r = e.target.closest('[data-discord-retry]'); if (r) return sendDiscord(r.dataset.discordRetry);
-  if (!e.target.closest('#discord-save')) return;
-  const v = document.getElementById('discord-hook').value.trim(), msg = document.getElementById('discord-msg');
+  const sv = e.target.closest('[data-discord-save]'); if (!sv) return;
+  const pl = sv.dataset.discordSave, v = document.getElementById('discord-hook-' + pl).value.trim(), msg = document.getElementById('discord-msg');
   if (!/^https:\/\/(canary\.|ptb\.)?discord(app)?\.com\/api\/webhooks\/\d+\/[\w-]+$/.test(v)) { msg.textContent = 'Cette adresse ne ressemble pas à un webhook Discord.'; return; }
   try {
     const t = await fetch(v); if (!t.ok) throw new Error();
-    await window.RP_SYNC.setWebhook(v); window.RP_DISCORD.webhook = v;
-    msg.textContent = 'Webhook enregistré : les prochaines journées validées partiront sur Discord.';
+    await window.RP_SYNC.setWebhook(v, pl); (window.RP_DISCORD.webhooks ||= {})[pl] = v;
+    msg.textContent = `Webhook enregistré : les prochaines fiches ${pl === 'elle' ? 'de Jynette' : 'de Nono'} partiront sur ce salon.`;
   } catch { msg.textContent = 'Discord ne reconnaît pas ce webhook. Vérifie l\'adresse copiée.'; }
 });
 
@@ -172,7 +177,7 @@ const sendWraps = async ({ hook, sent = {}, test = false }) => {
         embeds: [{ title: `${test ? '[Test] ' : ''}${glyphText(THEMES[c.theme])} ${c.name}${c.surname ? ' ' + c.surname : ''} — L'année ${y}`,
           url: `${APP_URL}?fiche=${c.id}`, color: PLAYER_COLOR[c.player], image: { url: 'attachment://wrap.png' } }],
         attachments: [{ id: 0, filename: 'wrap.png' }] };
-      const msg = await postHook(hook, payload, blob, 'wrap.png');
+      const msg = await postHook(test ? hook : hookFor(c.player), payload, blob, 'wrap.png');
       if (!test) await RP_SYNC.wrapSent(y, c.id, msg);
       await pause(1200);
     }
@@ -186,13 +191,12 @@ const sendWraps = async ({ hook, sent = {}, test = false }) => {
 
 let wrapsRunning = false;
 const autoWraps = async () => {
-  const hook = window.RP_DISCORD.webhook;
-  if (wrapsRunning || !hook || !wrapDayReal() || !window.RP_SYNC?.wrapClaim) return;
+  if (wrapsRunning || !anyHook() || !wrapDayReal() || !window.RP_SYNC?.wrapClaim) return;
   wrapsRunning = true;
   try {
     const y = wrapYear(), sent = await RP_SYNC.wrapClaim(y);
     if (!sent) return;                       // déjà envoyés, ou envoi en cours sur l'autre appareil
-    await sendWraps({ hook, sent });
+    await sendWraps({ sent });
     await RP_SYNC.wrapDone(y);
   } catch (e) { console.error('Wraps :', e); }
   finally { wrapsRunning = false; }
@@ -211,7 +215,7 @@ document.addEventListener('click', async e => {
   const v = document.getElementById('wrap-test-hook').value.trim();
   const say = t => { document.querySelector('.discord-set')?.setAttribute('open', ''); const m = document.getElementById('wrap-test-msg'); if (m) m.textContent = t; };
   if (!HOOK_RE.test(v)) return say('Cette adresse ne ressemble pas à un webhook Discord.');
-  if (v === window.RP_DISCORD.webhook) return say('C\'est le webhook du salon principal : utilise un salon de test, sinon la surprise est gâchée.');
+  if (v === window.RP_DISCORD.webhook || Object.values(window.RP_DISCORD.webhooks || {}).includes(v)) return say('C\'est le webhook du salon principal : utilise un salon de test, sinon la surprise est gâchée.');
   try { const n = await sendWraps({ hook: v, test: true }); say(`Test terminé : ${n} wrap${n > 1 ? 's' : ''} envoyé${n > 1 ? 's' : ''} sur le salon de test.`); }
   catch (err) { console.error(err); say('Échec du test : ' + err.message); }
 });

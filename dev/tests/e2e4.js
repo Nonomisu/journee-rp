@@ -16,8 +16,8 @@ const MOCK = path.join(__dirname, 'mockfb');
   const p = await ctx.newPage(); p.on('pageerror', e => errs.push(e.message));
   await p.addInitScript(e => { window.name = 'd4'; window.MOCK_EMAIL = e; }, process.env.NONO_EMAIL);   // l'adresse est passée au navigateur (process n'y existe pas)
   await p.goto('http://localhost:8765/'); await p.waitForTimeout(400); await p.click('#login-btn'); await p.waitForSelector('#login[hidden]', { state: 'attached' });
-  await p.click('.discord-set summary'); await p.fill('#discord-hook', 'https://discord.com/api/webhooks/123/abcDEF-xyz');
-  await p.click('#discord-save'); await p.waitForTimeout(800);
+  await p.click('.discord-set summary'); await p.fill('#discord-hook-corentin', 'https://discord.com/api/webhooks/123/abcDEF-xyz');
+  await p.click('[data-discord-save="corentin"]'); await p.waitForTimeout(800);
   console.log('Réglage :', await p.textContent('#discord-msg'));
   await p.evaluate(() => go('viggo')); await p.waitForTimeout(200);
   await p.fill('#mood-viggo', 'Fatigué mais fier.'); await p.dispatchEvent('#mood-viggo', 'input');

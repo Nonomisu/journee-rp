@@ -26,21 +26,22 @@ const { chromium } = require('playwright'); const fs = require('fs'); const path
 
   // 15 novembre : chacun remplit une journée
   let nono = await open('n6', process.env.NONO_EMAIL);
-  await nono.click('.discord-set summary'); await nono.fill('#discord-hook', 'https://discord.com/api/webhooks/111/salon-principal');
-  await nono.click('#discord-save'); await nono.waitForTimeout(600);
+  await nono.click('.discord-set summary');
+  await nono.fill('#discord-hook-corentin', 'https://discord.com/api/webhooks/111/salon-nono'); await nono.click('[data-discord-save="corentin"]'); await nono.waitForTimeout(600);
+  await nono.fill('#discord-hook-elle', 'https://discord.com/api/webhooks/222/salon-jynette'); await nono.click('[data-discord-save="elle"]'); await nono.waitForTimeout(600);
   await nono.evaluate(() => go('viggo')); await nono.fill('#mood-viggo', 'Fatigué mais fier.'); await nono.dispatchEvent('#mood-viggo', 'input');
   await nono.click('[data-act="Entraînement"]'); await nono.click('#done-viggo'); await nono.waitForTimeout(2500);
   let jy = await open('j6', 'jynette@example.com');
   await jy.evaluate(() => go('khopses')); await jy.fill('#mood-khopses', 'Rayonnante.'); await jy.dispatchEvent('#mood-khopses', 'input');
   await jy.click('#done-khopses'); await jy.waitForTimeout(2500);
-  console.log('Journées postées :', calls.filter(c => c.method === 'POST').map(c => c.title));
+  console.log('Journées postées :', calls.filter(c => c.method === 'POST').map(c => c.hook + ' ' + c.title));
   console.log('Avant le 26, sans aperçu : bannière visible chez Jynette ?', (await jy.textContent('#view')).includes('revivait'), '| bouton test visible chez Nono ?', !!(await nono.$('#wrap-test-go')));
   await nono.close(); await jy.close();
 
   // Aperçu secret : test sur un autre salon (le salon principal est refusé)
   nono = await open('n6b', process.env.NONO_EMAIL, '#apercu-wrap');
   await nono.click('.discord-set summary');
-  await nono.fill('#wrap-test-hook', 'https://discord.com/api/webhooks/111/salon-principal'); await nono.click('#wrap-test-go'); await nono.waitForTimeout(300);
+  await nono.fill('#wrap-test-hook', 'https://discord.com/api/webhooks/111/salon-nono'); await nono.click('#wrap-test-go'); await nono.waitForTimeout(300);
   console.log('Test sur le salon principal :', await nono.textContent('#wrap-test-msg'));
   const before = calls.length;
   await nono.fill('#wrap-test-hook', 'https://discord.com/api/webhooks/999/salon-test'); await nono.click('#wrap-test-go');
