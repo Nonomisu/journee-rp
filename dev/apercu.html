@@ -545,7 +545,11 @@ button.link.danger { color: #e0a24d; }
   box-shadow: 0 0 0 4px var(--bg), 0 0 0 5px var(--rule);
 }
 .recap-head { display: grid; justify-items: center; text-align: center; }
-.recap-head .day-info { justify-content: center; }
+.recap-head .day-info { justify-content: center; justify-self: stretch; }
+/* Capture d'image (Discord, « Image du récap ») : l'outil recopie les largeurs et hauteurs au pixel près.
+   Si le texte rend un poil plus large dans la copie, une ligne ajustée au plus juste passe à la ligne
+   et déborde sur le bloc suivant. D'où une largeur pleine pour la ligne de puces et des puces qui ne se coupent pas. */
+.recap.capturing .day-info > span { white-space: nowrap; }
 .recap-mood {
   margin: 0; text-align: center; font-style: italic; font-size: 1.15rem; line-height: 1.5; color: var(--text);
   padding-block: .9rem; border-block: 1px solid var(--rule);
