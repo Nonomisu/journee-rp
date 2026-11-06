@@ -973,18 +973,22 @@ const rpLabel = id => { const w = rpPlayed[id]; return w ? 'Journée jouée en R
 // Nuit chaude entre Echo et Prism : « Filmé et publié en ligne », avec un nombre de vues tiré au sort.
 const FILM_PAIR = ['echo', 'prism'];
 const filmed = {};   // clé du jour → true
-const filmKey = () => 'film:' + keyOf(rpDay);
-const canFilm = id => FILM_PAIR.includes(id) && nightOf(id).hot && nightOf(id).with === FILM_PAIR.find(x => x !== id);
-const isFilmed = id => canFilm(id) && !!filmed[filmKey()];
-const viewsOf = k => Math.round(Math.pow(10, 3 + seeded('film:' + k + ':vues') * 3.3));   // ~1 000 à ~2 000 000, fixé par la date
-const filmViews = () => viewsOf(keyOf(rpDay));
-// Vidéos publiées dans l'année (pour le wrap) : jours où la nuit d'Echo et Prism a été filmée.
-const filmDays = y => Array.from({ length: 366 }, (_, i) => new Date(y, 0, 1 + i))
+// Prism peut aussi filmer une nuit passée avec le livreur : clé à part, pour ne pas la mélanger avec celle du couple.
+const withDelivery = id => id === 'prism' && nightOf(id).hot && nightOf(id).with === DELIVERY_GUY;
+const filmKey = id => 'film:' + (id && withDelivery(id) ? 'livreur:' : '') + keyOf(rpDay);
+const canFilm = id => FILM_PAIR.includes(id) && nightOf(id).hot && (nightOf(id).with === FILM_PAIR.find(x => x !== id) || withDelivery(id));
+const isFilmed = id => canFilm(id) && !!filmed[filmKey(id)];
+const viewsOf = (k, liv) => Math.round(Math.pow(10, 3 + seeded('film:' + (liv ? 'livreur:' : '') + k + ':vues') * 3.3));   // ~1 000 à ~2 000 000, fixé par la date
+const filmViews = id => viewsOf(keyOf(rpDay), id && withDelivery(id));
+// Vidéos publiées dans l'année (pour le wrap) : jours où la nuit du personnage a été filmée
+// (avec son partenaire, ou avec le livreur pour Prism, qui ne compte alors que chez elle).
+const filmDays = (y, id) => Array.from({ length: 366 }, (_, i) => new Date(y, 0, 1 + i))
   .filter(d => d.getFullYear() === y && d <= rpDay)
-  .filter(d => sameDay(d, rpDay) ? isFilmed(FILM_PAIR[0]) || isFilmed(FILM_PAIR[1])
-    : typeof HISTORY !== 'undefined' && FILM_PAIR.some(id => HISTORY[id]?.[keyOf(d)]?.film))
-  .map(d => ({ d, views: viewsOf(keyOf(d)) }));
-const viewsLabel = () => filmViews().toLocaleString('fr-FR') + ' vues';
+  .map(d => { if (sameDay(d, rpDay)) return isFilmed(id) ? { d, views: filmViews(id) } : null;
+    const e = typeof HISTORY !== 'undefined' && HISTORY[id]?.[keyOf(d)];
+    return e?.film ? { d, views: viewsOf(keyOf(d), e.filmLivreur) } : null; })
+  .filter(Boolean);
+const viewsLabel = id => filmViews(id).toLocaleString('fr-FR') + ' vues';
 // Activités qui n'apparaissent que sous condition : Echo ne peut cocher « Plaisir en solo sur Moonstone »
 // que les jours où Prism a coché « Publication Moonstone ».
 const CONDITIONAL_ACTS = { echo: { 'Plaisir en solo sur Moonstone': () => state.prism.checked.has('Publication Moonstone') } };
@@ -1079,7 +1083,7 @@ const nightLine = id => {
   if (n.with === 'client' && state[id].returnHour != null) bits.push(`retour à ${state[id].returnHour} h`);
   if (isKhurdan(id) && state[id].shell) bits.push('a offert un coquillage');
   if (gotShell(id)) bits.push('a reçu un coquillage au réveil');
-  if (isFilmed(id)) bits.push(`filmé et publié en ligne (${viewsLabel()})`);
+  if (isFilmed(id)) bits.push(`filmé et publié en ligne (${viewsLabel(id)})`);
   if (n.isMan ? state[id].protect : n.with && (isChar(n.with) ? !isFem(n.with) && state[n.with].protect : n.with !== 'client' && pnjProtect(id, n.with))) bits.push('protégé');
   if (st) bits.push(esc(st));
   return `<p class="where night-line">${icon('lips')}<span>Nuit à venir : ${bits.join(' · ')}</span></p>`;
@@ -1415,7 +1419,7 @@ const wrapExtrasHtml = (c, y) => {
       ${card('Vidéos publiées', v.length, vues(v.reduce((s, x) => s + x.views, 0)) + ' au total')}
       ${v.length === 1 ? card('Seule vidéo', vues(top.views), fmtDay(top.d))
         : card('Top', vues(top.views), fmtDay(top.d)) + card('Flop', vues(flop.views), fmtDay(flop.d))}
-    </div>`; })())(filmDays(y))}
+    </div>`; })())(filmDays(y, c.id))}
     <h3 class="wrap-sec">Voyages et météo</h3>
     <div class="fx-grid">
       ${card('Distance parcourue', x.km.toLocaleString('fr-FR') + ' km', x.mode ? 'surtout en ' + x.mode.toLowerCase() : 'sans quitter sa région')}
@@ -2138,8 +2142,8 @@ function renderCharNow(id) {
           <select id="return-${id}"><option value="">—</option>${Array.from({ length: 13 }, (_, h) => `<option value="${h}" ${state[id].returnHour === h ? 'selected' : ''}>${h} h</option>`).join('')}</select></label>` : ''}
         ${CLIENT_PARTNER[id] && n.with === 'client' ? `<label class="check-inline"><input type="checkbox" id="call-partner-${id}" ${state[id].callPartner ? 'checked' : ''}>${icon('phone')}Appel à ${nameOf(CLIENT_PARTNER[id])}</label>` : ''}
         ${n.with && isChar(n.with) ? `<p class="reserved">Cochée aussi sur la fiche ${deName(nameOf(n.with))}.</p>` : ''}
-        ${canFilm(id) ? `<label class="check-inline"><input type="checkbox" id="film-${id}" ${filmed[filmKey()] ? 'checked' : ''}>${icon('camera')}Filmé et publié en ligne</label>
-          ${filmed[filmKey()] ? `<p class="where">${icon('eye')}<span>${viewsLabel()}</span></p>` : ''}` : ''}
+        ${canFilm(id) ? `<label class="check-inline"><input type="checkbox" id="film-${id}" ${filmed[filmKey(id)] ? 'checked' : ''}>${icon('camera')}Filmé et publié en ligne</label>
+          ${filmed[filmKey(id)] ? `<p class="where">${icon('eye')}<span>${viewsLabel(id)}</span></p>` : ''}` : ''}
         ${n.isMan ? `<label class="check-inline"><input type="checkbox" id="protect-${id}" ${state[id].protect ? 'checked' : ''}>${icon('shield')}Monsieur se protège</label>`
           : n.with && isChar(n.with) && !isFem(n.with)
             ? `<p class="check-inline info">${icon('shield')}${nameOf(n.with)} ${state[n.with].protect ? 'se protège' : 'ne se protège pas'} <small>(indiqué sur sa fiche)</small></p>`
@@ -2365,7 +2369,7 @@ function renderCharNow(id) {
   document.getElementById('rp-'+id)?.addEventListener('change', e => { setRp(id, e.target.checked, partnerOf(id)); renderNav(); renderChar(id); });
   document.getElementById('rp-with-'+id)?.addEventListener('change', e => { setRp(id, true, e.target.value); renderNav(); renderChar(id); });
   document.getElementById('shell-'+id)?.addEventListener('change', e => { s.shell = e.target.checked; renderChar(id); });
-  document.getElementById('film-'+id)?.addEventListener('change', e => { filmed[filmKey()] = e.target.checked; renderChar(id); });
+  document.getElementById('film-'+id)?.addEventListener('change', e => { filmed[filmKey(id)] = e.target.checked; renderChar(id); });
   document.getElementById('protect-'+id)?.addEventListener('change', e => setProtect(id, e.target.checked));
   document.getElementById('protect-pnj-'+id)?.addEventListener('change', e => { lastProtect['pnj:' + id + ':' + nightOf(id).with] = e.target.checked; if (e.target.checked) dropNews(pairKeys(id, nightOf(id).with).slice(1)); checkRisk(id); });
   document.getElementById('addplace-'+id)?.addEventListener('click', () => {
@@ -2499,7 +2503,7 @@ const entryOf = id => {
   ENTRY_KEYS.forEach(k => { if (s[k] !== undefined) o[k] = s[k]; });
   const n = nightOf(id);
   o.night = { hot: !!n.hot, with: n.hot ? (n.with || null) : null };   // pour l'historique
-  if (FILM_PAIR.includes(id)) o.film = isFilmed(id);
+  if (FILM_PAIR.includes(id)) { o.film = isFilmed(id); o.filmLivreur = o.film && withDelivery(id); }
   o.rp = rpPlayed[id] || null;
   o.calmWith = calmBy[id]?.with || null;
   if (id === NEF.host || id === NEF.partner) o.nefaste = nefText() || null;   // présence néfaste (texte, pour l'historique)                              // nuit calme : avec qui                                        // journée jouée en RP (et avec qui)                  // vidéo publiée (wrap d'Echo et Prism)
@@ -2511,7 +2515,7 @@ const meaningful = e => !!e && (e.night?.hot || Object.entries(e).some(([k, v]) 
 const applyEntry = (id, e) => {
   const s = state[id];
   ENTRY_KEYS.forEach(k => delete s[k]);
-  const d = dec(e || {}); delete d.night; delete d.film; delete d.rp; delete d.calmWith; delete d.nefaste;
+  const d = dec(e || {}); delete d.night; delete d.film; delete d.filmLivreur; delete d.rp; delete d.calmWith; delete d.nefaste;
   Object.assign(s, freshEntry(), d);
   // Anciennes fiches : le moral était rangé avec l'état physique.
   MORAL.forEach(m => { if (s.phys?.has?.(m)) { s.phys.delete(m); s.mental.add(m); } });

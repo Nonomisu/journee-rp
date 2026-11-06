@@ -24,7 +24,7 @@ const entryOf = id => {
   ENTRY_KEYS.forEach(k => { if (s[k] !== undefined) o[k] = s[k]; });
   const n = nightOf(id);
   o.night = { hot: !!n.hot, with: n.hot ? (n.with || null) : null };   // pour l'historique
-  if (FILM_PAIR.includes(id)) o.film = isFilmed(id);
+  if (FILM_PAIR.includes(id)) { o.film = isFilmed(id); o.filmLivreur = o.film && withDelivery(id); }
   o.rp = rpPlayed[id] || null;
   o.calmWith = calmBy[id]?.with || null;
   if (id === NEF.host || id === NEF.partner) o.nefaste = nefText() || null;   // présence néfaste (texte, pour l'historique)                              // nuit calme : avec qui                                        // journée jouée en RP (et avec qui)                  // vidéo publiée (wrap d'Echo et Prism)
@@ -36,7 +36,7 @@ const meaningful = e => !!e && (e.night?.hot || Object.entries(e).some(([k, v]) 
 const applyEntry = (id, e) => {
   const s = state[id];
   ENTRY_KEYS.forEach(k => delete s[k]);
-  const d = dec(e || {}); delete d.night; delete d.film; delete d.rp; delete d.calmWith; delete d.nefaste;
+  const d = dec(e || {}); delete d.night; delete d.film; delete d.filmLivreur; delete d.rp; delete d.calmWith; delete d.nefaste;
   Object.assign(s, freshEntry(), d);
   // Anciennes fiches : le moral était rangé avec l'état physique.
   MORAL.forEach(m => { if (s.phys?.has?.(m)) { s.phys.delete(m); s.mental.add(m); } });
