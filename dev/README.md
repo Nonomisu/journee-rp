@@ -30,13 +30,14 @@ NONO_EMAIL=adresse-de-nono node dev/tests/e2e.js   # connexion, enregistrement, 
 NONO_EMAIL=… node dev/tests/e2e2.js              # historique, sets d'Echo / Prism
 NONO_EMAIL=… node dev/tests/e2e4.js              # Discord (webhook simulé)
 NONO_EMAIL=… node dev/tests/e2e5.js              # notifications envoyées seulement à la validation
+NONO_EMAIL=… node dev/tests/e2e20.js             # Iloh Khurdan : masquer une activité (ce jour-là, toujours)
 ```
 
 ## Données Firestore
 
 - `characters/{id}` : `player`, `addedActs`, `removedActs`, `addedRegions`, `customPlaces`
 - `days/{id}/months/{AAAA-MM}` : un champ par jour (`"30"`), journée encodée (Sets → `{$set:[…]}`) + `night`
-- `shared/global` : amants, protection, alertes, événements, arcs, jalons, contrats, jours de travail
+- `shared/global` : amants, protection, alertes, événements, arcs, jalons, contrats, jours de travail, `hideIloh` (activités toujours masquées dans Iloh Khurdan)
 - `shared/day-AAAA-MM-JJ` : nuits, vidéos, météo S9, protection et coquillages du jour
 - `shared/discord` : `webhook` (adresse du webhook, lisible seulement par les deux joueurs)
 - `news/{clé}` : notifications (`to`, `text`, `charId`, `key`, `read`)

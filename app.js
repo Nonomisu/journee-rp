@@ -128,6 +128,7 @@ ICONS.cake = '<path d="M4 20h16v-7H4z"/><path d="M4 15.5c2 1.3 4 1.3 6 0s4-1.3 6
 ICONS.ring = '<circle cx="12" cy="14.5" r="6"/><path d="M9.5 4.5h5L16 7l-4 2.5L8 7z"/>';
 ICONS.target = '<circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="4"/><path d="M12 2v4M12 18v4M2 12h4M18 12h4"/>';
 ICONS.eye = '<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>';
+ICONS.eyeoff = '<path d="M2 12s3.6-6.5 10-6.5S22 12 22 12s-3.6 6.5-10 6.5S2 12 2 12z"/><circle cx="12" cy="12" r="3"/><path d="M4 4l16 16"/>';
 // Icônes des états de nuit
 ICONS.ghost = '<path d="M6 20V10a6 6 0 0 1 12 0v10l-2-1.5-2 1.5-2-1.5-2 1.5-2-1.5z"/><circle cx="10" cy="10" r=".9" style="fill:currentColor"/><circle cx="14" cy="10" r=".9" style="fill:currentColor"/>';
 ICONS.wakeful = '<path d="M2 13s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 13 2 13z"/><circle cx="12" cy="13" r="2.6"/><path d="M12 2v2.5M5.5 4.5l1.3 2M18.5 4.5l-1.3 2"/>';
@@ -1201,6 +1202,14 @@ const MOOD_MASC = Object.fromEntries(Object.entries(MOOD_FEM).map(([m, f]) => [f
 const moodFor = (id, m) => isFem(id) ? MOOD_FEM[m] || m : m;
 const sameDay = (a, b) => a.getFullYear() === b.getFullYear() && a.getMonth() === b.getMonth() && a.getDate() === b.getDate();
 const allActs = c => Object.values(c.acts).flat();
+// ---------- Iloh Khurdan (appli de groupe des Khurdans) ----------
+// Ces personnages sont recopiés chaque jour dans Iloh Khurdan par le service du VPS. Une activité peut y être masquée :
+// ce jour-là (s.hideIloh, sur la fiche du jour) ou toujours (ILOH_HIDE_ALWAYS, réglé dans le mode gestion de la liste).
+const ILOH_MIRROR = ['tamachag', 'khokkutsai', 'ankhbayar', 'tengis', 'taiga', 'inkaraa', 'khubunjin', 'ogloo', 'javkhaanhun', 'davaajav'];
+const sendsToIloh = id => ILOH_MIRROR.includes(id);
+const ILOH_HIDE_ALWAYS = {};   // id → Set d'activités toujours masquées dans Iloh Khurdan
+const ilohAlways = (id, l) => !!ILOH_HIDE_ALWAYS[id]?.has(l);
+const ilohHidden = (id, l) => ilohAlways(id, l) || !!state[id].hideIloh?.has(l);
 const dayRecord = (c, d) => {
   const s = state[c.id], city = defaultCity(c.id);
   const cond = city ? (() => { const tp = tempAt(city, d); return { ...cityWeather(city, tp, d), tp }; })() : null;
@@ -1956,7 +1965,10 @@ function renderCharNow(id) {
           <button type="button" class="btn" data-hunt-add="${esc(label)}">Ajouter</button></div>
         <datalist id="game-${id}-${hunt.mode}">${huntGame(id, label).map(g => `<option value="${esc(g)}">`).join('')}</datalist>
         ${hunt.catches.length ? '' : '<p class="reserved">Aucune prise ajoutée : la chasse compte comme bredouille.</p>'}` : ''}</div>` : '';
-    return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${drawn}${detail}${contract}${trip}${slots}</div>`;
+    const iloh = on && sendsToIloh(id) && label !== 'Voyage' ? `<p class="act-detail iloh-row">${ilohAlways(id, label)
+        ? `${icon('eyeoff')}<span>Toujours masquée dans Iloh Khurdan <small>(réglé dans la liste d'activités)</small></span>`
+        : `<button type="button" class="link small ico-btn" data-iloh-hide="${esc(label)}" aria-pressed="${ilohHidden(id, label)}" title="${ilohHidden(id, label) ? 'Afficher dans Iloh Khurdan' : 'Masquer dans Iloh Khurdan (ce jour-là)'}" aria-label="${ilohHidden(id, label) ? 'Afficher' : 'Masquer'} ${esc(label)} dans Iloh Khurdan">${icon(ilohHidden(id, label) ? 'eyeoff' : 'eye')}</button><span>${ilohHidden(id, label) ? 'Masquée dans Iloh Khurdan aujourd\'hui' : 'Visible dans Iloh Khurdan'}</span>`}</p>` : '';
+    return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${drawn}${detail}${contract}${trip}${slots}${iloh}</div>`;
   };
   const dispLabel = l => l === CONTRACT_ACT && activeContract(id) ? l + contractText(activeContract(id)) : s.details?.[l] && (DETAIL_ACTS[l] || RANDOM_ACTS[l]) ? `${l} : ${s.details[l]}` : huntFor(id, l) ? `${l} (${huntText(huntFor(id, l))})` : l === 'Voyage' && s.trip ? `Voyage${s.trip.modes?.size ? ` (${[...s.trip.modes].join(', ').toLowerCase()})` : ''} : ${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}` : l;
   const picked = [...s.checked];
@@ -2087,6 +2099,7 @@ function renderCharNow(id) {
         : `<h3>${esc(catLabel(c, k))}${s.manageActs ? ` <button type="button" class="link small ico-btn" data-rename="${k}" title="Renommer" aria-label="Renommer">${icon('pencil')}</button>` : ''}</h3>`}${s.manageActs
         ? (live(k).length ? live(k).map(a => `<div class="act manage"><span>${esc(a)}</span>
             <select class="cat-move" data-act-cat="${esc(a)}" aria-label="Catégorie de ${esc(a)}">${catsOf(c).map(x => `<option value="${x}" ${x === k ? 'selected' : ''}>${esc(catLabel(c, x))}</option>`).join('')}</select>
+            ${sendsToIloh(id) ? `<button type="button" class="link small ico-btn" data-iloh-always="${esc(a)}" aria-pressed="${ilohAlways(id, a)}" title="${ilohAlways(id, a) ? 'Toujours masquée dans Iloh Khurdan : la rendre visible' : 'Toujours masquer dans Iloh Khurdan'}" aria-label="${ilohAlways(id, a) ? 'Rendre visible' : 'Toujours masquer'} ${esc(a)} dans Iloh Khurdan">${icon(ilohAlways(id, a) ? 'eyeoff' : 'eye')}</button>` : ''}
             ${s.actDel === a ? `<button type="button" class="link small danger" data-act-remove="${esc(a)}">Confirmer la suppression</button>` : `<button type="button" class="link small ico-btn" data-act-del="${esc(a)}" title="Supprimer" aria-label="Supprimer">${icon('trash')}</button>`}</div>`).join('')
           : `<p class="reserved">Catégorie vide : déplace-y des activités. <button type="button" class="link small ico-btn" data-cat-del="${k}" title="Supprimer la catégorie" aria-label="Supprimer la catégorie">${icon('trash')}</button></p>`)
         : live(k).filter(a => actAvailable(id, a)).map(a => actRow(a)).join('')}</div>`).join('')}
@@ -2382,7 +2395,7 @@ function renderCharNow(id) {
       if (e.target.checked && !activeContract(id)) CONTRACTS[id] = { start: isoDay(rpDay) };
       if (!e.target.checked && CONTRACTS[id]?.start === isoDay(rpDay)) delete CONTRACTS[id]; }   // contrat créé par erreur aujourd'hui
     if (e.target.checked) { s.checked.add(l); if (!s.slots[l] && guessSlot(l)) s.slots[l] = [...guessSlot(l)]; if (RANDOM_ACTS[l] && !s.details?.[l]) (s.details ||= {})[l] = drawFor(l); }
-    else { s.checked.delete(l); delete s.slots[l]; if (RANDOM_ACTS[l] && s.details) delete s.details[l]; if (s.huntSet) delete s.huntSet[l]; }
+    else { s.checked.delete(l); delete s.slots[l]; if (RANDOM_ACTS[l] && s.details) delete s.details[l]; if (s.huntSet) delete s.huntSet[l]; s.hideIloh?.delete(l); }
     renderChar(id);
   }));
   document.querySelectorAll('[data-slot]').forEach(b => b.addEventListener('click', () => {
@@ -2423,6 +2436,11 @@ function renderCharNow(id) {
   document.querySelectorAll('[data-special-remove]').forEach(b => b.addEventListener('click', () => {
     const l = b.dataset.specialRemove; s.actDel = null; s.specials = s.specials.filter(x => x !== l); s.checked.delete(l); delete s.slots[l]; renderChar(id); }));
   document.querySelectorAll('[data-act-del]').forEach(b => b.addEventListener('click', () => { s.actDel = b.dataset.actDel; renderChar(id); }));
+  // Iloh Khurdan : masquer une activité ce jour-là, ou toujours
+  document.querySelectorAll('[data-iloh-hide]').forEach(b => b.addEventListener('click', () => {
+    const l = b.dataset.ilohHide; s.hideIloh ||= new Set(); s.hideIloh.has(l) ? s.hideIloh.delete(l) : s.hideIloh.add(l); renderChar(id); }));
+  document.querySelectorAll('[data-iloh-always]').forEach(b => b.addEventListener('click', () => {
+    const l = b.dataset.ilohAlways, set = ILOH_HIDE_ALWAYS[id] ||= new Set(); set.has(l) ? set.delete(l) : set.add(l); renderChar(id); }));
   document.getElementById('add-'+id).addEventListener('click', () => {
     const inp = document.getElementById('special-'+id), v = inp.value.trim(); if (!v) return;
     if (document.getElementById('keep-'+id).checked) { c.removedActs?.delete(v); (c.acts.quotidien ||= []).push(v); (c.addedActs ||= []).push(v); }
@@ -2459,7 +2477,7 @@ initPlaces();
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg'];
+  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh'];
 const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{}, nightStates:new Set() });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }
@@ -2511,7 +2529,7 @@ const applyChar = (c, d) => {
   c.customCats = [...(d.customCats || [])]; c.actCat = { ...(d.actCat || {}) }; c.catNames = { ...(d.catNames || {}) }; applyActLayout(c);
 };
 const globalOf = () => enc({ lovers: LOVERS, protect: lastProtect, alerts, events: EVENTS, arcs: ARCS, arcSeq,
-  milestones: MILESTONES, contracts: CONTRACTS, workdays: WORKDAYS });
+  milestones: MILESTONES, contracts: CONTRACTS, workdays: WORKDAYS, hideIloh: ILOH_HIDE_ALWAYS });
 const applyGlobal = g => {
   const d = dec(g || {});
   if ('lovers' in d) replaceObj(LOVERS, d.lovers);
@@ -2523,6 +2541,7 @@ const applyGlobal = g => {
   if ('milestones' in d) replaceObj(MILESTONES, d.milestones);
   if ('contracts' in d) replaceObj(CONTRACTS, d.contracts);
   if ('workdays' in d) { replaceObj(WORKDAYS, d.workdays); WORKDAYS.khopses ||= new Set(); }
+  if ('hideIloh' in d) replaceObj(ILOH_HIDE_ALWAYS, d.hideIloh);
 };
 const dayOf = () => enc({ nights: nightsBy, calm: calmBy, nefaste, filmed, weather: weatherOn, rp: rpPlayed,
   protect: Object.fromEntries(C.map(c => [c.id, !!state[c.id].protect])),
