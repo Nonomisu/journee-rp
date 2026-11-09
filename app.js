@@ -1014,6 +1014,17 @@ const RANDOM_ACTS = { [JUNK_ACT]: ['Maxi kebab « Fighter Bouffeur »', 'Pizza �
   'Pizza kebab', 'Poulet croustillant « Chik&Dip »', 'Burger smashé « Night Vision »', 'Panini « La mama del Arcadioni »', 'Triple burger frites',
   '« Le bouche artère », burger quatre étages', 'Crêpes sucrées', 'Crêpes salées « Thunder Fury »'] };
 const drawFor = (label, not) => { const l = RANDOM_ACTS[label].filter(x => x !== not); return l[Math.floor(Math.random() * l.length)]; };
+// Echo et Prism commandent ensemble : la commande de l'un (cochée, retirée, ou nouveau tirage) vaut pour l'autre, même restaurant.
+// Partagé par la journée commune (shared/day-… → junk : le plat, ou null).
+const JUNK_DUO = ['echo', 'prism'];
+const junkShared = { dish: null };
+const syncJunk = () => JUNK_DUO.forEach(id => { const s = state[id]; if (!s) return;
+  if (junkShared.dish) {
+    s.checked.add(JUNK_ACT); (s.details ||= {})[JUNK_ACT] = junkShared.dish;
+    if (!s.slots[JUNK_ACT]) { const o = state[JUNK_DUO.find(x => x !== id)]?.slots?.[JUNK_ACT]; const g = o?.length ? o : guessSlot(JUNK_ACT); if (g) s.slots[JUNK_ACT] = [...g]; }
+  } else if (s.checked.has(JUNK_ACT)) { s.checked.delete(JUNK_ACT); delete s.slots[JUNK_ACT]; if (s.details) delete s.details[JUNK_ACT]; }
+});
+const setJunk = dish => { junkShared.dish = dish || null; syncJunk(); };
 // Plat le plus commandé de l'année (wrap d'Echo et Prism).
 const junkOfYear = (c, y) => tally(Array.from({ length: 366 }, (_, i) => new Date(y, 0, 1 + i)).filter(d => d.getFullYear() === y && d <= rpDay).map(d => {
   if (sameDay(d, rpDay)) return state[c.id].checked.has(JUNK_ACT) ? state[c.id].details?.[JUNK_ACT] : null;
@@ -2296,7 +2307,7 @@ function renderCharNow(id) {
     if (!activeContract(id)) k.days = dayIndex(k);   // un début trop ancien prolonge la durée jusqu'à aujourd'hui
     renderChar(id); }));
   document.getElementById('contract-end-'+id)?.addEventListener('click', () => { CONTRACTS[id].days = dayIndex(CONTRACTS[id]); renderChar(id); });
-  document.querySelectorAll('[data-redraw]').forEach(b => b.addEventListener('click', () => { const l = b.dataset.redraw; (s.details ||= {})[l] = drawFor(l, s.details[l]); renderChar(id); }));
+  document.querySelectorAll('[data-redraw]').forEach(b => b.addEventListener('click', () => { const l = b.dataset.redraw; (s.details ||= {})[l] = drawFor(l, s.details[l]); if (l === JUNK_ACT && JUNK_DUO.includes(id)) setJunk(s.details[l]); renderChar(id); }));
   document.querySelectorAll('[data-detail]').forEach(i => i.addEventListener('change', () => { (s.details ||= {})[i.dataset.detail] = i.value.trim(); renderChar(id); }));
   document.querySelectorAll('[data-door]').forEach(r => r.addEventListener('change', () => { setDoor(id, r.dataset.door); renderChar(id); }));
   document.getElementById('jais-'+id)?.addEventListener('change', e => { state[id].jais = e.target.checked; renderChar(id); });
@@ -2398,8 +2409,9 @@ function renderCharNow(id) {
     if (l === CONTRACT_ACT) { s.contractOff = !e.target.checked;
       if (e.target.checked && !activeContract(id)) CONTRACTS[id] = { start: isoDay(rpDay) };
       if (!e.target.checked && CONTRACTS[id]?.start === isoDay(rpDay)) delete CONTRACTS[id]; }   // contrat créé par erreur aujourd'hui
-    if (e.target.checked) { s.checked.add(l); if (!s.slots[l] && guessSlot(l)) s.slots[l] = [...guessSlot(l)]; if (RANDOM_ACTS[l] && !s.details?.[l]) (s.details ||= {})[l] = drawFor(l); }
+    if (e.target.checked) { s.checked.add(l); if (!s.slots[l] && guessSlot(l)) s.slots[l] = [...guessSlot(l)]; if (RANDOM_ACTS[l] && !s.details?.[l]) (s.details ||= {})[l] = l === JUNK_ACT && JUNK_DUO.includes(id) && junkShared.dish || drawFor(l); }
     else { s.checked.delete(l); delete s.slots[l]; if (RANDOM_ACTS[l] && s.details) delete s.details[l]; if (s.huntSet) delete s.huntSet[l]; s.hideIloh?.delete(l); }
+    if (l === JUNK_ACT && JUNK_DUO.includes(id)) setJunk(e.target.checked ? s.details[l] : null);
     renderChar(id);
   }));
   document.querySelectorAll('[data-slot]').forEach(b => b.addEventListener('click', () => {
@@ -2547,7 +2559,7 @@ const applyGlobal = g => {
   if ('workdays' in d) { replaceObj(WORKDAYS, d.workdays); WORKDAYS.khopses ||= new Set(); }
   if ('hideIloh' in d) replaceObj(ILOH_HIDE_ALWAYS, d.hideIloh);
 };
-const dayOf = () => enc({ nights: nightsBy, calm: calmBy, nefaste, filmed, weather: weatherOn, rp: rpPlayed,
+const dayOf = () => enc({ nights: nightsBy, calm: calmBy, nefaste, filmed, weather: weatherOn, rp: rpPlayed, junk: junkShared.dish,
   protect: Object.fromEntries(C.map(c => [c.id, !!state[c.id].protect])),
   shell: Object.fromEntries(C.map(c => [c.id, !!state[c.id].shell])) });
 // Heure de création d'une nouvelle venue de Firestore (horodatage serveur, ou texte ISO dans les tests).
@@ -2560,6 +2572,8 @@ const applyDay = g => {
   if ('nefaste' in d) Object.assign(nefaste, { on: false, ctx: [], host: [], inj: true }, d.nefaste);
   if ('calm' in d) { const was = new Set(Object.keys(calmBy)); replaceObj(calmBy, d.calm); C.forEach(c => { if (calmBy[c.id] || was.has(c.id)) syncCalmState(c.id); }); }
   if ('weather' in d) replaceObj(weatherOn, d.weather);
+  // Commande d'Echo / Prism reçue de l'autre joueur : on l'enregistre aussi sur la fiche de son propre personnage.
+  if ('junk' in d && d.junk !== junkShared.dish) { setJunk(d.junk); setTimeout(() => window.RP_SYNC?.save?.(), 0); }
   if (d.protect) C.forEach(c => { if (c.id in d.protect) state[c.id].protect = !!d.protect[c.id]; });
   if (d.shell) C.forEach(c => { if (c.id in d.shell) state[c.id].shell = !!d.shell[c.id]; });
 };

@@ -68,7 +68,7 @@ const applyGlobal = g => {
   if ('workdays' in d) { replaceObj(WORKDAYS, d.workdays); WORKDAYS.khopses ||= new Set(); }
   if ('hideIloh' in d) replaceObj(ILOH_HIDE_ALWAYS, d.hideIloh);
 };
-const dayOf = () => enc({ nights: nightsBy, calm: calmBy, nefaste, filmed, weather: weatherOn, rp: rpPlayed,
+const dayOf = () => enc({ nights: nightsBy, calm: calmBy, nefaste, filmed, weather: weatherOn, rp: rpPlayed, junk: junkShared.dish,
   protect: Object.fromEntries(C.map(c => [c.id, !!state[c.id].protect])),
   shell: Object.fromEntries(C.map(c => [c.id, !!state[c.id].shell])) });
 // Heure de création d'une nouvelle venue de Firestore (horodatage serveur, ou texte ISO dans les tests).
@@ -81,6 +81,8 @@ const applyDay = g => {
   if ('nefaste' in d) Object.assign(nefaste, { on: false, ctx: [], host: [], inj: true }, d.nefaste);
   if ('calm' in d) { const was = new Set(Object.keys(calmBy)); replaceObj(calmBy, d.calm); C.forEach(c => { if (calmBy[c.id] || was.has(c.id)) syncCalmState(c.id); }); }
   if ('weather' in d) replaceObj(weatherOn, d.weather);
+  // Commande d'Echo / Prism reçue de l'autre joueur : on l'enregistre aussi sur la fiche de son propre personnage.
+  if ('junk' in d && d.junk !== junkShared.dish) { setJunk(d.junk); setTimeout(() => window.RP_SYNC?.save?.(), 0); }
   if (d.protect) C.forEach(c => { if (c.id in d.protect) state[c.id].protect = !!d.protect[c.id]; });
   if (d.shell) C.forEach(c => { if (c.id in d.shell) state[c.id].shell = !!d.shell[c.id]; });
 };

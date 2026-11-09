@@ -31,6 +31,7 @@ NONO_EMAIL=… node dev/tests/e2e2.js              # historique, sets d'Echo / P
 NONO_EMAIL=… node dev/tests/e2e4.js              # Discord (webhook simulé)
 NONO_EMAIL=… node dev/tests/e2e5.js              # notifications envoyées seulement à la validation
 NONO_EMAIL=… node dev/tests/e2e20.js             # Iloh Khurdan : masquer une activité (ce jour-là, toujours)
+NONO_EMAIL=… node dev/tests/e2e21.js             # Echo et Prism : commande de malbouffe commune (même restaurant)
 ```
 
 ## Données Firestore
