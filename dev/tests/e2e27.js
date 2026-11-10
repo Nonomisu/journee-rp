@@ -26,7 +26,7 @@ const ok = (c, l) => { console.log((c ? '  ok  ' : '  ÉCHEC ') + l); if (!c) pr
   await P.fill('#special-ankhbayar', ''); await P.type('#special-ankhbayar', 'Instant coquin', { delay: 5 });
   await P.click('#add-ankhbayar'); await P.waitForTimeout(200);
   ok(await P.isChecked('[data-act="Instant coquin"]'), 'activité ajoutée et cochée');
-  ok(await P.locator('details[data-with-fold="Instant coquin"]').count() === 0, 'pas de « Avec d\'autres personnages ? »');
+  ok(await P.locator('details[data-with-fold="Instant coquin"].priv-pick').count() === 1 && await P.locator('[data-share-act="Instant coquin"]').count() === 0, '« Avec… » réservé au personnage lié (pas la liste du groupe)');
   ok((await P.textContent('[data-act="Instant coquin"] >> xpath=ancestor::div[contains(@class,"act-wrap")]')).includes('Intime : reste dans Journée RP'), 'repère « Intime : reste dans Journée RP »');
   // Case décochée à la main : plus de cochage d'office
   await P.fill('#special-ankhbayar', ''); await P.type('#special-ankhbayar', 'Bain', { delay: 5 });
