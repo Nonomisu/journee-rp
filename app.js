@@ -194,7 +194,7 @@ const NEWS = [];   // { to, text, charId, key, read, at (heure de création) }
 let newsDayOpen = false;   // menu « Nouvelles du jour » ouvert ou replié (garde l'état entre deux affichages)
 const playerOf = id => C.find(c => c.id === id)?.player;
 // Type de nouvelle (couleur) : nuit chaude, grossesse possible ou vie intime → rose ; activité commune → vert.
-const newsKind = n => /^(night|risk|intime):/.test(n.key || '') ? 'k-hot' : /^with:/.test(n.key || '') ? 'k-with' : 'k-other';
+const newsKind = n => /^(night|risk|intime|film):/.test(n.key || '') ? 'k-hot' : /^with:/.test(n.key || '') ? 'k-with' : 'k-other';
 const notify = (from, to, text, key) => {
   if (!isChar(to) || playerOf(from) === playerOf(to)) return;          // seulement d'un joueur à l'autre
   if (NEWS.some(n => n.key === key)) return;
@@ -1022,7 +1022,33 @@ const withDelivery = id => id === 'prism' && nightOf(id).hot && nightOf(id).with
 const filmKey = id => 'film:' + (id && withDelivery(id) ? 'livreur:' : '') + keyOf(rpDay);
 const canFilm = id => FILM_PAIR.includes(id) && nightOf(id).hot && (nightOf(id).with === FILM_PAIR.find(x => x !== id) || withDelivery(id));
 const isFilmed = id => canFilm(id) && !!filmed[filmKey(id)];
-const viewsOf = (k, liv) => Math.round(Math.pow(10, 3 + seeded('film:' + (liv ? 'livreur:' : '') + k + ':vues') * 3.3));   // ~1 000 à ~2 000 000, fixé par la date
+// Vues : entre 1 et 100 000, fixées par la date ; la plupart entre quelques milliers et quelques dizaines de milliers,
+// les succès (plus de 95 000) et les flops (moins de 1 000) restent rares.
+const viewsOf = (k, liv) => Math.max(1, Math.min(100000, Math.round(1 + 99999 * Math.pow(seeded('film:' + (liv ? 'livreur:' : '') + k + ':vues'), 1.6))));
+const FILM_TOP = 95000, FILM_FLOP = 1000;
+const FILM_TOP_LINES = [
+  (w, v) => `${v} ! La vidéo de ${w} enflamme Moonstone : les commentaires fondent comme neige au soleil.`,
+  (w, v) => `Carton plein : ${v}. ${w} ont fait monter la température de tout le réseau.`,
+  (w, v) => `La nuit de ${w} tourne en boucle : ${v}, et les abonnés en redemandent.`,
+  (w, v) => `${v} : ${w}, le duo le plus brûlant de Moonstone ce soir.`,
+  (w, v) => `Les serveurs chauffent : ${v} pour ${w}. Certains n'ont pas dormi de la nuit.`,
+  (w, v) => `${v} et des milliers de cœurs : ${w} viennent de faire fondre Moonstone.`,
+];
+const FILM_FLOP_LINES = [
+  (w, v) => `Flop : seulement ${v} pour la vidéo de ${w}. Même la caméra a bâillé.`,
+  (w, v) => `${v}… La vidéo de ${w} est passée inaperçue. Il faudra plus de piment la prochaine fois.`,
+  (w, v) => `Bide total : ${v}. Le public de Moonstone attendait plus d'étincelles de ${w}.`,
+  (w, v) => `${v} à peine : la vidéo de ${w} a refroidi plus vite que la pizza du livreur.`,
+  (w, v) => `${v}. Moonstone a zappé ${w} : la nuit était chaude, l'audience glaciale.`,
+];
+// Succès ou flop d'une vidéo filmée aujourd'hui : { kind, text } ou null.
+const filmBuzz = id => { if (!isFilmed(id)) return null;
+  const v = filmViews(id), liv = withDelivery(id), who = liv ? 'Prism et le livreur' : 'Echo et Prism', vs = vuesTxt(v), k = filmKey(id);
+  return v > FILM_TOP ? { kind: 'top', text: pickLine(FILM_TOP_LINES, k + ':top')(who, vs) } : v < FILM_FLOP ? { kind: 'flop', text: pickLine(FILM_FLOP_LINES, k + ':flop')(who, vs) } : null; };
+const filmNewsKey = id => filmKey(id) + ':buzz';
+// Nouvelle pour l'autre joueur (Echo ↔ Prism) ; celui qui coche la voit aussitôt sur la fiche.
+const filmNotify = id => { const other = FILM_PAIR.find(x => x !== id), b = filmBuzz(id);
+  dropNews([filmNewsKey(id)]); if (b) notify(id, other, b.text, filmNewsKey(id)); };
 const filmViews = id => viewsOf(keyOf(rpDay), id && withDelivery(id));
 // Vidéos publiées dans l'année (pour le wrap) : jours où la nuit du personnage a été filmée
 // (avec son partenaire, ou avec le livreur pour Prism, qui ne compte alors que chez elle).
@@ -1032,7 +1058,8 @@ const filmDays = (y, id) => Array.from({ length: 366 }, (_, i) => new Date(y, 0,
     const e = typeof HISTORY !== 'undefined' && HISTORY[id]?.[keyOf(d)];
     return e?.film ? { d, views: viewsOf(keyOf(d), e.filmLivreur) } : null; })
   .filter(Boolean);
-const viewsLabel = id => filmViews(id).toLocaleString('fr-FR') + ' vues';
+const vuesTxt = n => n.toLocaleString('fr-FR') + (n > 1 ? ' vues' : ' vue');
+const viewsLabel = id => vuesTxt(filmViews(id));
 // Activités qui n'apparaissent que sous condition : Echo ne peut cocher « Plaisir en solo sur Moonstone »
 // que les jours où Prism a coché « Publication Moonstone ».
 const CONDITIONAL_ACTS = { echo: { 'Plaisir en solo sur Moonstone': () => state.prism.checked.has('Publication Moonstone') } };
@@ -1512,7 +1539,7 @@ const wrapExtrasHtml = (c, y) => {
       <div><span>Dernier mood</span><q>${esc(x.last[1].mood)}</q><small>${fmtDay(x.last[0])}</small></div></div>` : ''}
     ${(v => !FILM_PAIR.includes(c.id) || !v.length ? '' : (() => {
       const top = v.reduce((a, b) => b.views > a.views ? b : a), flop = v.reduce((a, b) => b.views < a.views ? b : a);
-      const vues = n => n.toLocaleString('fr-FR') + ' vues';
+      const vues = vuesTxt;
       return `<h3 class="wrap-sec">Vidéos en ligne</h3>
     <div class="fx-grid">
       ${card('Vidéos publiées', v.length, vues(v.reduce((s, x) => s + x.views, 0)) + ' au total')}
@@ -2252,7 +2279,7 @@ function renderCharNow(id) {
         ${CLIENT_PARTNER[id] && n.with === 'client' ? `<label class="check-inline"><input type="checkbox" id="call-partner-${id}" ${state[id].callPartner ? 'checked' : ''}>${icon('phone')}Appel à ${nameOf(CLIENT_PARTNER[id])}</label>` : ''}
         ${n.with && isChar(n.with) ? `<p class="reserved">Cochée aussi sur la fiche ${deName(nameOf(n.with))}.</p>` : ''}
         ${canFilm(id) ? `<label class="check-inline"><input type="checkbox" id="film-${id}" ${filmed[filmKey(id)] ? 'checked' : ''}>${icon('camera')}Filmé et publié en ligne</label>
-          ${filmed[filmKey(id)] ? `<p class="where">${icon('eye')}<span>${viewsLabel(id)}</span></p>` : ''}` : ''}
+          ${filmed[filmKey(id)] ? `<p class="where">${icon('eye')}<span>${viewsLabel(id)}</span></p>${(b => b ? `<p class="where film-buzz ${b.kind}">${icon(b.kind === 'top' ? 'star' : 'eyeoff')}<span>${esc(b.text)}</span></p>` : '')(filmBuzz(id))}` : ''}` : ''}
         ${n.isMan ? `<label class="check-inline"><input type="checkbox" id="protect-${id}" ${state[id].protect ? 'checked' : ''}>${icon('shield')}Monsieur se protège</label>`
           : n.with && isChar(n.with) && !isFem(n.with)
             ? `<p class="check-inline info">${icon('shield')}${nameOf(n.with)} ${state[n.with].protect ? 'se protège' : 'ne se protège pas'} <small>(indiqué sur sa fiche)</small></p>`
@@ -2486,7 +2513,7 @@ function renderCharNow(id) {
   document.getElementById('rp-'+id)?.addEventListener('change', e => { setRp(id, e.target.checked, partnerOf(id)); renderNav(); renderChar(id); });
   document.getElementById('rp-with-'+id)?.addEventListener('change', e => { setRp(id, true, e.target.value); renderNav(); renderChar(id); });
   document.getElementById('shell-'+id)?.addEventListener('change', e => { s.shell = e.target.checked; renderChar(id); });
-  document.getElementById('film-'+id)?.addEventListener('change', e => { filmed[filmKey(id)] = e.target.checked; renderChar(id); });
+  document.getElementById('film-'+id)?.addEventListener('change', e => { filmed[filmKey(id)] = e.target.checked; filmNotify(id); renderChar(id); });
   document.getElementById('protect-'+id)?.addEventListener('change', e => setProtect(id, e.target.checked));
   document.getElementById('protect-pnj-'+id)?.addEventListener('change', e => { lastProtect['pnj:' + id + ':' + nightOf(id).with] = e.target.checked; if (e.target.checked) dropNews(pairKeys(id, nightOf(id).with).slice(1)); checkRisk(id); });
   document.getElementById('addplace-'+id)?.addEventListener('click', () => {
