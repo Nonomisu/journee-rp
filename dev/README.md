@@ -34,6 +34,7 @@ NONO_EMAIL=… node dev/tests/e2e20.js             # Iloh Khurdan : masquer une 
 NONO_EMAIL=… node dev/tests/e2e21.js             # Echo et Prism : commande de malbouffe commune (même restaurant)
 NONO_EMAIL=… node dev/tests/e2e22.js             # vie intime : reprendre ce que l'autre personnage a noté, reformulé
 NONO_EMAIL=… node dev/tests/e2e23.js             # retour d'Iloh Khurdan : activités communes affichées sur la fiche
+NONO_EMAIL=… node dev/tests/e2e24.js             # activités communes : mentionner, reprendre (avant / après validation), nouvelles vertes
 ```
 
 ## Données Firestore

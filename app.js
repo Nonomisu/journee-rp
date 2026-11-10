@@ -112,6 +112,7 @@ ICONS.zone = '<path d="M3 19 9.5 8l4 6.5 2.5-4L21 19z"/>';
 ICONS.star = '<path d="M12 3l2.6 5.6 6 .7-4.5 4.1 1.2 6L12 16.4 6.7 19.4l1.2-6L3.4 9.3l6-.7z"/>';
 ICONS.camera = '<path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>';
 ICONS.plus = '<path d="M12 5v14M5 12h14"/>';
+ICONS.users = '<circle cx="9" cy="8" r="3.2"/><path d="M3 19.5c.6-3.4 3-5.3 6-5.3s5.4 1.9 6 5.3"/><circle cx="16.8" cy="8.8" r="2.6"/><path d="M16.5 14.3c2.4.2 4 1.8 4.5 4.6"/>';
 ICONS.minus = '<path d="M5 12h14"/>';
 ICONS.gear = '<circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.4M12 18.8v2.4M21.2 12h-2.4M5.2 12H2.8M18.5 5.5l-1.7 1.7M7.2 16.8l-1.7 1.7M18.5 18.5l-1.7-1.7M7.2 7.2 5.5 5.5"/><circle cx="12" cy="12" r="6.2"/>';
 ICONS.pencil = '<path d="M4 20l1-4.5L15.5 5a2.1 2.1 0 0 1 3 3L8 18.5z"/><path d="M13.5 7l3 3"/>';
@@ -192,6 +193,8 @@ const PLAYER_NAME = { corentin:'Nono', elle:'Jynette' };
 const NEWS = [];   // { to, text, charId, key, read, at (heure de création) }
 let newsDayOpen = false;   // menu « Nouvelles du jour » ouvert ou replié (garde l'état entre deux affichages)
 const playerOf = id => C.find(c => c.id === id)?.player;
+// Type de nouvelle (couleur) : nuit chaude, grossesse possible ou vie intime → rose ; activité commune → vert.
+const newsKind = n => /^(night|risk|intime):/.test(n.key || '') ? 'k-hot' : /^with:/.test(n.key || '') ? 'k-with' : 'k-other';
 const notify = (from, to, text, key) => {
   if (!isChar(to) || playerOf(from) === playerOf(to)) return;          // seulement d'un joueur à l'autre
   if (NEWS.some(n => n.key === key)) return;
@@ -473,6 +476,47 @@ const RISK_LINES = [
 const JYNETTE = 'elle';
 // Retire les nouvelles du jour devenues fausses (nuit annulée, partenaire changé, protection cochée).
 const dropNews = keys => { for (let i = NEWS.length - 1; i >= 0; i--) if (keys.includes(NEWS[i].key)) NEWS.splice(i, 1); window.RP_SYNC?.dropNews(keys); };
+// ---------- Activités communes : d'autres personnages cochés sur une activité (withActs[activité] = [ids]) ----------
+// Le joueur de l'autre personnage reçoit une nouvelle (verte) ; sur la fiche mentionnée, l'activité peut être reprise
+// d'un geste, avant comme après la validation (comme dans Iloh Khurdan).
+const withOf = (wa, l) => (wa?.[l] || []).filter(isChar);
+const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1];
+const withTxt = (wa, l) => (w => w.length ? ' avec ' + andList(w.map(nameOf)) : '')(withOf(wa, l));
+const withKey = (id, other, l) => 'with:' + keyOf(rpDay) + ':' + id + ':' + other + ':' + l;
+const canShareAct = l => l !== 'Voyage' && !isPrivateAct(l);
+const withOpen = new Set();   // sélecteurs « Avec d'autres personnages ? » ouverts (le temps de la session)
+const setWith = (id, l, other, on, quiet = false) => {
+  const s = state[id], cur = new Set(withOf(s.withActs, l));
+  on ? cur.add(other) : cur.delete(other);
+  s.withActs ||= {};
+  if (cur.size) s.withActs[l] = [...cur]; else delete s.withActs[l];
+  if (on && !quiet) notify(id, other, `${nameOf(id)} a noté « ${l} » avec ${nameOf(other)}.`, withKey(id, other, l));
+  else if (!on) dropNews([withKey(id, other, l)]);
+};
+const clearWith = (id, l) => { const s = state[id]; withOf(s.withActs, l).forEach(o => dropNews([withKey(id, o, l)])); if (s.withActs) delete s.withActs[l]; };
+const withPickHtml = (id, label) => { const ids = withOf(state[id].withActs, label);
+  return `<details class="with-pick" data-with-fold="${esc(label)}" ${withOpen.has(id + ':' + label) ? 'open' : ''}>
+    <summary>${icon('users')}<span>${ids.length ? 'Avec ' + esc(andList(ids.map(nameOf))) : 'Avec d\'autres personnages ?'}</span></summary>
+    <div class="place-list subs" role="group" aria-label="Personnages présents">${C.filter(x => x.id !== id).sort((a, b) => a.name.localeCompare(b.name, 'fr'))
+      .map(x => `<button type="button" data-share-act="${esc(label)}" data-share="${x.id}" aria-pressed="${ids.includes(x.id)}">${esc(x.name)}</button>`).join('')}</div></details>`; };
+// Activités où un autre personnage (fiche validée) a mentionné celui-ci aujourd'hui.
+const sharedActsOf = id => C.filter(x => x.id !== id && state[x.id]?.done).flatMap(x => Object.entries(state[x.id].withActs || {})
+  .filter(([l, ids]) => ids.includes(id) && state[x.id].checked?.has(l)).map(([l, ids]) => ({ from: x.id, act: l, others: ids.filter(o => o !== id && isChar(o)) })));
+const sharedActsHtml = (id, canJoin) => {
+  const L = sharedActsOf(id); if (!L.length) return '';
+  return `<div class="shared-acts"><p class="shared-h">${icon('users')}Activités communes du jour</p>${L.map(a => `<div class="shared-item"><span>${esc(nameOf(a.from))} a noté « ${esc(a.act)} » avec ${esc(andList([nameOf(id), ...a.others.map(nameOf)]))}.</span>
+    ${canJoin ? state[id].checked.has(a.act) ? '<small class="joined">✓ Sur la fiche</small>' : `<button type="button" class="join-btn" data-join-from="${a.from}" data-join-act="${esc(a.act)}">${icon('plus')}L'ajouter à la fiche ${deName(nameOf(id))}</button>` : ''}</div>`).join('')}</div>`;
+};
+// Reprend l'activité d'un autre personnage : cochée (en activité spéciale si elle n'est pas dans la liste), mêmes moments, mêmes personnages.
+const joinAct = (id, from, l) => {
+  const s = state[id], c = C.find(x => x.id === id);
+  if (!allActs(c).includes(l) && !s.specials.includes(l)) s.specials.push(l);
+  s.checked.add(l);
+  if (!s.slots[l] && state[from].slots?.[l]?.length) s.slots[l] = [...state[from].slots[l]];
+  const told = new Set([playerOf(id)]);   // une seule nouvelle par joueur
+  [from, ...withOf(state[from].withActs, l).filter(o => o !== id)].forEach(o => { setWith(id, l, o, true, told.has(playerOf(o))); told.add(playerOf(o)); });
+  window.RP_SYNC?.save?.();
+};
 const pairKeys = (a, b) => { const d = keyOf(rpDay); return ['night:' + d + ':' + [a, b].sort().join('+'), 'risk:' + d + ':' + a + ':' + b, 'risk:' + d + ':' + b + ':' + a]; };
 const checkRisk = id => {
   const n = nightOf(id); if (!n.hot || !n.with) return;
@@ -1260,7 +1304,7 @@ const ymKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0
 const ilohBackOf = (id, d) => sendsToIloh(id) && d ? ILOH_BACK[id]?.[ymKey(d)] || null : null;
 const ilohName = x => isChar(x) ? nameOf(x) : x;
 const ilohAnd = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1];
-const ilohWithTxt = (b, l) => b?.with?.[l]?.length ? ' avec ' + ilohAnd(b.with[l].map(ilohName)) : '';
+const ilohWithTxt = (b, l, own = []) => (w => w.length ? (own.length ? ' et ' : ' avec ') + ilohAnd(w.map(ilohName)) : '')((b?.with?.[l] || []).filter(x => !own.includes(x)));   // own : déjà notés dans Journée RP
 // Activités ajoutées dans Iloh qui ne figurent pas déjà sur la fiche.
 const ilohAddedOf = (b, checked) => (b?.added || []).filter(l => !checked.has?.(l) && !checked.includes?.(l));
 const ilohBackHtml = (b, checked) => { const add = ilohAddedOf(b, checked); return add.length
@@ -1276,7 +1320,7 @@ const dayRecord = (c, d) => {
     const filled = s.done || s.mood || s.checked.size || rpPlayed[c.id] || s.trip;
     return filled ? { rp: rpPlayed[c.id] || null, mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
       cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])], minutes: s.trip.minutes || 0, reason: s.trip.reason || '' } : null,
-      phys: [...(s.phys || [])], mental: [...(s.mental || [])], nightStates: [...(s.nightStates || [])], nightNote: s.nightNote || '', nightNotes: { ...(s.nightNotes || {}) }, calmWith: calmWithOf(c.id), intime: s.intime || '', nefaste: [NEF.host, NEF.partner].includes(c.id) ? nefText() : '', faits: s.faits || '', intimeWith: [...(s.intimeWith || [])], notes: { ...(s.stateNotes || {}) }, real: true } : null;
+      phys: [...(s.phys || [])], mental: [...(s.mental || [])], nightStates: [...(s.nightStates || [])], nightNote: s.nightNote || '', nightNotes: { ...(s.nightNotes || {}) }, calmWith: calmWithOf(c.id), intime: s.intime || '', nefaste: [NEF.host, NEF.partner].includes(c.id) ? nefText() : '', faits: s.faits || '', intimeWith: [...(s.intimeWith || [])], withActs: { ...(s.withActs || {}) }, notes: { ...(s.stateNotes || {}) }, real: true } : null;
   }
   if (d > rpDay) return null;
   const e0 = HISTORY[c.id]?.[keyOf(d)];
@@ -1288,7 +1332,7 @@ const dayRecord = (c, d) => {
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
     tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])], minutes: e.trip.minutes || 0, reason: e.trip.reason || '' } : null,
     phys: [...(e.phys || [])].filter(p => !MORAL.includes(p)), mental: [...(e.mental || []), ...[...(e.phys || [])].filter(p => MORAL.includes(p))],
-    notes: e.stateNotes || {}, nightStates: [...(e.nightStates || [])], nightNote: e.nightNote || '', nightNotes: e.nightNotes || {}, calmWith: e.calmWith || null, intime: e.intime || '', nefaste: e.nefaste || '', faits: e.faits || '', intimeWith: [...(e.intimeWith || [])], real: true };
+    notes: e.stateNotes || {}, nightStates: [...(e.nightStates || [])], nightNote: e.nightNote || '', nightNotes: e.nightNotes || {}, calmWith: e.calmWith || null, intime: e.intime || '', nefaste: e.nefaste || '', faits: e.faits || '', intimeWith: [...(e.intimeWith || [])], withActs: e.withActs || {}, real: true };
 };
 // Journées enregistrées, par personnage puis par date (clé keyOf) — remplies par sync.js.
 const HISTORY = {};
@@ -1594,7 +1638,7 @@ function renderHistory(id) {
           ${selRec.faits ? `<p class="where">${icon('star')}<span>Faits notoires : ${esc(selRec.faits)}</span></p>` : ''}
           ${selRec.cond ? `<p class="where">${icon(selRec.cond.icon)}<span>${selRec.cond.label} · ${deg(selRec.cond.tp.max)} / ${deg(selRec.cond.tp.min)}</span></p>` : ''}
           ${selRec.place ? `<p class="where">${icon('pin')}<span>${esc(selRec.place)}</span></p>` : ''}
-          ${(b => `${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(a => esc(a + ilohWithTxt(b, a))).join(' · ')}</span></p>` : ''}
+          ${(b => `${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(a => esc(a + withTxt(selRec.withActs, a) + ilohWithTxt(b, a, withOf(selRec.withActs, a)))).join(' · ')}</span></p>` : ''}
           ${ilohAddedOf(b, selRec.acts).length ? `<p class="where">${icon('eye')}<span>Sur l'Iloh Khurdan : ${esc(ilohAddedOf(b, selRec.acts).map(l => l + ilohWithTxt(b, l)).join(' · '))}</span></p>` : ''}`)(ilohBackOf(id, sel))}
           ${selRec.nightStates?.length || selRec.nightNote || selRec.nightNotes?.['Nuit chaude'] ? `<p class="where">${icon('lips')}<span>Nuit : ${esc([nightStatesText(id, selRec.nightStates, selRec.nightNotes, selRec.calmWith), selRec.nightNote].filter(Boolean).join(' · '))}</span></p>` : ''}
           ${selRec.nefaste ? `<p class="where">${icon('warn')}<span>${esc(selRec.nefaste)}</span></p>` : ''}
@@ -1902,10 +1946,10 @@ function renderHome() {
     <p class="session">Connecté : ${PLAYER_NAME[me]} · <button type="button" class="link" id="signout">Se déconnecter</button></p>
     <header><p class="kicker">Journée RP</p><h1>Aujourd'hui</h1><p class="date">${today}<br>${eorzeaDate}</p>${(f => f ? `<p class="fest home-fest">${icon('star')}En Eorzea : ${f.name}</p>` : '')(festivalOn(rpDay))}</header>
     ${((unread, day) => `<section class="news"><h2>${icon('bell')}Nouvelles${unread.length ? ` <span class="badge">${unread.length}</span>` : ''}</h2>
-      ${unread.length ? `<ul>${unread.slice(0, 8).map(n => `<li class="unread"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
+      ${unread.length ? `<ul>${unread.slice(0, 8).map(n => `<li class="unread ${newsKind(n)}"><button type="button" class="link" data-go="${n.charId}">${esc(n.text)}</button></li>`).join('')}</ul>
       <button type="button" class="link ico-btn" id="news-read" title="Tout marquer comme lu" aria-label="Tout marquer comme lu">${icon('checks')}</button>` : '<p class="reserved">Rien de nouveau pour l\'instant.</p>'}
       <details class="news-day"${newsDayOpen ? ' open' : ''}><summary>Nouvelles du jour (${day.length})</summary>
-        ${day.length ? `<ul>${day.map(n => `<li class="${n.read ? '' : 'unread'}"><button type="button" class="link" data-go="${n.charId}"><small>${newsHour(n)}</small> ${esc(n.text)}</button></li>`).join('')}</ul>` : '<p class="reserved">Aucune nouvelle depuis 5 h ce matin.</p>'}</details>
+        ${day.length ? `<ul>${day.map(n => `<li class="${n.read ? '' : 'unread'} ${newsKind(n)}"><button type="button" class="link" data-go="${n.charId}"><small>${newsHour(n)}</small> ${esc(n.text)}</button></li>`).join('')}</ul>` : '<p class="reserved">Aucune nouvelle depuis 5 h ce matin.</p>'}</details>
       </section>`)(myNews().filter(n => !n.read), newsOfToday())}
     ${wrapBanner(`<div class="wrap-open">${C.filter(c => c.player === me).map(c => `<button type="button" class="btn" data-wrap-open="${c.id}">${c.name}</button>`).join('')}</div>`)}
     <div class="grid">
@@ -2028,10 +2072,11 @@ function renderCharNow(id) {
     const iloh = on && sendsToIloh(id) && label !== 'Voyage' ? `<p class="act-detail iloh-row">${ilohAlways(id, label)
         ? `${icon('eyeoff')}<span>Toujours masquée dans Iloh Khurdan <small>(réglé dans la liste d'activités)</small></span>`
         : `<button type="button" class="link small ico-btn" data-iloh-hide="${esc(label)}" aria-pressed="${ilohHidden(id, label)}" title="${ilohHidden(id, label) ? 'Afficher dans Iloh Khurdan' : 'Masquer dans Iloh Khurdan (ce jour-là)'}" aria-label="${ilohHidden(id, label) ? 'Afficher' : 'Masquer'} ${esc(label)} dans Iloh Khurdan">${icon(ilohHidden(id, label) ? 'eyeoff' : 'eye')}</button><span>${ilohHidden(id, label) ? 'Masquée dans Iloh Khurdan aujourd\'hui' : 'Visible dans Iloh Khurdan'}</span>`}</p>` : '';
-    return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${drawn}${detail}${contract}${trip}${slots}${iloh}</div>`;
+    const withRow = on && canShareAct(label) ? withPickHtml(id, label) : '';
+    return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${drawn}${detail}${contract}${trip}${slots}${withRow}${iloh}</div>`;
   };
   const ilohToday = ilohBackOf(id, rpDay);
-  const dispLabel = l => dispBase(l) + ilohWithTxt(ilohToday, l);
+  const dispLabel = l => dispBase(l) + withTxt(s.withActs, l) + ilohWithTxt(ilohToday, l, withOf(s.withActs, l));
   const dispBase = l => l === CONTRACT_ACT && activeContract(id) ? l + contractText(activeContract(id)) : s.details?.[l] && (DETAIL_ACTS[l] || RANDOM_ACTS[l]) ? `${l} : ${s.details[l]}` : huntFor(id, l) ? `${l} (${huntText(huntFor(id, l))})` : l === 'Voyage' && s.trip ? `Voyage${s.trip.modes?.size ? ` (${[...s.trip.modes].join(', ').toLowerCase()})` : ''} : ${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}` : l;
   const picked = [...s.checked];
   const byKey = {};
@@ -2082,6 +2127,7 @@ function renderCharNow(id) {
   if (s.done || readOnly) {
     document.getElementById('view').innerHTML = `
     ${tabsHtml(id)}
+    ${sharedActsHtml(id, !readOnly)}
     ${readOnly ? `<p class="readonly-note">${icon('eye')}Fiche de ${PLAYER_NAME[c.player]} : lecture seule.</p>` : ''}
     <article class="recap">
       ${alertBlock(id, false)}
@@ -2120,6 +2166,7 @@ function renderCharNow(id) {
     <div id="png-out-${id}" class="png-out" aria-live="polite"></div>`;
     document.getElementById('png-'+id)?.addEventListener('click', () => recapPng(id));
     document.getElementById('edit-'+id)?.addEventListener('click', () => { s.done = false; renderNav(); renderChar(id); });
+    document.querySelectorAll('#view [data-join-from]').forEach(b => b.addEventListener('click', () => { joinAct(id, b.dataset.joinFrom, b.dataset.joinAct); renderChar(id); }));
     bindTabs(id);
     return;
   }
@@ -2152,6 +2199,7 @@ function renderCharNow(id) {
     <section class="chrono"><h2>Chronologie du jour</h2>
     ${prevNightBlock(id)}
     <div class="chrono-part"><h3 class="chrono-h">Activités</h3>
+      ${sharedActsHtml(id, true)}
       ${(b => b ? `<p class="reserved iloh-note">${icon('eye')}Ajouts faits sur l'Iloh Khurdan : ${esc([...ilohAddedOf(b, s.checked).map(l => l + ilohWithTxt(b, l)), ...Object.keys(b.with || {}).filter(l => s.checked.has(l)).map(l => l + ilohWithTxt(b, l))].join(' · '))}. Ils s'affichent sur le récap.</p>` : '')(ilohToday)}
       ${cats.length ? '' : `<p class="reserved">Liste d'activités à définir. En attendant, utilise le champ « Activité spéciale » et coche « L'ajouter aussi à la liste ».</p>`}
       ${!s.manageActs && cats.length > 1 ? `<div class="fold-all"><button type="button" class="link small ico-btn" data-fold-all="1" title="Tout replier" aria-label="Tout replier">${icon('foldall')}</button><button type="button" class="link small ico-btn" data-fold-all="0" title="Tout déplier" aria-label="Tout déplier">${icon('unfoldall')}</button></div>` : ''}
@@ -2468,10 +2516,15 @@ function renderCharNow(id) {
       if (e.target.checked && !activeContract(id)) CONTRACTS[id] = { start: isoDay(rpDay) };
       if (!e.target.checked && CONTRACTS[id]?.start === isoDay(rpDay)) delete CONTRACTS[id]; }   // contrat créé par erreur aujourd'hui
     if (e.target.checked) { s.checked.add(l); if (!s.slots[l] && guessSlot(l)) s.slots[l] = [...guessSlot(l)]; if (RANDOM_ACTS[l] && !s.details?.[l]) (s.details ||= {})[l] = l === JUNK_ACT && JUNK_DUO.includes(id) && junkShared.dish || drawFor(l); }
-    else { s.checked.delete(l); delete s.slots[l]; if (RANDOM_ACTS[l] && s.details) delete s.details[l]; if (s.huntSet) delete s.huntSet[l]; s.hideIloh?.delete(l); }
+    else { s.checked.delete(l); delete s.slots[l]; clearWith(id, l); if (RANDOM_ACTS[l] && s.details) delete s.details[l]; if (s.huntSet) delete s.huntSet[l]; s.hideIloh?.delete(l); }
     if (l === JUNK_ACT && JUNK_DUO.includes(id)) setJunk(e.target.checked ? s.details[l] : null);
     renderChar(id);
   }));
+  document.querySelectorAll('[data-share]').forEach(b => b.addEventListener('click', () => {
+    setWith(id, b.dataset.shareAct, b.dataset.share, b.getAttribute('aria-pressed') !== 'true'); renderChar(id);
+  }));
+  document.querySelectorAll('details[data-with-fold]').forEach(d => d.addEventListener('toggle', () => { const k = id + ':' + d.dataset.withFold; d.open ? withOpen.add(k) : withOpen.delete(k); }));
+  document.querySelectorAll('[data-join-from]').forEach(b => b.addEventListener('click', () => { joinAct(id, b.dataset.joinFrom, b.dataset.joinAct); renderChar(id); }));
   document.querySelectorAll('[data-slot]').forEach(b => b.addEventListener('click', () => {
     const l = b.dataset.for;
     const cur = new Set(s.slots[l] || []), id2 = b.dataset.slot;
@@ -2551,7 +2604,7 @@ initPlaces();
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh'];
+  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'withActs'];
 const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{}, nightStates:new Set() });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }

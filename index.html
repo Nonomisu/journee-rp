@@ -411,7 +411,23 @@ button.link { background: none; border: 0; padding: 0; color: var(--gold); text-
 .news ul { list-style: none; margin: 0; padding: 0; display: grid; gap: .35rem; }
 .news li button { text-decoration: none; color: var(--dim); font-size: .95rem; text-align: left; }
 .news li.unread button { color: var(--text); font-weight: 500; }
-.news li.unread::before { content: "● "; color: #d8708a; }
+.news li { padding-left: .55rem; border-left: 3px solid var(--news-c, var(--gold, #c9a45c)); }
+.news li.unread::before { content: "● "; color: var(--news-c, var(--gold, #c9a45c)); }
+/* Couleur selon le type de nouvelle : nuits chaudes et vie intime en rose, activités communes en vert */
+.news li.k-hot { --news-c: #e38fa8; }
+.news li.k-with { --news-c: #6fbf73; }
+.with-pick { padding-left: 2.7rem; }
+.with-pick summary { display: flex; align-items: center; gap: .4rem; cursor: pointer; font-size: .85rem; color: var(--dim); list-style: none; }
+.with-pick summary::-webkit-details-marker { display: none; }
+.with-pick summary .ico { width: 1rem; height: 1rem; flex: none; }
+.with-pick .place-list { margin-top: .4rem; }
+.shared-acts { display: grid; gap: .3rem; padding: .7rem .8rem; margin: .2rem 0 .6rem; border: 1px dashed var(--rule); border-radius: 6px; text-align: left; }
+.shared-h { display: flex; align-items: center; gap: .4rem; margin: 0; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: #6fbf73; }
+.shared-h .ico { width: 1rem; height: 1rem; }
+.shared-item { display: grid; gap: .35rem; justify-items: start; text-align: left; font-style: normal; }
+.shared-acts .joined { color: var(--dim); }
+.join-btn { display: inline-flex; align-items: center; gap: .35rem; padding: .35rem .85rem; border: 1px solid #6fbf73; border-radius: 999px; background: none; color: #6fbf73; font: inherit; font-size: .88rem; cursor: pointer; }
+.join-btn .ico { width: .95rem; height: .95rem; }
 .act.manage { display: flex; flex-wrap: wrap; align-items: center; gap: .4rem .6rem; }
 .act.manage span { flex: 1 1 10rem; }
 .cat-move { max-width: 11rem; }
@@ -645,6 +661,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=f6aef50d9c" charset="utf-8"></script>
+<script src="app.js?v=4a45893095" charset="utf-8"></script>
 <script type="module" src="sync.js?v=93d54c2fa1"></script>
 
