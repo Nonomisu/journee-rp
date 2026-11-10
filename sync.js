@@ -30,6 +30,8 @@ const dRef = doc(db, 'shared', 'day-' + A.iso);
 const monthRef = (id, ym) => doc(db, 'days', id, 'months', ym);
 // Retour d'Iloh Khurdan (activités communes acceptées dans Iloh), écrit par le service du VPS ; lecture seule ici.
 const ilohRef = (id, ym) => doc(db, 'iloh', id, 'months', ym);
+// Personnages propres à Iloh Khurdan (noms), écrits par le service du VPS.
+const ilohNamesRef = doc(db, 'iloh', '_noms', 'months', 'liste');
 const charRef = id => doc(db, 'characters', id);
 const todayRef = id => doc(db, 'today', id);
 // Notifications push : clé publique VAPID du service du VPS (la clé privée reste sur le VPS).
@@ -131,7 +133,8 @@ async function loadMonth(ym) {
     const data = s.data() || {};
     A.applyMonth(id, ym, data, ym === A.ym && !started);
     if (ym === A.ym) seenToday[id] = clone(data[A.day]);
-  }), ...A.ilohIds().map(id => getDoc(ilohRef(id, ym)).then(s => A.applyIloh(id, ym, s.data() || {}), () => {}))]);
+  }), ...A.ilohIds().map(id => getDoc(ilohRef(id, ym)).then(s => A.applyIloh(id, ym, s.data() || {}), () => {})),
+    ...(loaded.size === 1 ? [getDoc(ilohNamesRef).then(s => A.applyIlohNames(s.data()), () => {})] : [])]);
 }
 
 async function boot() {

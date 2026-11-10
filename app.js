@@ -479,7 +479,15 @@ const dropNews = keys => { for (let i = NEWS.length - 1; i >= 0; i--) if (keys.i
 // ---------- Activités communes : d'autres personnages cochés sur une activité (withActs[activité] = [ids]) ----------
 // Le joueur de l'autre personnage reçoit une nouvelle (verte) ; sur la fiche mentionnée, l'activité peut être reprise
 // d'un geste, avant comme après la validation (comme dans Iloh Khurdan).
-const withOf = (wa, l) => (wa?.[l] || []).filter(isChar);
+// Personnages propres à Iloh Khurdan (sans fiche ici) : proposés sur les fiches recopiées dans Iloh.
+// Liste tenue à jour par le service du VPS (iloh/_noms/months/liste) ; celle-ci sert en attendant.
+const ILOH_ONLY = { shiruun:'Shiruun', djokhodthai:'Djokhodthai', buyan:'Buyan', cheyenne:'Cheyenne', taivan:'Taivan',
+  altan:'Altan', henbilee:'Henbilee', boroo:'Boroo', reaksa:'Reaksa', tsewang:'Tsewang' };
+const setIlohOnly = chars => { if (!chars || typeof chars !== 'object' || !Object.keys(chars).length) return;
+  Object.keys(ILOH_ONLY).forEach(k => delete ILOH_ONLY[k]);
+  Object.entries(chars).forEach(([k, v]) => { if (!isChar(k) && typeof v?.name === 'string') ILOH_ONLY[k] = v.name; }); };
+const isIlohOnly = x => typeof x === 'string' && !isChar(x) && Object.hasOwn(ILOH_ONLY, x);
+const withOf = (wa, l) => (wa?.[l] || []).filter(x => isChar(x) || isIlohOnly(x));
 const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1];
 const withTxt = (wa, l) => (w => w.length ? ' avec ' + andList(w.map(nameOf)) : '')(withOf(wa, l));
 const withKey = (id, other, l) => 'with:' + keyOf(rpDay) + ':' + id + ':' + other + ':' + l;
@@ -497,8 +505,16 @@ const clearWith = (id, l) => { const s = state[id]; withOf(s.withActs, l).forEac
 const withPickHtml = (id, label) => { const ids = withOf(state[id].withActs, label);
   return `<details class="with-pick" data-with-fold="${esc(label)}" ${withOpen.has(id + ':' + label) ? 'open' : ''}>
     <summary>${icon('users')}<span>${ids.length ? 'Avec ' + esc(andList(ids.map(nameOf))) : 'Avec d\'autres personnages ?'}</span></summary>
-    <div class="place-list subs" role="group" aria-label="Personnages présents">${C.filter(x => x.id !== id).sort((a, b) => a.name.localeCompare(b.name, 'fr'))
-      .map(x => `<button type="button" data-share-act="${esc(label)}" data-share="${x.id}" aria-pressed="${ids.includes(x.id)}">${esc(x.name)}</button>`).join('')}</div></details>`; };
+    ${withGroups(id).map(g => `${g.h ? `<p class="with-h">${g.h}</p>` : ''}<div class="place-list subs" role="group" aria-label="${g.h || 'Personnages présents'}">${g.list
+      .map(x => `<button type="button" data-share-act="${esc(label)}" data-share="${x.id}" aria-pressed="${ids.includes(x.id)}">${esc(x.name)}</button>`).join('')}</div>`).join('')}</details>`; };
+// Choix proposés : les Khurdans ne voient que les personnages présents dans Iloh Khurdan ;
+// les fiches recopiées dans Iloh proposent aussi les personnages propres à Iloh.
+const withGroups = id => {
+  const byName = (a, b) => a.name.localeCompare(b.name, 'fr');
+  const here = C.filter(x => x.id !== id && (!isKhurdan(id) || sendsToIloh(x.id))).sort(byName);
+  const iloh = sendsToIloh(id) ? Object.entries(ILOH_ONLY).map(([k, name]) => ({ id: k, name })).sort(byName) : [];
+  return iloh.length ? [{ h: '', list: here }, { h: "Personnages de l'Iloh", list: iloh }] : [{ h: '', list: here }];
+};
 // Activités où un autre personnage (fiche validée) a mentionné celui-ci aujourd'hui.
 const sharedActsOf = id => C.filter(x => x.id !== id && state[x.id]?.done).flatMap(x => Object.entries(state[x.id].withActs || {})
   .filter(([l, ids]) => ids.includes(id) && state[x.id].checked?.has(l)).map(([l, ids]) => ({ from: x.id, act: l, others: ids.filter(o => o !== id && isChar(o)) })));
@@ -1002,7 +1018,7 @@ const setNight = (id, hot, w) => {
   if (old && isChar(old) && state[old] && nightOf(old).with !== id) state[old].shell = false;
   checkRisk(id);
 };
-const nameOf = id => C.find(x => x.id === id).name;
+const nameOf = id => C.find(x => x.id === id)?.name ?? ILOH_ONLY[id] ?? id;
 // Journée jouée en RP : cochée par binôme (les deux fiches comptent comme remplies, même sans activités).
 const rpPlayed = {};   // id → id du partenaire de jeu, ou 'pnj' (seul·e ou avec des PNJ)
 const setRp = (id, on, w) => {
@@ -1331,7 +1347,7 @@ const ymKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0
 const ilohBackOf = (id, d) => sendsToIloh(id) && d ? ILOH_BACK[id]?.[ymKey(d)] || null : null;
 const ilohName = x => isChar(x) ? nameOf(x) : x;
 const ilohAnd = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1];
-const ilohWithTxt = (b, l, own = []) => (w => w.length ? (own.length ? ' et ' : ' avec ') + ilohAnd(w.map(ilohName)) : '')((b?.with?.[l] || []).filter(x => !own.includes(x)));   // own : déjà notés dans Journée RP
+const ilohWithTxt = (b, l, own = []) => (w => w.length ? (own.length ? ' et ' : ' avec ') + ilohAnd(w.map(ilohName)) : '')((b?.with?.[l] || []).filter(x => !own.includes(x) && !own.map(nameOf).includes(ilohName(x))));   // own : déjà notés dans Journée RP
 // Activités ajoutées dans Iloh qui ne figurent pas déjà sur la fiche.
 const ilohAddedOf = (b, checked) => (b?.added || []).filter(l => !checked.has?.(l) && !checked.includes?.(l));
 const ilohBackHtml = (b, checked) => { const add = ilohAddedOf(b, checked); return add.length
@@ -2757,6 +2773,7 @@ window.RP_APP = {
     Object.keys(m).filter(k => k.startsWith(ym + ':')).forEach(k => delete m[k]);
     Object.entries(data || {}).forEach(([d, x]) => { m[ym + ':' + d] = x; });
   },
+  applyIlohNames: d => setIlohOnly(d?.chars),
   ilohIds: () => C.filter(c => sendsToIloh(c.id)).map(c => c.id),
   applyMonth: (id, ym, data, withToday) => {
     const [y, m] = ym.split('-').map(Number);

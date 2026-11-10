@@ -128,6 +128,7 @@ window.RP_APP = {
     Object.keys(m).filter(k => k.startsWith(ym + ':')).forEach(k => delete m[k]);
     Object.entries(data || {}).forEach(([d, x]) => { m[ym + ':' + d] = x; });
   },
+  applyIlohNames: d => setIlohOnly(d?.chars),
   ilohIds: () => C.filter(c => sendsToIloh(c.id)).map(c => c.id),
   applyMonth: (id, ym, data, withToday) => {
     const [y, m] = ym.split('-').map(Number);
