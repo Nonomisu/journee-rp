@@ -1151,11 +1151,12 @@ const withPickHtml = (id, label) => { const ids = withOf(state[id].withActs, lab
     <summary>${icon('users')}<span>${ids.length ? 'Avec ' + esc(andList(ids.map(nameOf))) : 'Avec d\'autres personnages ?'}</span></summary>
     ${withGroups(id).map(g => `${g.h ? `<p class="with-h">${g.h}</p>` : ''}<div class="place-list subs" role="group" aria-label="${g.h || 'Personnages présents'}">${g.list
       .map(x => `<button type="button" data-share-act="${esc(label)}" data-share="${x.id}" aria-pressed="${ids.includes(x.id)}">${esc(x.name)}</button>`).join('')}</div>`).join('')}</details>`; };
-// Choix proposés : les Khurdans ne voient que les personnages présents dans Iloh Khurdan ;
-// les fiches recopiées dans Iloh proposent aussi les personnages propres à Iloh.
+// Choix proposés, par cercle : les personnages recopiés dans Iloh (Khurdans et Davaajav) entre eux, plus ceux propres à Iloh ;
+// Echo et Prism ensemble ; Viggo et Khopses ensemble ; les personnages principaux entre eux.
+const WITH_CIRCLES = () => [ILOH_MIRROR, ['echo', 'prism'], ['viggo', 'khopses'], ['eoor', 'unegen', 'yasmeen', 'hokkyoku']];
 const withGroups = id => {
-  const byName = (a, b) => a.name.localeCompare(b.name, 'fr');
-  const here = C.filter(x => x.id !== id && (!isKhurdan(id) || sendsToIloh(x.id))).sort(byName);
+  const byName = (a, b) => a.name.localeCompare(b.name, 'fr'), circle = WITH_CIRCLES().find(k => k.includes(id));
+  const here = C.filter(x => x.id !== id && (!circle || circle.includes(x.id))).sort(byName);
   const iloh = sendsToIloh(id) ? Object.entries(ILOH_ONLY).map(([k, name]) => ({ id: k, name })).sort(byName) : [];
   return iloh.length ? [{ h: '', list: here }, { h: "Personnages de l'Iloh", list: iloh }] : [{ h: '', list: here }];
 };

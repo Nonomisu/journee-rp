@@ -40,13 +40,15 @@ const ok = (c, l) => { console.log((c ? '  ok  ' : '  ÉCHEC ') + l); if (!c) pr
   await elle.fill('#special-hokkyoku', 'Pêche'); await elle.click('#add-hokkyoku'); await elle.waitForTimeout(200);
   await elle.click('details[data-with-fold="Pêche"] summary'); await elle.waitForTimeout(100);
   ch = await choices(elle, 'Pêche');
-  ok(ch.includes('unegen') && ch.includes('tamachag') && !ch.includes('shiruun'), 'Hokkyoku : tous les personnages de Journée RP, aucun d\'Iloh');
+  ok(JSON.stringify(ch) === '["eoor","unegen","yasmeen"]', 'Hokkyoku : Eoor, Unegen et Yasmeen seulement');
+  for (const [who, other] of [['echo', 'prism'], ['prism', 'echo'], ['viggo', 'khopses'], ['khopses', 'viggo']])
+    ok(await nono.evaluate(([w, o]) => JSON.stringify(withGroups(w).flatMap(g => g.list.map(x => x.id))) === JSON.stringify([o]), [who, other]), `${who} : seulement ${other}`);
   // Davaajav (pas Khurdan, mais recopié) : tous les personnages, plus ceux d'Iloh
   await nono.evaluate(() => go('davaajav')); await nono.waitForTimeout(200);
   await nono.fill('#special-davaajav', 'Visite'); await nono.click('#add-davaajav'); await nono.waitForTimeout(200);
   await nono.click('details[data-with-fold="Visite"] summary'); await nono.waitForTimeout(100);
   ch = await choices(nono, 'Visite');
-  ok(ch.includes('eoor') && ch.includes('shiruun'), 'Davaajav : personnages de Journée RP et d\'Iloh');
+  ok(!ch.includes('eoor') && !ch.includes('echo') && ch.includes('tamachag') && ch.includes('shiruun'), 'Davaajav : comme les Khurdans');
   // Liste d'Iloh tenue à jour par le service du VPS
   await nono.evaluate(() => RP_APP.applyIlohNames({ chars: { shiruun: { name: 'Shiruun' }, nouveau: { name: 'Nouvelle venue' } } }));
   await nono.evaluate(() => go('tamachag')); await nono.waitForTimeout(200);
