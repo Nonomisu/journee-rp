@@ -194,7 +194,7 @@ const NEWS = [];   // { to, text, charId, key, read, at (heure de création) }
 let newsDayOpen = false;   // menu « Nouvelles du jour » ouvert ou replié (garde l'état entre deux affichages)
 const playerOf = id => C.find(c => c.id === id)?.player;
 // Type de nouvelle (couleur) : nuit chaude, grossesse possible ou vie intime → rose ; activité commune → vert.
-const newsKind = n => /^(night|risk|intime|film):/.test(n.key || '') ? 'k-hot' : /^with:/.test(n.key || '') ? 'k-with' : 'k-other';
+const newsKind = n => /^(night|risk|intime|film|iact):/.test(n.key || '') ? 'k-hot' : /^with:/.test(n.key || '') ? 'k-with' : 'k-other';
 const notify = (from, to, text, key) => {
   if (!isChar(to) || playerOf(from) === playerOf(to)) return;          // seulement d'un joueur à l'autre
   if (NEWS.some(n => n.key === key)) return;
@@ -496,7 +496,32 @@ const canShareAct = l => l !== 'Voyage' && !isPrivateAct(l);
 const INTIME_WORDS = /(?<!\p{L})(sexe|sexuel|coquin|coquine|câlin|calin|ébats|ebats|faire l'amour|fait l'amour|nuit d'amour|érotique|erotique|intime|caresses?|galipettes?|gâterie|gaterie|luxure|charnel|charnelle|orgasme|déshabill|deshabill|préliminaires|preliminaires|strip|nu|nue|nus|nues|sensuel|sensuelle|libertin|plaisir)(?!\p{L})/iu;
 const looksIntime = v => INTIME_WORDS.test(v);
 // Marque (ou démarque) une activité comme intime ; les personnages notés dessus sont retirés.
-const setPrivAct = (l, on) => { if (on) { PRIV_ACTS.add(l); C.forEach(c => { if (state[c.id]?.withActs?.[l]) clearWith(c.id, l); }); } else PRIV_ACTS.delete(l); };
+const setPrivAct = (l, on) => { if (on) { PRIV_ACTS.add(l); C.forEach(c => { if (state[c.id]?.withActs?.[l]) clearWith(c.id, l); }); }
+  else { PRIV_ACTS.delete(l); C.forEach(c => { if (state[c.id]?.privWith?.[l]) clearPrivWith(c.id, l); }); } };
+// ---------- Activité intime « avec » : comme la nuit chaude, le personnage lié (et les amants), ou un autre personnage / PNJ ----------
+// s.privWith[activité] = [identifiants ou noms]. Reste dans Journée RP (jamais recopié dans Iloh). Nouvelle rose pour l'autre joueur.
+const canPrivWith = l => isPrivateAct(l) && !/^Sexe avec /.test(l) && l !== 'Plaisir en solo sur Moonstone';
+const privOf = (pw, l) => (pw?.[l] || []).filter(x => typeof x === 'string' && x);
+const privTxt = (pw, l) => (w => w.length ? ' avec ' + andList(w.map(whoLabel)) : '')(privOf(pw, l));
+const privKey = (id, other, l) => 'iact:' + keyOf(rpDay) + ':' + id + ':' + other + ':' + l;
+const privOtherOpen = new Set();   // champ « Autre » ouvert (le temps de la session)
+const privExtra = {};   // 'id:activité' → noms ajoutés par « Autre… » (restent proposés le temps de la session)
+const setPrivWith = (id, l, other, on, quiet = false) => {
+  const s = state[id], cur = privOf(s.privWith, l).filter(x => x !== other);
+  if (on) cur.push(other);
+  s.privWith ||= {};
+  if (cur.length) s.privWith[l] = cur; else delete s.privWith[l];
+  if (on && !quiet && isChar(other)) notify(id, other, `${nameOf(id)} a noté « ${l} » avec ${nameOf(other)}.`, privKey(id, other, l));
+  else if (!on) dropNews([privKey(id, other, l)]);
+};
+const clearPrivWith = (id, l) => { const s = state[id]; privOf(s.privWith, l).forEach(o => dropNews([privKey(id, o, l)])); if (s.privWith) delete s.privWith[l]; };
+const privChoices = id => [...new Set([partnerOf(id), ...loversOf(id)].filter(Boolean))];
+const privPickHtml = (id, label) => { const sel = privOf(state[id].privWith, label), opts = [...new Set([...privChoices(id), ...(privExtra[id + ':' + label] || []), ...sel])], k = id + ':' + label;
+  return `<details class="with-pick priv-pick" data-with-fold="${esc(label)}" ${withOpen.has(k) ? 'open' : ''}>
+    <summary>${icon('lips')}<span>${sel.length ? 'Avec ' + esc(andList(sel.map(whoLabel))) : 'Avec d\'autres personnages ?'}</span></summary>
+    <div class="place-list subs" role="group" aria-label="Avec qui ?">${opts.map(x => `<button type="button" data-priv-act="${esc(label)}" data-priv-with="${esc(x)}" aria-pressed="${sel.includes(x)}">${esc(whoLabel(x))}</button>`).join('')}
+      <button type="button" data-priv-other="${esc(label)}" aria-pressed="${privOtherOpen.has(k)}">Autre…</button></div>
+    ${privOtherOpen.has(k) ? `<div class="special-row"><input type="text" data-priv-name="${esc(label)}" enterkeyhint="done" autocapitalize="words" placeholder="Nom d'un personnage ou d'un PNJ"><button type="button" class="btn" data-priv-add="${esc(label)}">Ajouter</button></div>` : ''}</details>`; };
 const privToggle = a => /^Sexe avec /.test(a) || a === 'Plaisir en solo sur Moonstone' ? '' : `<button type="button" class="link small ico-btn priv-btn" data-priv="${esc(a)}" aria-pressed="${PRIV_ACTS.has(a)}" title="${PRIV_ACTS.has(a) ? 'Intime : la rendre ordinaire' : 'Marquer comme intime'}" aria-label="${PRIV_ACTS.has(a) ? 'Ne plus marquer' : 'Marquer'} ${esc(a)} comme intime">${icon('lips')}</button>`;
 const withOpen = new Set();   // sélecteurs « Avec d'autres personnages ? » ouverts (le temps de la session)
 const setWith = (id, l, other, on, quiet = false) => {
@@ -523,11 +548,14 @@ const withGroups = id => {
   return iloh.length ? [{ h: '', list: here }, { h: "Personnages de l'Iloh", list: iloh }] : [{ h: '', list: here }];
 };
 // Activités où un autre personnage (fiche validée) a mentionné celui-ci aujourd'hui.
-const sharedActsOf = id => C.filter(x => x.id !== id && state[x.id]?.done).flatMap(x => Object.entries(state[x.id].withActs || {})
-  .filter(([l, ids]) => ids.includes(id) && state[x.id].checked?.has(l)).map(([l, ids]) => ({ from: x.id, act: l, others: ids.filter(o => o !== id && isChar(o)) })));
+const sharedActsOf = id => C.filter(x => x.id !== id && state[x.id]?.done).flatMap(x => [
+  ...Object.entries(state[x.id].withActs || {}).filter(([l, ids]) => ids.includes(id) && state[x.id].checked?.has(l))
+    .map(([l, ids]) => ({ from: x.id, act: l, others: ids.filter(o => o !== id && isChar(o)) })),
+  ...Object.entries(state[x.id].privWith || {}).filter(([l, ids]) => Array.isArray(ids) && ids.includes(id) && state[x.id].checked?.has(l))
+    .map(([l, ids]) => ({ from: x.id, act: l, priv: true, others: ids.filter(o => o !== id) }))]);
 const sharedActsHtml = (id, canJoin) => {
   const L = sharedActsOf(id); if (!L.length) return '';
-  return `<div class="shared-acts"><p class="shared-h">${icon('users')}Activités communes du jour</p>${L.map(a => `<div class="shared-item"><span>${esc(nameOf(a.from))} a noté « ${esc(a.act)} » avec ${esc(andList([nameOf(id), ...a.others.map(nameOf)]))}.</span>
+  return `<div class="shared-acts"><p class="shared-h">${icon('users')}Activités communes du jour</p>${L.map(a => `<div class="shared-item"><span>${esc(nameOf(a.from))} a noté « ${esc(a.act)} » avec ${esc(andList([nameOf(id), ...a.others.map(whoLabel)]))}.</span>
     ${canJoin ? state[id].checked.has(a.act) ? '<small class="joined">✓ Sur la fiche</small>' : `<button type="button" class="join-btn" data-join-from="${a.from}" data-join-act="${esc(a.act)}">${icon('plus')}L'ajouter à la fiche ${deName(nameOf(id))}</button>` : ''}</div>`).join('')}</div>`;
 };
 // Reprend l'activité d'un autre personnage : cochée (en activité spéciale si elle n'est pas dans la liste), mêmes moments, mêmes personnages.
@@ -536,6 +564,11 @@ const joinAct = (id, from, l) => {
   if (!allActs(c).includes(l) && !s.specials.includes(l)) s.specials.push(l);
   s.checked.add(l);
   if (!s.slots[l] && state[from].slots?.[l]?.length) s.slots[l] = [...state[from].slots[l]];
+  if (isPrivateAct(l)) {   // activité intime : seulement le personnage qui l'a notée (et ses autres partenaires)
+    const told = new Set([playerOf(id)]);
+    [from, ...privOf(state[from].privWith, l).filter(o => o !== id)].forEach(o => { setPrivWith(id, l, o, true, told.has(playerOf(o))); if (isChar(o)) told.add(playerOf(o)); });
+    window.RP_SYNC?.save?.(); return;
+  }
   const told = new Set([playerOf(id)]);   // une seule nouvelle par joueur
   [from, ...withOf(state[from].withActs, l).filter(o => o !== id)].forEach(o => { setWith(id, l, o, true, told.has(playerOf(o))); told.add(playerOf(o)); });
   window.RP_SYNC?.save?.();
@@ -1370,7 +1403,7 @@ const dayRecord = (c, d) => {
     const filled = s.done || s.mood || s.checked.size || rpPlayed[c.id] || s.trip;
     return filled ? { rp: rpPlayed[c.id] || null, mood: s.mood, acts: [...s.checked], slots: s.slots, place: s.places.size ? [...s.places][0] : '', region: s.region || homeRegion(c.id),
       cond, hot: nightOf(c.id).hot, with: nightOf(c.id).with || null, trip: !!s.trip, tripInfo: s.trip ? { from: s.trip.from.region, to: s.trip.to.region, modes: [...(s.trip.modes || [])], minutes: s.trip.minutes || 0, reason: s.trip.reason || '' } : null,
-      phys: [...(s.phys || [])], mental: [...(s.mental || [])], nightStates: [...(s.nightStates || [])], nightNote: s.nightNote || '', nightNotes: { ...(s.nightNotes || {}) }, calmWith: calmWithOf(c.id), intime: s.intime || '', nefaste: [NEF.host, NEF.partner].includes(c.id) ? nefText() : '', faits: s.faits || '', intimeWith: [...(s.intimeWith || [])], withActs: { ...(s.withActs || {}) }, notes: { ...(s.stateNotes || {}) }, real: true } : null;
+      phys: [...(s.phys || [])], mental: [...(s.mental || [])], nightStates: [...(s.nightStates || [])], nightNote: s.nightNote || '', nightNotes: { ...(s.nightNotes || {}) }, calmWith: calmWithOf(c.id), intime: s.intime || '', nefaste: [NEF.host, NEF.partner].includes(c.id) ? nefText() : '', faits: s.faits || '', intimeWith: [...(s.intimeWith || [])], withActs: { ...(s.withActs || {}) }, privWith: { ...(s.privWith || {}) }, notes: { ...(s.stateNotes || {}) }, real: true } : null;
   }
   if (d > rpDay) return null;
   const e0 = HISTORY[c.id]?.[keyOf(d)];
@@ -1382,7 +1415,7 @@ const dayRecord = (c, d) => {
     cond, hot: !!e.night?.hot, with: e.night?.with || null, trip: !!e.trip,
     tripInfo: e.trip ? { from: e.trip.from?.region, to: e.trip.to?.region, modes: [...(e.trip.modes || [])], minutes: e.trip.minutes || 0, reason: e.trip.reason || '' } : null,
     phys: [...(e.phys || [])].filter(p => !MORAL.includes(p)), mental: [...(e.mental || []), ...[...(e.phys || [])].filter(p => MORAL.includes(p))],
-    notes: e.stateNotes || {}, nightStates: [...(e.nightStates || [])], nightNote: e.nightNote || '', nightNotes: e.nightNotes || {}, calmWith: e.calmWith || null, intime: e.intime || '', nefaste: e.nefaste || '', faits: e.faits || '', intimeWith: [...(e.intimeWith || [])], withActs: e.withActs || {}, real: true };
+    notes: e.stateNotes || {}, nightStates: [...(e.nightStates || [])], nightNote: e.nightNote || '', nightNotes: e.nightNotes || {}, calmWith: e.calmWith || null, intime: e.intime || '', nefaste: e.nefaste || '', faits: e.faits || '', intimeWith: [...(e.intimeWith || [])], withActs: e.withActs || {}, privWith: e.privWith || {}, real: true };
 };
 // Journées enregistrées, par personnage puis par date (clé keyOf) — remplies par sync.js.
 const HISTORY = {};
@@ -1688,7 +1721,7 @@ function renderHistory(id) {
           ${selRec.faits ? `<p class="where">${icon('star')}<span>Faits notoires : ${esc(selRec.faits)}</span></p>` : ''}
           ${selRec.cond ? `<p class="where">${icon(selRec.cond.icon)}<span>${selRec.cond.label} · ${deg(selRec.cond.tp.max)} / ${deg(selRec.cond.tp.min)}</span></p>` : ''}
           ${selRec.place ? `<p class="where">${icon('pin')}<span>${esc(selRec.place)}</span></p>` : ''}
-          ${(b => `${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(a => esc(a + withTxt(selRec.withActs, a) + ilohWithTxt(b, a, withOf(selRec.withActs, a)))).join(' · ')}</span></p>` : ''}
+          ${(b => `${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(a => esc(a + withTxt(selRec.withActs, a) + privTxt(selRec.privWith, a) + ilohWithTxt(b, a, withOf(selRec.withActs, a)))).join(' · ')}</span></p>` : ''}
           ${ilohAddedOf(b, selRec.acts).length ? `<p class="where">${icon('eye')}<span>Sur l'Iloh Khurdan : ${esc(ilohAddedOf(b, selRec.acts).map(l => l + ilohWithTxt(b, l)).join(' · '))}</span></p>` : ''}`)(ilohBackOf(id, sel))}
           ${selRec.nightStates?.length || selRec.nightNote || selRec.nightNotes?.['Nuit chaude'] ? `<p class="where">${icon('lips')}<span>Nuit : ${esc([nightStatesText(id, selRec.nightStates, selRec.nightNotes, selRec.calmWith), selRec.nightNote].filter(Boolean).join(' · '))}</span></p>` : ''}
           ${selRec.nefaste ? `<p class="where">${icon('warn')}<span>${esc(selRec.nefaste)}</span></p>` : ''}
@@ -2124,11 +2157,11 @@ function renderCharNow(id) {
         : ilohAlways(id, label)
         ? `${icon('eyeoff')}<span>Toujours masquée dans Iloh Khurdan <small>(réglé dans la liste d'activités)</small></span>`
         : `<button type="button" class="link small ico-btn" data-iloh-hide="${esc(label)}" aria-pressed="${ilohHidden(id, label)}" title="${ilohHidden(id, label) ? 'Afficher dans Iloh Khurdan' : 'Masquer dans Iloh Khurdan (ce jour-là)'}" aria-label="${ilohHidden(id, label) ? 'Afficher' : 'Masquer'} ${esc(label)} dans Iloh Khurdan">${icon(ilohHidden(id, label) ? 'eyeoff' : 'eye')}</button><span>${ilohHidden(id, label) ? 'Masquée dans Iloh Khurdan aujourd\'hui' : 'Visible dans Iloh Khurdan'}</span>`}</p>` : '';
-    const withRow = on && canShareAct(label) ? withPickHtml(id, label) : '';
+    const withRow = on && canShareAct(label) ? withPickHtml(id, label) : on && canPrivWith(label) ? privPickHtml(id, label) : '';
     return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${drawn}${detail}${contract}${trip}${slots}${withRow}${iloh}</div>`;
   };
   const ilohToday = ilohBackOf(id, rpDay);
-  const dispLabel = l => dispBase(l) + withTxt(s.withActs, l) + ilohWithTxt(ilohToday, l, withOf(s.withActs, l));
+  const dispLabel = l => dispBase(l) + withTxt(s.withActs, l) + privTxt(s.privWith, l) + ilohWithTxt(ilohToday, l, withOf(s.withActs, l));
   const dispBase = l => l === CONTRACT_ACT && activeContract(id) ? l + contractText(activeContract(id)) : s.details?.[l] && (DETAIL_ACTS[l] || RANDOM_ACTS[l]) ? `${l} : ${s.details[l]}` : huntFor(id, l) ? `${l} (${huntText(huntFor(id, l))})` : l === 'Voyage' && s.trip ? `Voyage${s.trip.modes?.size ? ` (${[...s.trip.modes].join(', ').toLowerCase()})` : ''} : ${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}` : l;
   const picked = [...s.checked];
   const byKey = {};
@@ -2570,10 +2603,20 @@ function renderCharNow(id) {
       if (e.target.checked && !activeContract(id)) CONTRACTS[id] = { start: isoDay(rpDay) };
       if (!e.target.checked && CONTRACTS[id]?.start === isoDay(rpDay)) delete CONTRACTS[id]; }   // contrat créé par erreur aujourd'hui
     if (e.target.checked) { s.checked.add(l); if (!s.slots[l] && guessSlot(l)) s.slots[l] = [...guessSlot(l)]; if (RANDOM_ACTS[l] && !s.details?.[l]) (s.details ||= {})[l] = l === JUNK_ACT && JUNK_DUO.includes(id) && junkShared.dish || drawFor(l); }
-    else { s.checked.delete(l); delete s.slots[l]; clearWith(id, l); if (RANDOM_ACTS[l] && s.details) delete s.details[l]; if (s.huntSet) delete s.huntSet[l]; s.hideIloh?.delete(l); }
+    else { s.checked.delete(l); delete s.slots[l]; clearWith(id, l); clearPrivWith(id, l); if (RANDOM_ACTS[l] && s.details) delete s.details[l]; if (s.huntSet) delete s.huntSet[l]; s.hideIloh?.delete(l); }
     if (l === JUNK_ACT && JUNK_DUO.includes(id)) setJunk(e.target.checked ? s.details[l] : null);
     renderChar(id);
   }));
+  document.querySelectorAll('[data-priv-with]').forEach(b => b.addEventListener('click', () => {
+    setPrivWith(id, b.dataset.privAct, b.dataset.privWith, b.getAttribute('aria-pressed') !== 'true'); renderChar(id); }));
+  document.querySelectorAll('[data-priv-other]').forEach(b => b.addEventListener('click', () => {
+    const k = id + ':' + b.dataset.privOther; privOtherOpen.has(k) ? privOtherOpen.delete(k) : privOtherOpen.add(k); renderChar(id);
+    document.querySelector(`[data-priv-name="${CSS.escape(b.dataset.privOther)}"]`)?.focus(); }));
+  const privAdd = l => { const inp = document.querySelector(`[data-priv-name="${CSS.escape(l)}"]`), v = inp?.value.trim(); if (!v) return;
+    const w = charByName(v) || v; if (w === id) return;
+    (privExtra[id + ':' + l] ||= new Set()).add(w); setPrivWith(id, l, w, true); privOtherOpen.delete(id + ':' + l); renderChar(id); };
+  document.querySelectorAll('[data-priv-add]').forEach(b => b.addEventListener('click', () => privAdd(b.dataset.privAdd)));
+  document.querySelectorAll('[data-priv-name]').forEach(i => i.addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); privAdd(i.dataset.privName); } }));
   document.querySelectorAll('[data-share]').forEach(b => b.addEventListener('click', () => {
     setWith(id, b.dataset.shareAct, b.dataset.share, b.getAttribute('aria-pressed') !== 'true'); renderChar(id);
   }));
@@ -2665,7 +2708,7 @@ initPlaces();
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'withActs'];
+  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'withActs', 'privWith'];
 const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{}, nightStates:new Set() });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }
