@@ -1065,6 +1065,36 @@ const intimeOptions = id => [...C.filter(x => x.groups.includes('Khurdans')).map
 const intimeKey = (id, x) => 'intime:' + keyOf(rpDay) + ':' + id + ':' + x;
 const intimeWithText = id => [...(state[id].intimeWith || [])].map(nameOf).join(', ');
 // Khurdans : « Détails et précisions » sous chaque choix de nuit coché (scope : 'next' ou 'prev').
+// Vie intime réciproque : ce qu'un autre personnage a noté AVEC celui-ci (fiche validée) peut être repris sur sa propre fiche,
+// reformulé de son point de vue (« a proposé un massage chaud à son compagnon » → « a reçu un massage chaud de sa compagne »).
+// La reformulation est une proposition, modifiable avant l'ajout.
+const PARTNER_WORDS = [['compagnon', 'compagne'], ['mari', 'femme'], ['époux', 'épouse'], ['amant', 'amante'], ['chéri', 'chérie'], ['bien-aimé', 'bien-aimée']];
+const GIVE_VERBS = 'proposé|offert|donné|fait|prodigué|préparé|servi|accordé|envoyé|écrit|chanté|dédié|réservé|apporté|murmuré|glissé|cuisiné|joué|dansé|lu';
+const mirrorIntime = (text, from, to) => {
+  const fFem = isFem(from), name = nameOf(from), toName = nameOf(to), poss = fFem ? 'sa' : 'son';
+  const words = PARTNER_WORDS.flat().join('|'), L = '(?<!\\p{L})', R = '(?!\\p{L})';   // limites de mot, lettres accentuées comprises
+  const pick = w => { const i = PARTNER_WORDS.findIndex(p => p.includes(w)); return i < 0 ? w : PARTNER_WORDS[i][fFem ? 1 : 0]; };   // désigne maintenant l'auteur
+  let t = text, gave = false;
+  // « a proposé X à son compagnon / à Khokkutsai » → « a reçu X de sa compagne / d'Inkaraa »
+  t = t.replace(new RegExp(`${L}a (?:${GIVE_VERBS})${R}`, 'giu'), m => { gave = true; return (m[0] === 'A' ? 'A' : 'a') + ' reçu'; });
+  if (gave) {
+    t = t.replace(new RegExp(`${L}(?:à|pour)\\s+(?:son|sa)\\s+(${words})${R}`, 'giu'), (_, w) => `de ${poss} ${pick(w.toLowerCase())}`);
+    t = t.replace(new RegExp(`${L}(?:à|pour)\\s+${toName}${R}`, 'gu'), deName(name));
+  }
+  // Le partenaire désigné (« son compagnon », son nom) devient l'auteur.
+  t = t.replace(new RegExp(`${L}(?:son|sa)\\s+(${words})${R}`, 'giu'), (_, w) => `${poss} ${pick(w.toLowerCase())}`);
+  t = t.replace(new RegExp(`${L}${toName}${R}`, 'gu'), name);
+  return t;
+};
+const intimeFromOthers = id => C.filter(x => x.id !== id && state[x.id]?.done && state[x.id].intimeWith?.has?.(id) && state[x.id].intime?.trim())
+  .map(x => { const text = state[x.id].intime.trim(); return { from: x.id, text, proposal: mirrorIntime(text, x.id, id) }; });
+const intimeAdded = new Set();   // reprises faites pendant la session (en plus du texte déjà présent sur la fiche)
+const intimeTaken = (id, o) => intimeAdded.has(id + ':' + o.from + ':' + o.text) || (state[id].intime || '').includes(o.proposal);
+const intimeFromHtml = id => intimeFromOthers(id).map(o => `<div class="intime-from">
+    <p class="intime-src">${icon('lips')}<span><b>${esc(nameOf(o.from))}</b> a noté avec ${esc(nameOf(id))} : « ${esc(o.text)} »</span></p>
+    ${intimeTaken(id, o) ? `<p class="reserved">✓ Repris dans la vie intime ${deName(nameOf(id))}.</p>`
+      : `<textarea id="intime-mirror-${id}-${o.from}" rows="2" aria-label="Version ${deName(nameOf(id))}">${esc(o.proposal)}</textarea>
+      <button type="button" class="btn" data-intime-take="${o.from}">Ajouter à la vie intime ${deName(nameOf(id))}</button>`}</div>`).join('');
 const nightNoteInput = () => '';   // remplacé par le bloc « Vie intime » (les précisions déjà saisies restent affichées)
 // Nuit précédente = la « nuit à venir » d'hier (même nuit), relue dans l'historique et modifiable ici.
 const prevDay = () => { const d = new Date(rpDay); d.setDate(d.getDate() - 1); return d; };
@@ -2131,6 +2161,7 @@ function renderCharNow(id) {
       <label class="check-inline"><input type="checkbox" id="keep-${id}"> L'ajouter aussi à la liste ${deName(c.name)}</label>
     </div>
     ${isKhurdan(id) ? `<div class="chrono-part"><h3 class="chrono-h">Vie intime</h3>
+      ${intimeFromHtml(id)}
       <textarea id="intime-${id}" rows="3" placeholder="Ce qui s'est passé dans la vie intime ${deName(c.name)} aujourd'hui (facultatif)">${esc(s.intime || '')}</textarea>
       <p class="reserved">Avec :</p>
       <div class="place-list" role="group" aria-label="Personnages concernés">${intimeOptions(id).map(x => `<button type="button" data-intime-with="${x}" aria-pressed="${!!s.intimeWith?.has(x)}">${esc(nameOf(x))}</button>`).join('')}</div>
@@ -2208,6 +2239,14 @@ function renderCharNow(id) {
   document.getElementById('infos-'+id)?.addEventListener('input', e => s.infos = e.target.value);
   document.getElementById('faits-'+id)?.addEventListener('input', e => s.faits = e.target.value);
   document.getElementById('intime-'+id)?.addEventListener('input', e => s.intime = e.target.value);
+  document.querySelectorAll('[data-intime-take]').forEach(b => b.addEventListener('click', () => {
+    const from = b.dataset.intimeTake, o = intimeFromOthers(id).find(x => x.from === from); if (!o) return;
+    const v = document.getElementById(`intime-mirror-${id}-${from}`)?.value.trim(); if (!v) return;
+    s.intime = (s.intime?.trim() ? s.intime.trim() + '\n' : '') + v;
+    (s.intimeWith ||= new Set()).add(from);   // lien sans nouvelle notification : l'autre joueur est déjà au courant
+    intimeAdded.add(id + ':' + from + ':' + o.text);
+    window.RP_SYNC?.save?.(); renderChar(id);
+  }));
   document.querySelectorAll('[data-intime-with]').forEach(b => b.addEventListener('click', () => {
     const x = b.dataset.intimeWith; s.intimeWith ||= new Set();
     if (s.intimeWith.has(x)) { s.intimeWith.delete(x); dropNews([intimeKey(id, x)]); }
