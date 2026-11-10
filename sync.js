@@ -28,6 +28,8 @@ const rpIso = () => { const d = new Date(Date.now() - 5 * 3600e3); return `${d.g
 const gRef = doc(db, 'shared', 'global');
 const dRef = doc(db, 'shared', 'day-' + A.iso);
 const monthRef = (id, ym) => doc(db, 'days', id, 'months', ym);
+// Retour d'Iloh Khurdan (activités communes acceptées dans Iloh), écrit par le service du VPS ; lecture seule ici.
+const ilohRef = (id, ym) => doc(db, 'iloh', id, 'months', ym);
 const charRef = id => doc(db, 'characters', id);
 const todayRef = id => doc(db, 'today', id);
 // Notifications push : clé publique VAPID du service du VPS (la clé privée reste sur le VPS).
@@ -124,12 +126,12 @@ window.RP_SYNC = {
 async function loadMonth(ym) {
   if (loaded.has(ym)) return;
   loaded.add(ym);
-  await Promise.all(A.ids.map(async id => {
+  await Promise.all([...A.ids.map(async id => {
     const s = await getDoc(monthRef(id, ym));
     const data = s.data() || {};
     A.applyMonth(id, ym, data, ym === A.ym && !started);
     if (ym === A.ym) seenToday[id] = clone(data[A.day]);
-  }));
+  }), ...A.ilohIds().map(id => getDoc(ilohRef(id, ym)).then(s => A.applyIloh(id, ym, s.data() || {}), () => {}))]);
 }
 
 async function boot() {
@@ -211,6 +213,7 @@ function listen() {
     list.forEach(n => base.news.set(n.key, !!n.read));
     A.applyNews(list); A.rerender();
   });
+  A.ilohIds().forEach(id => onSnapshot(ilohRef(id, A.ym), s => { A.applyIloh(id, A.ym, s.data() || {}); A.rerender(); }, () => {}));
   A.ids.forEach(id => onSnapshot(monthRef(id, A.ym), s => {
     if (s.metadata.hasPendingWrites) return;
     const data = s.data() || {}, e = data[A.day];

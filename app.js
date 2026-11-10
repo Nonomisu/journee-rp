@@ -1252,6 +1252,20 @@ const allActs = c => Object.values(c.acts).flat();
 // ce jour-là (s.hideIloh, sur la fiche du jour) ou toujours (ILOH_HIDE_ALWAYS, réglé dans le mode gestion de la liste).
 const ILOH_MIRROR = ['tamachag', 'khokkutsai', 'ankhbayar', 'tengis', 'taiga', 'inkaraa', 'khubunjin', 'ogloo', 'javkhaanhun', 'davaajav'];
 const sendsToIloh = id => ILOH_MIRROR.includes(id);
+// ---------- Retour d'Iloh Khurdan : activités communes acceptées dans Iloh (lecture seule) ----------
+// Écrites par le service du VPS dans iloh/{personnage}/months/{AAAA-MM} : { [jour]: { added: [activités], with: { activité: [personnages] } } }.
+// Affichées avec la fiche (récap, image Discord, historique), sans modifier la journée enregistrée ici.
+const ILOH_BACK = {};   // id → { 'AAAA-MM:J': { added, with } }
+const ymKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}:${d.getDate()}`;
+const ilohBackOf = (id, d) => sendsToIloh(id) && d ? ILOH_BACK[id]?.[ymKey(d)] || null : null;
+const ilohName = x => isChar(x) ? nameOf(x) : x;
+const ilohAnd = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1];
+const ilohWithTxt = (b, l) => b?.with?.[l]?.length ? ' avec ' + ilohAnd(b.with[l].map(ilohName)) : '';
+// Activités ajoutées dans Iloh qui ne figurent pas déjà sur la fiche.
+const ilohAddedOf = (b, checked) => (b?.added || []).filter(l => !checked.has?.(l) && !checked.includes?.(l));
+const ilohBackHtml = (b, checked) => { const add = ilohAddedOf(b, checked); return add.length
+  ? `<div class="recap-infos iloh-back"><span>Sur l'Iloh Khurdan</span><p>${add.map(l => esc(l + ilohWithTxt(b, l))).join(' · ')}</p></div>` : ''; };
+
 const ILOH_HIDE_ALWAYS = {};   // id → Set d'activités toujours masquées dans Iloh Khurdan
 const ilohAlways = (id, l) => !!ILOH_HIDE_ALWAYS[id]?.has(l);
 const ilohHidden = (id, l) => ilohAlways(id, l) || !!state[id].hideIloh?.has(l);
@@ -1580,7 +1594,8 @@ function renderHistory(id) {
           ${selRec.faits ? `<p class="where">${icon('star')}<span>Faits notoires : ${esc(selRec.faits)}</span></p>` : ''}
           ${selRec.cond ? `<p class="where">${icon(selRec.cond.icon)}<span>${selRec.cond.label} · ${deg(selRec.cond.tp.max)} / ${deg(selRec.cond.tp.min)}</span></p>` : ''}
           ${selRec.place ? `<p class="where">${icon('pin')}<span>${esc(selRec.place)}</span></p>` : ''}
-          ${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(esc).join(' · ')}</span></p>` : ''}
+          ${(b => `${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(a => esc(a + ilohWithTxt(b, a))).join(' · ')}</span></p>` : ''}
+          ${ilohAddedOf(b, selRec.acts).length ? `<p class="where">${icon('eye')}<span>Sur l'Iloh Khurdan : ${esc(ilohAddedOf(b, selRec.acts).map(l => l + ilohWithTxt(b, l)).join(' · '))}</span></p>` : ''}`)(ilohBackOf(id, sel))}
           ${selRec.nightStates?.length || selRec.nightNote || selRec.nightNotes?.['Nuit chaude'] ? `<p class="where">${icon('lips')}<span>Nuit : ${esc([nightStatesText(id, selRec.nightStates, selRec.nightNotes, selRec.calmWith), selRec.nightNote].filter(Boolean).join(' · '))}</span></p>` : ''}
           ${selRec.nefaste ? `<p class="where">${icon('warn')}<span>${esc(selRec.nefaste)}</span></p>` : ''}
           ${selRec.intime || selRec.intimeWith?.length ? `<p class="where">${icon('lips')}<span>Vie intime${selRec.intimeWith?.length ? ' avec ' + esc(selRec.intimeWith.filter(isChar).map(nameOf).join(', ')) : ''}${selRec.intime ? ' : ' + esc(selRec.intime) : ''}</span></p>` : ''}
@@ -2015,7 +2030,9 @@ function renderCharNow(id) {
         : `<button type="button" class="link small ico-btn" data-iloh-hide="${esc(label)}" aria-pressed="${ilohHidden(id, label)}" title="${ilohHidden(id, label) ? 'Afficher dans Iloh Khurdan' : 'Masquer dans Iloh Khurdan (ce jour-là)'}" aria-label="${ilohHidden(id, label) ? 'Afficher' : 'Masquer'} ${esc(label)} dans Iloh Khurdan">${icon(ilohHidden(id, label) ? 'eyeoff' : 'eye')}</button><span>${ilohHidden(id, label) ? 'Masquée dans Iloh Khurdan aujourd\'hui' : 'Visible dans Iloh Khurdan'}</span>`}</p>` : '';
     return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${drawn}${detail}${contract}${trip}${slots}${iloh}</div>`;
   };
-  const dispLabel = l => l === CONTRACT_ACT && activeContract(id) ? l + contractText(activeContract(id)) : s.details?.[l] && (DETAIL_ACTS[l] || RANDOM_ACTS[l]) ? `${l} : ${s.details[l]}` : huntFor(id, l) ? `${l} (${huntText(huntFor(id, l))})` : l === 'Voyage' && s.trip ? `Voyage${s.trip.modes?.size ? ` (${[...s.trip.modes].join(', ').toLowerCase()})` : ''} : ${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}` : l;
+  const ilohToday = ilohBackOf(id, rpDay);
+  const dispLabel = l => dispBase(l) + ilohWithTxt(ilohToday, l);
+  const dispBase = l => l === CONTRACT_ACT && activeContract(id) ? l + contractText(activeContract(id)) : s.details?.[l] && (DETAIL_ACTS[l] || RANDOM_ACTS[l]) ? `${l} : ${s.details[l]}` : huntFor(id, l) ? `${l} (${huntText(huntFor(id, l))})` : l === 'Voyage' && s.trip ? `Voyage${s.trip.modes?.size ? ` (${[...s.trip.modes].join(', ').toLowerCase()})` : ''} : ${legLabel(s.trip.from)} → ${legLabel(s.trip.to)}` : l;
   const picked = [...s.checked];
   const byKey = {};
   // Une activité sur plusieurs périodes apparaît dans chacune (plus de période combinée « Aube → Matin »).
@@ -2092,6 +2109,7 @@ function renderCharNow(id) {
       ${groups.length ? `<ul class="recap-list">${groups.map(({ sl, items }) => `<li>
         <span class="recap-when">${sl.icon ? icon(sl.icon) : ''}${sl.label}</span>
         <span class="recap-what">${items.map(l => esc(dispLabel(l))).join(' · ')}</span></li>`).join('')}</ul>` : ''}
+      ${ilohBackHtml(ilohToday, s.checked)}
       ${s.faits?.trim() ? `<div class="recap-infos"><span>Faits notoires</span><p>${esc(s.faits.trim())}</p></div>` : ''}
       ${s.infos?.trim() ? `<div class="recap-infos"><span>Informations</span><p>${esc(s.infos.trim())}</p></div>` : ''}
       ${s.shot ? `<img class="recap-shot" src="${s.shot}" alt="Capture du jour">` : ''}
@@ -2134,6 +2152,7 @@ function renderCharNow(id) {
     <section class="chrono"><h2>Chronologie du jour</h2>
     ${prevNightBlock(id)}
     <div class="chrono-part"><h3 class="chrono-h">Activités</h3>
+      ${(b => b ? `<p class="reserved iloh-note">${icon('eye')}Ajouts faits sur l'Iloh Khurdan : ${esc([...ilohAddedOf(b, s.checked).map(l => l + ilohWithTxt(b, l)), ...Object.keys(b.with || {}).filter(l => s.checked.has(l)).map(l => l + ilohWithTxt(b, l))].join(' · '))}. Ils s'affichent sur le récap.</p>` : '')(ilohToday)}
       ${cats.length ? '' : `<p class="reserved">Liste d'activités à définir. En attendant, utilise le champ « Activité spéciale » et coche « L'ajouter aussi à la liste ».</p>`}
       ${!s.manageActs && cats.length > 1 ? `<div class="fold-all"><button type="button" class="link small ico-btn" data-fold-all="1" title="Tout replier" aria-label="Tout replier">${icon('foldall')}</button><button type="button" class="link small ico-btn" data-fold-all="0" title="Tout déplier" aria-label="Tout déplier">${icon('unfoldall')}</button></div>` : ''}
       ${cats.map(k => !s.manageActs ? (list => `<details class="cat fold" data-fold="${k}" ${isFolded(id, k) ? '' : 'open'}>
@@ -2652,6 +2671,13 @@ window.RP_APP = {
     replaceArr(NEWS, (news || []).map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read, at: newsAt(n) })));
   },
   // data : { '30': entrée, … } d'un document days/{id}/months/{AAAA-MM}
+  // Retour d'Iloh Khurdan (iloh/{id}/months/{ym}) : remplace les jours de ce mois.
+  applyIloh: (id, ym, data) => {
+    const m = (ILOH_BACK[id] ||= {});
+    Object.keys(m).filter(k => k.startsWith(ym + ':')).forEach(k => delete m[k]);
+    Object.entries(data || {}).forEach(([d, x]) => { m[ym + ':' + d] = x; });
+  },
+  ilohIds: () => C.filter(c => sendsToIloh(c.id)).map(c => c.id),
   applyMonth: (id, ym, data, withToday) => {
     const [y, m] = ym.split('-').map(Number);
     const h = HISTORY[id] ||= {};

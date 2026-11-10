@@ -122,6 +122,13 @@ window.RP_APP = {
     replaceArr(NEWS, (news || []).map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read, at: newsAt(n) })));
   },
   // data : { '30': entrée, … } d'un document days/{id}/months/{AAAA-MM}
+  // Retour d'Iloh Khurdan (iloh/{id}/months/{ym}) : remplace les jours de ce mois.
+  applyIloh: (id, ym, data) => {
+    const m = (ILOH_BACK[id] ||= {});
+    Object.keys(m).filter(k => k.startsWith(ym + ':')).forEach(k => delete m[k]);
+    Object.entries(data || {}).forEach(([d, x]) => { m[ym + ':' + d] = x; });
+  },
+  ilohIds: () => C.filter(c => sendsToIloh(c.id)).map(c => c.id),
   applyMonth: (id, ym, data, withToday) => {
     const [y, m] = ym.split('-').map(Number);
     const h = HISTORY[id] ||= {};
