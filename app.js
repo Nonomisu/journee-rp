@@ -492,6 +492,12 @@ const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' e
 const withTxt = (wa, l) => (w => w.length ? ' avec ' + andList(w.map(nameOf)) : '')(withOf(wa, l));
 const withKey = (id, other, l) => 'with:' + keyOf(rpDay) + ':' + id + ':' + other + ':' + l;
 const canShareAct = l => l !== 'Voyage' && !isPrivateAct(l);
+// Mots qui font cocher d'office « Activité intime » quand on crée une activité (la case reste modifiable à la main).
+const INTIME_WORDS = /(?<!\p{L})(sexe|sexuel|coquin|coquine|câlin|calin|ébats|ebats|faire l'amour|fait l'amour|nuit d'amour|érotique|erotique|intime|caresses?|galipettes?|gâterie|gaterie|luxure|charnel|charnelle|orgasme|déshabill|deshabill|préliminaires|preliminaires|strip|nu|nue|nus|nues|sensuel|sensuelle|libertin|plaisir)(?!\p{L})/iu;
+const looksIntime = v => INTIME_WORDS.test(v);
+// Marque (ou démarque) une activité comme intime ; les personnages notés dessus sont retirés.
+const setPrivAct = (l, on) => { if (on) { PRIV_ACTS.add(l); C.forEach(c => { if (state[c.id]?.withActs?.[l]) clearWith(c.id, l); }); } else PRIV_ACTS.delete(l); };
+const privToggle = a => /^Sexe avec /.test(a) || a === 'Plaisir en solo sur Moonstone' ? '' : `<button type="button" class="link small ico-btn priv-btn" data-priv="${esc(a)}" aria-pressed="${PRIV_ACTS.has(a)}" title="${PRIV_ACTS.has(a) ? 'Intime : la rendre ordinaire' : 'Marquer comme intime'}" aria-label="${PRIV_ACTS.has(a) ? 'Ne plus marquer' : 'Marquer'} ${esc(a)} comme intime">${icon('lips')}</button>`;
 const withOpen = new Set();   // sélecteurs « Avec d'autres personnages ? » ouverts (le temps de la session)
 const setWith = (id, l, other, on, quiet = false) => {
   const s = state[id], cur = new Set(withOf(s.withActs, l));
@@ -2113,7 +2119,9 @@ function renderCharNow(id) {
           <button type="button" class="btn" data-hunt-add="${esc(label)}">Ajouter</button></div>
         <datalist id="game-${id}-${hunt.mode}">${huntGame(id, label).map(g => `<option value="${esc(g)}">`).join('')}</datalist>
         ${hunt.catches.length ? '' : '<p class="reserved">Aucune prise ajoutée : la chasse compte comme bredouille.</p>'}` : ''}</div>` : '';
-    const iloh = on && sendsToIloh(id) && label !== 'Voyage' ? `<p class="act-detail iloh-row">${ilohAlways(id, label)
+    const iloh = on && sendsToIloh(id) && label !== 'Voyage' ? `<p class="act-detail iloh-row">${isPrivateAct(label)
+        ? `${icon('lips')}<span>Intime : reste dans Journée RP</span>`
+        : ilohAlways(id, label)
         ? `${icon('eyeoff')}<span>Toujours masquée dans Iloh Khurdan <small>(réglé dans la liste d'activités)</small></span>`
         : `<button type="button" class="link small ico-btn" data-iloh-hide="${esc(label)}" aria-pressed="${ilohHidden(id, label)}" title="${ilohHidden(id, label) ? 'Afficher dans Iloh Khurdan' : 'Masquer dans Iloh Khurdan (ce jour-là)'}" aria-label="${ilohHidden(id, label) ? 'Afficher' : 'Masquer'} ${esc(label)} dans Iloh Khurdan">${icon(ilohHidden(id, label) ? 'eyeoff' : 'eye')}</button><span>${ilohHidden(id, label) ? 'Masquée dans Iloh Khurdan aujourd\'hui' : 'Visible dans Iloh Khurdan'}</span>`}</p>` : '';
     const withRow = on && canShareAct(label) ? withPickHtml(id, label) : '';
@@ -2255,6 +2263,7 @@ function renderCharNow(id) {
         : `<h3>${esc(catLabel(c, k))}${s.manageActs ? ` <button type="button" class="link small ico-btn" data-rename="${k}" title="Renommer" aria-label="Renommer">${icon('pencil')}</button>` : ''}</h3>`}${s.manageActs
         ? (live(k).length ? live(k).map(a => `<div class="act manage"><span>${esc(a)}</span>
             <select class="cat-move" data-act-cat="${esc(a)}" aria-label="Catégorie de ${esc(a)}">${catsOf(c).map(x => `<option value="${x}" ${x === k ? 'selected' : ''}>${esc(catLabel(c, x))}</option>`).join('')}</select>
+            ${privToggle(a)}
             ${sendsToIloh(id) ? `<button type="button" class="link small ico-btn" data-iloh-always="${esc(a)}" aria-pressed="${ilohAlways(id, a)}" title="${ilohAlways(id, a) ? 'Toujours masquée dans Iloh Khurdan : la rendre visible' : 'Toujours masquer dans Iloh Khurdan'}" aria-label="${ilohAlways(id, a) ? 'Rendre visible' : 'Toujours masquer'} ${esc(a)} dans Iloh Khurdan">${icon(ilohAlways(id, a) ? 'eyeoff' : 'eye')}</button>` : ''}
             ${s.actDel === a ? `<button type="button" class="link small danger" data-act-remove="${esc(a)}">Confirmer la suppression</button>` : `<button type="button" class="link small ico-btn" data-act-del="${esc(a)}" title="Supprimer" aria-label="Supprimer">${icon('trash')}</button>`}</div>`).join('')
           : `<p class="reserved">Catégorie vide : déplace-y des activités. <button type="button" class="link small ico-btn" data-cat-del="${k}" title="Supprimer la catégorie" aria-label="Supprimer la catégorie">${icon('trash')}</button></p>`)
@@ -2263,13 +2272,14 @@ function renderCharNow(id) {
         <button type="button" class="btn" id="newcat-add-${id}">Créer</button></div>` : ''}
       ${canEdit(id) ? `<button type="button" class="link small manage-toggle ico-btn" id="manage-acts-${id}" title="${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités et les catégories'}" aria-label="${s.manageActs ? 'Terminer' : 'Gérer la liste d\'activités et les catégories'}">${icon(s.manageActs ? 'check' : 'gear')}</button>` : ''}
       ${s.specials.length ? `<div class="cat"><h3>Spéciales du jour</h3>${s.manageActs
-        ? s.specials.map(a => `<div class="act manage"><span>${esc(a)}</span>${s.actDel === 'spe:' + a ? `<button type="button" class="link small danger" data-special-remove="${esc(a)}">Confirmer la suppression</button>` : `<button type="button" class="link small ico-btn" data-act-del="spe:${esc(a)}" title="Supprimer" aria-label="Supprimer">${icon('trash')}</button>`}</div>`).join('')
+        ? s.specials.map(a => `<div class="act manage"><span>${esc(a)}</span>${privToggle(a)}${s.actDel === 'spe:' + a ? `<button type="button" class="link small danger" data-special-remove="${esc(a)}">Confirmer la suppression</button>` : `<button type="button" class="link small ico-btn" data-act-del="spe:${esc(a)}" title="Supprimer" aria-label="Supprimer">${icon('trash')}</button>`}</div>`).join('')
         : s.specials.map(a => actRow(a, true)).join('')}</div>` : ''}
       ${babysitBlock(id, true)}
       <h4 class="chrono-sub">Activité spéciale</h4>
       <div class="special-row"><input type="text" id="special-${id}" placeholder="Ex. : réception à l'ambassade">
         <button type="button" class="btn" id="add-${id}">Ajouter</button></div>
       <label class="check-inline"><input type="checkbox" id="keep-${id}"> L'ajouter aussi à la liste ${deName(c.name)}</label>
+      <label class="check-inline"><input type="checkbox" id="priv-${id}"> Activité intime <small>(jamais dans Iloh Khurdan, sans « Avec… »)</small></label>
     </div>
     ${isKhurdan(id) ? `<div class="chrono-part"><h3 class="chrono-h">Vie intime</h3>
       ${intimeFromHtml(id)}
@@ -2612,8 +2622,15 @@ function renderCharNow(id) {
     const l = b.dataset.ilohHide; s.hideIloh ||= new Set(); s.hideIloh.has(l) ? s.hideIloh.delete(l) : s.hideIloh.add(l); renderChar(id); }));
   document.querySelectorAll('[data-iloh-always]').forEach(b => b.addEventListener('click', () => {
     const l = b.dataset.ilohAlways, set = ILOH_HIDE_ALWAYS[id] ||= new Set(); set.has(l) ? set.delete(l) : set.add(l); renderChar(id); }));
+  document.querySelectorAll('[data-priv]').forEach(b => b.addEventListener('click', () => {
+    setPrivAct(b.dataset.priv, b.getAttribute('aria-pressed') !== 'true'); renderChar(id); }));
+  // « Activité intime » cochée d'office selon les mots tapés, tant que le joueur n'a pas touché la case.
+  const privBox = document.getElementById('priv-'+id);
+  privBox.addEventListener('change', () => { privBox.dataset.touched = '1'; });
+  document.getElementById('special-'+id).addEventListener('input', e => { if (!privBox.dataset.touched) privBox.checked = looksIntime(e.target.value); });
   document.getElementById('add-'+id).addEventListener('click', () => {
     const inp = document.getElementById('special-'+id), v = inp.value.trim(); if (!v) return;
+    if (privBox.checked) setPrivAct(v, true);
     if (document.getElementById('keep-'+id).checked) { c.removedActs?.delete(v); (c.acts.quotidien ||= []).push(v); (c.addedActs ||= []).push(v); }
     else s.specials.push(v);
     s.checked.add(v); renderChar(id);
@@ -2663,7 +2680,10 @@ const replaceObj = (target, src) => { Object.keys(target).forEach(k => delete ta
 const replaceArr = (target, src) => { target.length = 0; (src || []).forEach(x => target.push(x)); };
 const owns = id => C.find(c => c.id === id)?.player === me;
 // Activités et lieux privés : jamais copiés dans l'encart public « Aujourd'hui » des fiches.
-const isPrivateAct = a => /^Sexe avec /.test(a) || a === 'Plaisir en solo sur Moonstone';
+// Activités intimes : les prévues (« Sexe avec … », Moonstone) et celles marquées « intime » à la création (PRIV_ACTS, partagé).
+// Jamais recopiées dans Iloh Khurdan, sans « Avec d'autres personnages ? ».
+const PRIV_ACTS = new Set();
+const isPrivateAct = a => /^Sexe avec /.test(a) || a === 'Plaisir en solo sur Moonstone' || PRIV_ACTS.has(a);
 
 const entryOf = id => {
   const s = state[id], o = {};
@@ -2700,7 +2720,7 @@ const applyChar = (c, d) => {
   c.customCats = [...(d.customCats || [])]; c.actCat = { ...(d.actCat || {}) }; c.catNames = { ...(d.catNames || {}) }; applyActLayout(c);
 };
 const globalOf = () => enc({ lovers: LOVERS, protect: lastProtect, alerts, events: EVENTS, arcs: ARCS, arcSeq,
-  milestones: MILESTONES, contracts: CONTRACTS, workdays: WORKDAYS, hideIloh: ILOH_HIDE_ALWAYS });
+  milestones: MILESTONES, contracts: CONTRACTS, workdays: WORKDAYS, hideIloh: ILOH_HIDE_ALWAYS, privActs: PRIV_ACTS });
 const applyGlobal = g => {
   const d = dec(g || {});
   if ('lovers' in d) replaceObj(LOVERS, d.lovers);
@@ -2713,6 +2733,7 @@ const applyGlobal = g => {
   if ('contracts' in d) replaceObj(CONTRACTS, d.contracts);
   if ('workdays' in d) { replaceObj(WORKDAYS, d.workdays); WORKDAYS.khopses ||= new Set(); }
   if ('hideIloh' in d) replaceObj(ILOH_HIDE_ALWAYS, d.hideIloh);
+  if ('privActs' in d) { PRIV_ACTS.clear(); [...(d.privActs || [])].forEach(a => typeof a === 'string' && PRIV_ACTS.add(a)); }
 };
 const dayOf = () => enc({ nights: nightsBy, calm: calmBy, nefaste, filmed, weather: weatherOn, rp: rpPlayed, junk: junkShared.dish,
   protect: Object.fromEntries(C.map(c => [c.id, !!state[c.id].protect])),

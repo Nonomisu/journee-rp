@@ -421,6 +421,8 @@ button.link { background: none; border: 0; padding: 0; color: var(--gold); text-
 .with-pick summary::-webkit-details-marker { display: none; }
 .with-pick summary .ico { width: 1rem; height: 1rem; flex: none; }
 .with-pick .place-list { margin-top: .4rem; }
+.priv-btn[aria-pressed="false"] .ico { opacity: .35; }
+.priv-btn[aria-pressed="true"] { color: var(--heart); }
 .with-pick .with-h { margin: .6rem 0 0; font-size: .75rem; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; }
 .shared-acts { display: grid; gap: .3rem; padding: .7rem .8rem; margin: .2rem 0 .6rem; border: 1px dashed var(--rule); border-radius: 6px; text-align: left; }
 .shared-h { display: flex; align-items: center; gap: .4rem; margin: 0; font-size: .78rem; letter-spacing: .12em; text-transform: uppercase; color: #6fbf73; }
@@ -663,6 +665,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=f6b32293dc" charset="utf-8"></script>
+<script src="app.js?v=5a1661ec26" charset="utf-8"></script>
 <script type="module" src="sync.js?v=7fbea0f3af"></script>
 

@@ -17,7 +17,10 @@ const replaceObj = (target, src) => { Object.keys(target).forEach(k => delete ta
 const replaceArr = (target, src) => { target.length = 0; (src || []).forEach(x => target.push(x)); };
 const owns = id => C.find(c => c.id === id)?.player === me;
 // Activités et lieux privés : jamais copiés dans l'encart public « Aujourd'hui » des fiches.
-const isPrivateAct = a => /^Sexe avec /.test(a) || a === 'Plaisir en solo sur Moonstone';
+// Activités intimes : les prévues (« Sexe avec … », Moonstone) et celles marquées « intime » à la création (PRIV_ACTS, partagé).
+// Jamais recopiées dans Iloh Khurdan, sans « Avec d'autres personnages ? ».
+const PRIV_ACTS = new Set();
+const isPrivateAct = a => /^Sexe avec /.test(a) || a === 'Plaisir en solo sur Moonstone' || PRIV_ACTS.has(a);
 
 const entryOf = id => {
   const s = state[id], o = {};
@@ -54,7 +57,7 @@ const applyChar = (c, d) => {
   c.customCats = [...(d.customCats || [])]; c.actCat = { ...(d.actCat || {}) }; c.catNames = { ...(d.catNames || {}) }; applyActLayout(c);
 };
 const globalOf = () => enc({ lovers: LOVERS, protect: lastProtect, alerts, events: EVENTS, arcs: ARCS, arcSeq,
-  milestones: MILESTONES, contracts: CONTRACTS, workdays: WORKDAYS, hideIloh: ILOH_HIDE_ALWAYS });
+  milestones: MILESTONES, contracts: CONTRACTS, workdays: WORKDAYS, hideIloh: ILOH_HIDE_ALWAYS, privActs: PRIV_ACTS });
 const applyGlobal = g => {
   const d = dec(g || {});
   if ('lovers' in d) replaceObj(LOVERS, d.lovers);
@@ -67,6 +70,7 @@ const applyGlobal = g => {
   if ('contracts' in d) replaceObj(CONTRACTS, d.contracts);
   if ('workdays' in d) { replaceObj(WORKDAYS, d.workdays); WORKDAYS.khopses ||= new Set(); }
   if ('hideIloh' in d) replaceObj(ILOH_HIDE_ALWAYS, d.hideIloh);
+  if ('privActs' in d) { PRIV_ACTS.clear(); [...(d.privActs || [])].forEach(a => typeof a === 'string' && PRIV_ACTS.add(a)); }
 };
 const dayOf = () => enc({ nights: nightsBy, calm: calmBy, nefaste, filmed, weather: weatherOn, rp: rpPlayed, junk: junkShared.dish,
   protect: Object.fromEntries(C.map(c => [c.id, !!state[c.id].protect])),
