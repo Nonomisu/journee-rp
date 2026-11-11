@@ -40,7 +40,7 @@ const ok = (c, l) => { console.log((c ? '  ok  ' : '  ÉCHEC ') + l); if (!c) pr
   await elle.fill('#special-hokkyoku', 'Pêche'); await elle.click('#add-hokkyoku'); await elle.waitForTimeout(200);
   await elle.click('details[data-with-fold="Pêche"] summary'); await elle.waitForTimeout(100);
   ch = await choices(elle, 'Pêche');
-  ok(JSON.stringify(ch) === '["eoor","unegen","yasmeen"]', 'Hokkyoku : Eoor, Unegen et Yasmeen seulement');
+  ok(JSON.stringify(ch) === '["unegen"]', 'Hokkyoku : Unegen seulement');
   for (const [who, other] of [['echo', 'prism'], ['prism', 'echo'], ['viggo', 'khopses'], ['khopses', 'viggo']]) {
     ok(await nono.evaluate(([w, o]) => JSON.stringify(withGroups(w)[0].list.map(x => x.id)) === JSON.stringify([o]), [who, other]), `${who} : seulement ${other} dans Journée RP`);
     const s9 = await nono.evaluate(w => withGroups(w)[1] ? withGroups(w)[1].h + ':' + withGroups(w)[1].list.map(x => x.id).join() : '', who);

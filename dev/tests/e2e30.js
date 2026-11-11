@@ -21,6 +21,7 @@ const ok = (c, l) => { console.log((c ? '  ok  ' : '  ÉCHEC ') + l); if (!c) pr
   }
   ok(await p.evaluate(() => intimeOptions('echo').join()) === 'prism', 'Echo : seulement Prism');
   ok(await p.evaluate(() => intimeOptions('eoor').join() === 'yasmeen' && intimeOptions('unegen').join() === 'hokkyoku' && intimeOptions('yasmeen').join() === 'eoor' && intimeOptions('hokkyoku').join() === 'unegen'), 'binômes : Eoor et Yasmeen, Unegen et Hokkyoku');
+  ok(await p.evaluate(() => withGroups('eoor')[0].list.map(x => x.id).join() === 'yasmeen' && withGroups('unegen')[0].list.map(x => x.id).join() === 'hokkyoku'), 'activités communes : mêmes binômes');
   await p.evaluate(() => go('echo')); await p.waitForTimeout(200);
   await p.fill('#intime-echo', 'Massage aux huiles'); await p.dispatchEvent('#intime-echo', 'input');
   await p.click('[data-intime-with="prism"]'); await p.waitForTimeout(200);

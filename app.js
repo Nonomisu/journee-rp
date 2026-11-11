@@ -556,7 +556,7 @@ const withPickHtml = (id, label) => { const ids = withOf(state[id].withActs, lab
       .map(x => `<button type="button" data-share-act="${esc(label)}" data-share="${x.id}" aria-pressed="${ids.includes(x.id)}">${esc(x.name)}</button>`).join('')}</div>`).join('')}</details>`; };
 // Choix proposés, par cercle : les personnages recopiés dans Iloh (Khurdans et Davaajav) entre eux, plus ceux propres à Iloh ;
 // Echo et Prism ensemble, plus ceux propres à S9 Interact' ; Viggo et Khopses ensemble ; les personnages principaux entre eux.
-const WITH_CIRCLES = () => [ILOH_MIRROR, ['echo', 'prism'], ['viggo', 'khopses'], ['eoor', 'unegen', 'yasmeen', 'hokkyoku']];
+const WITH_CIRCLES = () => [ILOH_MIRROR, ['echo', 'prism'], ['viggo', 'khopses'], ['eoor', 'yasmeen'], ['unegen', 'hokkyoku']];
 const withGroups = id => {
   const byName = (a, b) => a.name.localeCompare(b.name, 'fr'), circle = WITH_CIRCLES().find(k => k.includes(id));
   const here = C.filter(x => x.id !== id && (!circle || circle.includes(x.id))).sort(byName);
@@ -1220,12 +1220,10 @@ const nightStatesText = (id, list, notes, calmW) => [...(list || [])].map(x => (
 // ailleurs, les personnages du même cercle (Echo et Prism, Viggo et Khopses, les principaux…) et le partenaire.
 // Ceux de l'autre joueur reçoivent une nouvelle. Jamais recopiée dans Iloh Khurdan ni S9 Interact'.
 const INTIME_EXTRA = ['davaajav'];
-// Binômes de la vie intime, plus resserrés que les cercles des activités communes.
-const INTIME_CIRCLES = [['eoor', 'yasmeen'], ['unegen', 'hokkyoku']];
 // Fiches d'hommes : seulement les personnages féminins ; fiches de femmes : seulement les masculins (le partenaire est toujours proposé).
 const intimeOptions = id => {
   const pool = isKhurdan(id) ? [...C.filter(x => x.groups.includes('Khurdans')).map(x => x.id), ...INTIME_EXTRA]
-    : (INTIME_CIRCLES.find(k => k.includes(id)) || WITH_CIRCLES().find(k => k.includes(id)) || []).filter(isChar);
+    : (WITH_CIRCLES().find(k => k.includes(id)) || []).filter(isChar);
   const out = pool.filter(x => x !== id && isFem(x) !== isFem(id)), p = partnerOf(id);
   return [...new Set([...(p && isChar(p) ? [p] : []), ...out])];
 };
