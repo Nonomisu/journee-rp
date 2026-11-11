@@ -1783,9 +1783,24 @@ const contractText = k => { if (!k) return ''; const bits = [!k.days ? `jour ${k
   return ` (${bits.join(', ')})` + (what ? ' : ' + what : ''); };
 // Activités dont la précision est tirée au sort quand on les coche (le tirage est gardé pour la journée).
 const JUNK_ACT = 'Commande de malbouffe';
-const RANDOM_ACTS = { [JUNK_ACT]: ['Maxi kebab « Fighter Bouffeur »', 'Pizza « Tartaglia »', 'Mégapizza 6 fromages', 'Tacos tulliyolois', 'Ramen', 'Sushis',
-  'Pizza kebab', 'Poulet croustillant « Chik&Dip »', 'Burger smashé « Night Vision »', 'Panini « La mama del Arcadioni »', 'Triple burger frites',
-  '« Le bouche artère », burger quatre étages', 'Crêpes sucrées', 'Crêpes salées « Thunder Fury »'] };
+// Plats de la commande de malbouffe d'Echo et Prism, chacun avec son restaurant (« … de chez … »).
+const RANDOM_ACTS = { [JUNK_ACT]: [
+  'Maxi kebab de chez Fighter Bouffeur', 'Pizza kebab de chez Fighter Bouffeur',
+  'Pizza de chez Tartaglia', 'Mégapizza 6 fromages de chez Tartaglia',
+  'Panini de chez La mama del Arcadioni',
+  'Burger smashé de chez Night Vision', 'Triple burger frites de chez Night Vision', '« Le bouche artère », burger quatre étages, de chez Night Vision',
+  'Poulet croustillant de chez Chik&Dip',
+  'Crêpes sucrées de chez Thunder Fury', 'Crêpes salées de chez Thunder Fury',
+  "Tacos tulliyolois de chez Taco'Trique",
+  "Burrito XXL « Overclock » de chez Burrito'Matic", "Nachos fluo au fromage radioactif de chez Burrito'Matic",
+  'Nouilles instantanées gonflées au micro-ondes de chez Slurp Nine', 'Bao vapeur à la viande de synthèse de chez Slurp Nine',
+  'Brochettes de « presque-poulet » grillées de chez Grill Glitch',
+  'Saucisse cyber géante, sauce chrome, de chez Jo Fat Sausage', 'Hot-dog double néon, oignons frits, de chez Jo Fat Sausage',
+  'Onigiris de supérette au thon reconstitué de chez 24/7 Kombini Nine', 'Barquette de kibble croustillante de chez 24/7 Kombini Nine',
+  'Boulettes de protéines frites, sauce mystère, de chez Mystery Meat Bros',
+  "Poke bowl d'algues de culture de chez Maki Overdrive",
+  'Gaufres bulles « Pixel » au sirop fluo de chez Sugar Rush Arcade', 'Donuts glaçage néon à la boîte de douze de chez Sugar Rush Arcade',
+  'Milkshake protéiné triple dose de chez Chrome Shake'] };
 const drawFor = (label, not) => { const l = RANDOM_ACTS[label].filter(x => x !== not); return l[Math.floor(Math.random() * l.length)]; };
 // Echo et Prism commandent ensemble : la commande de l'un (cochée, retirée, ou nouveau tirage) vaut pour l'autre, même restaurant.
 // Partagé par la journée commune (shared/day-… → junk : le plat, ou null).
