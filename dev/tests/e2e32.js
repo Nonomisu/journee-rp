@@ -41,6 +41,8 @@ const ok = (c, l) => { console.log((c ? '  ok  ' : '  ÉCHEC ') + l); if (!c) pr
   // Fiche rouverte : bandeau, menu, carte
   await elle.click('#edit-taiga'); await elle.waitForTimeout(400);
   ok((await elle.textContent('.reopen-note')).includes('pense à la revalider'), 'fiche rouverte : bandeau « pense à la revalider »');
+  await elle.waitForTimeout(1200); e = (await db())[`days/taiga/months/${ym}`][day];
+  ok(Array.isArray(e.reopens) && e.reopens.length === 1 && Date.now() - e.reopens[0] < 60e3 && e.done === false, 'heure de la réouverture enregistrée');
   ok(await elle.evaluate(() => document.querySelector('[data-go="taiga"] .dot')?.classList.contains('reopen')), 'menu : pastille « à revalider »');
   await elle.evaluate(() => go('home')); await elle.waitForTimeout(300);
   ok(await elle.evaluate(() => [...document.querySelectorAll('.state.reopen')].some(x => x.textContent.includes('À revalider'))), 'accueil : « ⚠ À revalider »');

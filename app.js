@@ -2324,7 +2324,8 @@ function renderCharNow(id) {
     </article>
     <div id="png-out-${id}" class="png-out" aria-live="polite"></div>`;
     document.getElementById('png-'+id)?.addEventListener('click', () => recapPng(id));
-    document.getElementById('edit-'+id)?.addEventListener('click', () => { s.done = false; renderNav(); renderChar(id); });
+    // Chaque réouverture est datée (s.reopens) : le diagnostic du VPS l'affiche, pour savoir quand une fiche a été rouverte.
+    document.getElementById('edit-'+id)?.addEventListener('click', () => { s.done = false; (s.reopens ||= []).push(Date.now()); renderNav(); renderChar(id); });
     document.querySelectorAll('#view [data-join-from]').forEach(b => b.addEventListener('click', () => { joinAct(id, b.dataset.joinFrom, b.dataset.joinAct); renderChar(id); }));
     if (!readOnly) bindIntimeTake(id);
     bindTabs(id);
@@ -2777,7 +2778,7 @@ initPlaces();
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'hideS9', 'withActs', 'privWith'];
+  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'hideS9', 'withActs', 'privWith', 'reopens'];
 const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{}, nightStates:new Set() });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }

@@ -2992,7 +2992,8 @@ function renderCharNow(id) {
     </article>
     <div id="png-out-${id}" class="png-out" aria-live="polite"></div>`;
     document.getElementById('png-'+id)?.addEventListener('click', () => recapPng(id));
-    document.getElementById('edit-'+id)?.addEventListener('click', () => { s.done = false; renderNav(); renderChar(id); });
+    // Chaque réouverture est datée (s.reopens) : le diagnostic du VPS l'affiche, pour savoir quand une fiche a été rouverte.
+    document.getElementById('edit-'+id)?.addEventListener('click', () => { s.done = false; (s.reopens ||= []).push(Date.now()); renderNav(); renderChar(id); });
     document.querySelectorAll('#view [data-join-from]').forEach(b => b.addEventListener('click', () => { joinAct(id, b.dataset.joinFrom, b.dataset.joinAct); renderChar(id); }));
     if (!readOnly) bindIntimeTake(id);
     bindTabs(id);
