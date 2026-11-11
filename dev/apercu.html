@@ -839,7 +839,7 @@ const NEWS = [];   // { to, text, charId, key, read, at (heure de création) }
 let newsDayOpen = false;   // menu « Nouvelles du jour » ouvert ou replié (garde l'état entre deux affichages)
 const playerOf = id => C.find(c => c.id === id)?.player;
 // Type de nouvelle (couleur) : nuit chaude, grossesse possible ou vie intime → rose ; activité commune → vert.
-const newsKind = n => /^(night|risk|intime|film|iact):/.test(n.key || '') ? 'k-hot' : /^with:/.test(n.key || '') ? 'k-with' : 'k-other';
+const newsKind = n => /^(night|risk|intime|film|iact|door):/.test(n.key || '') ? 'k-hot' : /^with:/.test(n.key || '') ? 'k-with' : 'k-other';
 const notify = (from, to, text, key) => {
   if (!isChar(to) || playerOf(from) === playerOf(to)) return;          // seulement d'un joueur à l'autre
   if (NEWS.some(n => n.key === key)) return;
@@ -1047,6 +1047,16 @@ const DOOR_LINES = {
     (p, e) => `${e} a envoyé un message : « Je suis devant. » Réponse de ${p} vingt minutes plus tard : « Encore un peu. »`,
     (p, e) => `Le livreur avait promis d'être rapide. Pour une fois, il a pris tout son temps avec ${p}.`,
     (p, e) => `Quand ${p} a enfin ouvert à ${e}, elle était décoiffée, essoufflée, et parfaitement satisfaite. La pizza était froide.`,
+    (p, e) => `${p} était si serrée que le livreur n'a pas tenu longtemps. Il a joui en elle.`,
+    (p, e) => `${e}, la féminité de ${p} a eu raison du livreur : trop étroite, il s'est laissé aller en elle.`,
+    (p, e) => `Le livreur a juré qu'il n'avait jamais connu une cliente aussi étroite. Il a joui en ${p} dans la foulée.`,
+    (p, e) => `${p} a contracté au bon moment. Le livreur a tout donné en elle.`,
+    (p, e) => `Livraison spéciale à Solution Nine : ${p} a tout reçu, jusqu'à la dernière goutte.`,
+    (p, e) => `Cambrée sur le carton de pizza, ${p} s'est fait prendre en levrette par le livreur jusqu'à ce qu'il jouisse au fond d'elle.`,
+    (p, e) => `Livraison terminée… en ${p}. Le livreur n'a pas pris la peine de se retirer.`,
+    (p, e) => `${e}, le livreur est reparti groggy. ${p} ne l'a pas lâché avant qu'il jouisse en elle.`,
+    (p, e) => `${e}, ta copine a été remplie ce soir. Et pas de pizza.`,
+    (p, e) => `Le livreur a terminé sa course en ${p}. ${e}, tu trouveras la preuve en rentrant.`,
   ],
 };
 const mins = m => m < 60 ? `${m} min` : `1 h ${String(m - 60).padStart(2, '0')}`;
