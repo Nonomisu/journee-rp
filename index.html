@@ -198,6 +198,7 @@ button, input, textarea { font: inherit; color: inherit; }
 
 .chip .dot { width: .45rem; height: .45rem; border-radius: 50%; background: var(--c-dim); opacity: .5; }
 .chip .dot.done { background: #7fb069; opacity: 1; }
+.chip .dot.reopen { background: #e6b35a; border-color: #e6b35a; opacity: 1; }
 .chip[aria-current="true"] { border-color: var(--c-gold); box-shadow: 0 0 0 1px var(--c-gold) inset; }
 .chip:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
 .nav-group, .nav-list li.dup { display: none; }
@@ -620,6 +621,10 @@ button.link.danger { color: #e0a24d; }
 .card .wx .ico { color: var(--c-gold); }
 .card .state { font-size: .82rem; color: var(--c-dim); font-style: italic; }
 .card .state.done { color: #9cc98a; font-style: normal; }
+.card .state.reopen { color: #e6b35a; font-style: normal; }
+.reopen-note { display: flex; align-items: flex-start; gap: .5rem; margin: 0 0 1rem; padding: .6rem .8rem; border: 1px solid #e6b35a; border-radius: 6px; color: #e6b35a; background: color-mix(in srgb, #e6b35a 10%, transparent); text-align: left; }
+.reopen-note .ico { flex: none; width: 1.1rem; height: 1.1rem; margin-top: .1rem; }
+.recap-intime .intime-from { margin-top: .5rem; text-align: left; }
 .card.soon { opacity: .5; cursor: default; border-style: dashed; }
 
 /* Connexion */
@@ -665,6 +670,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=df3510c423" charset="utf-8"></script>
-<script type="module" src="sync.js?v=2543b2d712"></script>
+<script src="app.js?v=83ab02eca9" charset="utf-8"></script>
+<script type="module" src="sync.js?v=c6885ad51d"></script>
 
