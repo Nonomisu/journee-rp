@@ -12,7 +12,7 @@ const ok = (c, l) => { console.log((c ? '  ok  ' : '  ÉCHEC ') + l); if (!c) pr
   const p = await ctx.newPage(); p.on('pageerror', x => errs.push(x.message));
   await p.addInitScript(e => { window.name = 'vi'; window.MOCK_EMAIL = e; }, process.env.NONO_EMAIL);
   await p.goto('http://localhost:8765/'); await p.waitForTimeout(400); await p.click('#login-btn'); await p.waitForSelector('#login[hidden]', { state: 'attached' }); await p.waitForTimeout(800);
-  for (const [id, want] of [['echo', ['prism']], ['eoor', ['yasmeen', 'hokkyoku']], ['viggo', ['khopses']], ['davaajav', null], ['tamachag', null]]) {
+  for (const [id, want] of [['echo', ['prism']], ['eoor', ['yasmeen']], ['unegen', ['hokkyoku']], ['viggo', ['khopses']], ['davaajav', null], ['tamachag', null]]) {
     await p.evaluate(id => go(id), id); await p.waitForTimeout(200);
     ok(await p.locator(`#intime-${id}`).count() === 1, `${id} : bloc « Vie intime »`);
     const opts = await p.evaluate(id => intimeOptions(id), id);
@@ -20,6 +20,7 @@ const ok = (c, l) => { console.log((c ? '  ok  ' : '  ÉCHEC ') + l); if (!c) pr
     else ok(opts.length > 0 && !opts.includes(id), `${id} : personnages proposés (${opts.length})`);
   }
   ok(await p.evaluate(() => intimeOptions('echo').join()) === 'prism', 'Echo : seulement Prism');
+  ok(await p.evaluate(() => intimeOptions('eoor').join() === 'yasmeen' && intimeOptions('unegen').join() === 'hokkyoku' && intimeOptions('yasmeen').join() === 'eoor' && intimeOptions('hokkyoku').join() === 'unegen'), 'binômes : Eoor et Yasmeen, Unegen et Hokkyoku');
   await p.evaluate(() => go('echo')); await p.waitForTimeout(200);
   await p.fill('#intime-echo', 'Massage aux huiles'); await p.dispatchEvent('#intime-echo', 'input');
   await p.click('[data-intime-with="prism"]'); await p.waitForTimeout(200);
