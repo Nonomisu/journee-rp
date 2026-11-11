@@ -1884,13 +1884,19 @@ const KHURDAN_HUNT = {
       // (soloWeight : environ 0,4 % des prises en solo pour un félin, 0,1 % pour le mammouth)
       { name:'Tigre', weight:.5, soloWeight:.19 }, { name:'Lion', weight:.4, soloWeight:.19 },
       { name:'Baras', weight:.4, soloWeight:.19 }, { name:'Coeurl', weight:.35, soloWeight:.19 },
-      { name:'Mammouth', weight:.3, soloWeight:.047 },
+      // Mammouth en groupe : tiré puis gardé seulement une fois sur six environ (une sortie sur 450),
+      // une fois sur deux avec un chasseur expérimenté dans le groupe (une sortie sur 150 environ).
+      { name:'Mammouth', weight:.3, soloWeight:.047, keep: { base:.1636, expert:.4918 } },
     ],
 };
 // Chasseurs khurdans : même table de prises pour tous.
 const HUNTS = Object.fromEntries(['ankhbayar', 'taiga', 'tamachag', 'khokkutsai', 'javkhaanhun', 'khubunjin', 'tengis'].map(id => [id, KHURDAN_HUNT]));
 // Ankhbayar, chasseur de métier : plus doué que les autres.
 HUNTS.ankhbayar = { ...KHURDAN_HUNT, odds: { solo: .9, group: .95 } };
+// Chasseurs expérimentés : leur présence dans une chasse de groupe (chasseur ou personnage noté « avec ») rend le mammouth plus probable.
+const EXPERT_HUNTERS = ['ankhbayar'];
+const huntWith = (id, label, day) => (sameDay(day, rpDay) ? state[id]?.withActs?.[label]
+  : typeof HISTORY !== 'undefined' ? HISTORY[id]?.[keyOf(day)]?.withActs?.[label] : null) || [];
 // Tableau de chasse de l'année (wrap).
 const huntYear = (c, x) => {
   const outs = x.filled.flatMap(([d, r]) => r.acts.filter(a => HUNTS[c.id]?.acts[a]).map(a => huntFor(c.id, a, d)));
@@ -1926,7 +1932,11 @@ const huntFor = (id, label, day = rpDay) => {
   const wOf = g => mode === 'solo' ? (g.group ? 0 : g.soloWeight ?? g.weight) : g.weight;
   const pool = h.game.filter(g => wOf(g) > 0), total = pool.reduce((a, g) => a + wOf(g), 0);
   const n = 1 + Math.floor(seeded(k + 'n') * h.max[mode]);
-  const catches = Array.from({ length: n }, (_, i) => { let r = seeded(k + 'g' + i) * total; return pool.find(g => (r -= wOf(g)) < 0) || pool.at(-1); });
+  const expert = mode === 'group' && [id, ...huntWith(id, label, day)].some(x => EXPERT_HUNTERS.includes(x));
+  const draw = (i, from, t, salt) => { let r = seeded(k + salt + i) * t; return from.find(g => (r -= wOf(g)) < 0) || from.at(-1); };
+  const catches = Array.from({ length: n }, (_, i) => { const g = draw(i, pool, total, 'g');
+    if (mode !== 'group' || !g.keep || seeded(k + 'keep' + i) < (expert ? g.keep.expert : g.keep.base)) return g;
+    const rest = pool.filter(x => x !== g); return draw(i, rest, rest.reduce((a, x) => a + wOf(x), 0), 're'); });   // pas de mammouth cette fois
   return { mode, catches: tally(catches.map(g => g.name)).map(([name, qty]) => ({ name, qty })) };
 };
 const huntText = h => !h ? '' : h.catches.length ? h.catches.map(c => (c.qty > 1 ? c.qty + ' × ' : '') + c.name).join(', ') : 'bredouille';
