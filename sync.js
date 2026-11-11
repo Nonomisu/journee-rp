@@ -235,6 +235,15 @@ function listen() {
 function schedule() { if (!started) return; clearTimeout(timer); timer = setTimeout(flush, 700); }
 
 // Différences sur deux niveaux, pour ne réécrire que ce qui a changé (et ne pas écraser les modifications de l'autre).
+// Fiche du jour : une écriture par case modifiée (champ « jour.case »), une suppression par case retirée.
+function entryUps(day, prev, next) {
+  const ups = [];
+  for (const k of new Set([...Object.keys(prev), ...Object.keys(next)])) {
+    if (!(k in next) || next[k] === undefined) { if (k in prev) ups.push(new FieldPath(day, k), deleteField()); }
+    else if (J(prev[k]) !== J(next[k])) ups.push(new FieldPath(day, k), next[k]);
+  }
+  return ups;
+}
 function diff2(prev = {}, next = {}) {
   const ups = [];
   for (const k of Object.keys(next)) {
@@ -265,9 +274,13 @@ async function doFlush() {
   }
   for (const id of A.owned()) {
     const e = snap.entries[id];
-    if (J(e) !== J(base.entries[id]) && (base.entries[id] || A.meaningful(e))) {
+    const prev = base.entries[id];
+    if (J(e) !== J(prev) && (prev || A.meaningful(e))) {
       base.entries[id] = clone(e); seenToday[id] = clone(e);
-      ops.push(updateDoc(monthRef(id, A.ym), new FieldPath(A.day), e));
+      // Seulement les cases changées sur CET appareil : un appareil resté en veille avec une version ancienne
+      // ne peut plus écraser ce qu'un autre a enregistré entre-temps (validation, activités…).
+      const ups = isMap(prev) && isMap(e) ? entryUps(A.day, prev, e) : [new FieldPath(A.day), e];
+      if (ups.length) ops.push(updateDoc(monthRef(id, A.ym), ...ups));
     }
     if (J(snap.chars[id]) !== J(base.chars[id])) {
       base.chars[id] = clone(snap.chars[id]);

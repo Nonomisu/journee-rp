@@ -1,4 +1,5 @@
 // Firestore simulé : stockage dans localStorage, synchronisé entre onglets par l'événement « storage ».
+// Chaque écriture repart de l'état réel du stockage (comme le serveur), même si l'onglet n'a pas encore reçu les dernières modifications.
 const KEY = 'mockdb';
 const load = () => JSON.parse(localStorage.getItem(KEY) || '{}');
 let store = load();
@@ -23,8 +24,8 @@ export const runTransaction = async (db, fn) => fn({ get: getDoc, set: (r, d, o)
 export const getDocs = async q => { const docs = docsOf(q); return { docs, forEach: f => docs.forEach(f) }; };
 const deepMerge = (a, b) => { const o = { ...(a || {}) }; for (const [k, v] of Object.entries(b)) o[k] = v && typeof v === 'object' && !Array.isArray(v) && o[k] && typeof o[k] === 'object' && !Array.isArray(o[k]) ? deepMerge(o[k], v) : v; return o; };
 window.MOCK_WRITES = [];
-export const setDoc = async (r, d, opt) => { window.MOCK_WRITES.push(['set', r.path, d]); store[r.path] = opt?.merge ? deepMerge(store[r.path], d) : JSON.parse(JSON.stringify(d)); save(); };
-export const updateDoc = async (r, ...args) => {
+export const setDoc = async (r, d, opt) => { store = load(); window.MOCK_WRITES.push(['set', r.path, d]); store[r.path] = opt?.merge ? deepMerge(store[r.path], d) : JSON.parse(JSON.stringify(d)); save(); };
+export const updateDoc = async (r, ...args) => { store = load();
   if (!(r.path in store)) throw Object.assign(new Error('no doc ' + r.path), { code: 'not-found' });
   window.MOCK_WRITES.push(['update', r.path, args]);
   const d = store[r.path];
@@ -36,7 +37,7 @@ export const updateDoc = async (r, ...args) => {
   }
   save();
 };
-export const deleteDoc = async r => { window.MOCK_WRITES.push(['delete', r.path]); delete store[r.path]; save(); };
+export const deleteDoc = async r => { store = load(); window.MOCK_WRITES.push(['delete', r.path]); delete store[r.path]; save(); };
 export const onSnapshot = (r, cb) => {
   let last = null;
   const l = { run: () => {
