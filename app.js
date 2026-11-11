@@ -1216,10 +1216,17 @@ const NIGHT_STATES = ['Nuit calme', 'Cauchemar', 'Insomnie', 'A été agité', '
 const NIGHT_EXCL = [['A été agité', 'A été calme']];
 const NIGHT_ICON = { 'Nuit calme':'nuit', 'Cauchemar':'ghost', 'Insomnie':'wakeful', 'A été agité':'zigzag', 'A été pot de colle':'cuddle', 'A été calme':'feather', "N'a pas été au lit en même temps":'clock' };
 const nightStatesText = (id, list, notes, calmW) => [...(list || [])].map(x => (x === 'Nuit calme' ? calmLabel(id, calmW) : physLabel(id, x)) + (notes?.[x] ? ` (${notes[x]})` : '')).join(', ');
-// Vie intime (Khurdans) : personnages concernés = les autres Khurdans et Davaajav ; ceux de l'autre joueur reçoivent une nouvelle.
+// Vie intime : sur toutes les fiches. Personnages concernés : chez les Khurdans, les autres Khurdans et Davaajav ;
+// ailleurs, les personnages du même cercle (Echo et Prism, Viggo et Khopses, les principaux…) et le partenaire.
+// Ceux de l'autre joueur reçoivent une nouvelle. Jamais recopiée dans Iloh Khurdan ni S9 Interact'.
 const INTIME_EXTRA = ['davaajav'];
-// Fiches d'hommes : seulement les personnages féminins ; fiches de femmes : seulement les masculins.
-const intimeOptions = id => [...C.filter(x => x.groups.includes('Khurdans')).map(x => x.id), ...INTIME_EXTRA].filter(x => x !== id && isFem(x) !== isFem(id));
+// Fiches d'hommes : seulement les personnages féminins ; fiches de femmes : seulement les masculins (le partenaire est toujours proposé).
+const intimeOptions = id => {
+  const pool = isKhurdan(id) ? [...C.filter(x => x.groups.includes('Khurdans')).map(x => x.id), ...INTIME_EXTRA]
+    : (WITH_CIRCLES().find(k => k.includes(id)) || []).filter(isChar);
+  const out = pool.filter(x => x !== id && isFem(x) !== isFem(id)), p = partnerOf(id);
+  return [...new Set([...(p && isChar(p) ? [p] : []), ...out])];
+};
 const intimeKey = (id, x) => 'intime:' + keyOf(rpDay) + ':' + id + ':' + x;
 const intimeWithText = id => [...(state[id].intimeWith || [])].map(nameOf).join(', ');
 // Khurdans : « Détails et précisions » sous chaque choix de nuit coché (scope : 'next' ou 'prev').
@@ -2277,7 +2284,7 @@ function renderCharNow(id) {
       ${isKhurdan(id) && s.violet ? `<p class="where">${icon('cloth')}<span>A porté du violet</span></p>` : ''}
       ${prevNightLine(id)}
       ${nefLine(id)}
-      ${isKhurdan(id) && (s.intime?.trim() || s.intimeWith?.size) ? `<div class="recap-infos"><span>Vie intime${s.intimeWith?.size ? ' · avec ' + esc(intimeWithText(id)) : ''}</span>${s.intime?.trim() ? `<p>${esc(s.intime.trim())}</p>` : ''}</div>` : ''}
+      ${(s.intime?.trim() || s.intimeWith?.size) ? `<div class="recap-infos"><span>Vie intime${s.intimeWith?.size ? ' · avec ' + esc(intimeWithText(id)) : ''}</span>${s.intime?.trim() ? `<p>${esc(s.intime.trim())}</p>` : ''}</div>` : ''}
       ${nightLine(id)}
       ${djLine(id)}
       ${babysitBlock(id, false)}
@@ -2358,7 +2365,7 @@ function renderCharNow(id) {
       <label class="check-inline"><input type="checkbox" id="keep-${id}"> L'ajouter aussi à la liste ${deName(c.name)}</label>
       <label class="check-inline"><input type="checkbox" id="priv-${id}"> Activité intime <small>(jamais dans Iloh Khurdan ni S9 Interact', sans « Avec… »)</small></label>
     </div>
-    ${isKhurdan(id) ? `<div class="chrono-part"><h3 class="chrono-h">Vie intime</h3>
+    ${isChar(id) ? `<div class="chrono-part"><h3 class="chrono-h">Vie intime</h3>
       ${intimeFromHtml(id)}
       <textarea id="intime-${id}" rows="3" placeholder="Ce qui s'est passé dans la vie intime ${deName(c.name)} aujourd'hui (facultatif)">${esc(s.intime || '')}</textarea>
       <p class="reserved">Avec :</p>
