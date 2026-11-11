@@ -28,10 +28,11 @@ const rpIso = () => { const d = new Date(Date.now() - 5 * 3600e3); return `${d.g
 const gRef = doc(db, 'shared', 'global');
 const dRef = doc(db, 'shared', 'day-' + A.iso);
 const monthRef = (id, ym) => doc(db, 'days', id, 'months', ym);
-// Retour d'Iloh Khurdan (activités communes acceptées dans Iloh), écrit par le service du VPS ; lecture seule ici.
-const ilohRef = (id, ym) => doc(db, 'iloh', id, 'months', ym);
-// Personnages propres à Iloh Khurdan (noms), écrits par le service du VPS.
-const ilohNamesRef = doc(db, 'iloh', '_noms', 'months', 'liste');
+// Retour des applis de groupe (activités communes acceptées dans Iloh Khurdan ou S9 Interact'), écrit par les services
+// du VPS (iloh-miroir dans iloh/…, s9-miroir dans s9/…) ; lecture seule ici.
+const ilohRef = (id, ym) => doc(db, A.backColl(id), id, 'months', ym);
+// Personnages propres à chaque appli de groupe (noms), écrits par les services du VPS.
+const namesRef = coll => doc(db, coll, '_noms', 'months', 'liste');
 const charRef = id => doc(db, 'characters', id);
 const todayRef = id => doc(db, 'today', id);
 // Notifications push : clé publique VAPID du service du VPS (la clé privée reste sur le VPS).
@@ -134,7 +135,7 @@ async function loadMonth(ym) {
     A.applyMonth(id, ym, data, ym === A.ym && !started);
     if (ym === A.ym) seenToday[id] = clone(data[A.day]);
   }), ...A.ilohIds().map(id => getDoc(ilohRef(id, ym)).then(s => A.applyIloh(id, ym, s.data() || {}), () => {})),
-    ...(loaded.size === 1 ? [getDoc(ilohNamesRef).then(s => A.applyIlohNames(s.data()), () => {})] : [])]);
+    ...(loaded.size === 1 ? A.backColls().map(c => getDoc(namesRef(c)).then(s => A.applyIlohNames(s.data(), c), () => {})) : [])]);
 }
 
 async function boot() {

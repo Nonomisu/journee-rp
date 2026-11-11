@@ -2,7 +2,7 @@
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'withActs', 'privWith'];
+  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'hideS9', 'withActs', 'privWith'];
 const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{}, nightStates:new Set() });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }
@@ -18,7 +18,7 @@ const replaceArr = (target, src) => { target.length = 0; (src || []).forEach(x =
 const owns = id => C.find(c => c.id === id)?.player === me;
 // Activités et lieux privés : jamais copiés dans l'encart public « Aujourd'hui » des fiches.
 // Activités intimes : les prévues (« Sexe avec … », Moonstone) et celles marquées « intime » à la création (PRIV_ACTS, partagé).
-// Jamais recopiées dans Iloh Khurdan, sans « Avec d'autres personnages ? ».
+// Jamais recopiées dans Iloh Khurdan ni S9 Interact', sans « Avec d'autres personnages ? ».
 const PRIV_ACTS = new Set();
 const isPrivateAct = a => /^Sexe avec /.test(a) || a === 'Plaisir en solo sur Moonstone' || PRIV_ACTS.has(a);
 
@@ -57,7 +57,7 @@ const applyChar = (c, d) => {
   c.customCats = [...(d.customCats || [])]; c.actCat = { ...(d.actCat || {}) }; c.catNames = { ...(d.catNames || {}) }; applyActLayout(c);
 };
 const globalOf = () => enc({ lovers: LOVERS, protect: lastProtect, alerts, events: EVENTS, arcs: ARCS, arcSeq,
-  milestones: MILESTONES, contracts: CONTRACTS, workdays: WORKDAYS, hideIloh: ILOH_HIDE_ALWAYS, privActs: PRIV_ACTS });
+  milestones: MILESTONES, contracts: CONTRACTS, workdays: WORKDAYS, hideIloh: ILOH_HIDE_ALWAYS, hideS9: S9_HIDE_ALWAYS, privActs: PRIV_ACTS });
 const applyGlobal = g => {
   const d = dec(g || {});
   if ('lovers' in d) replaceObj(LOVERS, d.lovers);
@@ -70,6 +70,7 @@ const applyGlobal = g => {
   if ('contracts' in d) replaceObj(CONTRACTS, d.contracts);
   if ('workdays' in d) { replaceObj(WORKDAYS, d.workdays); WORKDAYS.khopses ||= new Set(); }
   if ('hideIloh' in d) replaceObj(ILOH_HIDE_ALWAYS, d.hideIloh);
+  if ('hideS9' in d) replaceObj(S9_HIDE_ALWAYS, d.hideS9);
   if ('privActs' in d) { PRIV_ACTS.clear(); [...(d.privActs || [])].forEach(a => typeof a === 'string' && PRIV_ACTS.add(a)); }
 };
 const dayOf = () => enc({ nights: nightsBy, calm: calmBy, nefaste, filmed, weather: weatherOn, rp: rpPlayed, junk: junkShared.dish,
@@ -126,14 +127,17 @@ window.RP_APP = {
     replaceArr(NEWS, (news || []).map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read, at: newsAt(n) })));
   },
   // data : { '30': entrée, … } d'un document days/{id}/months/{AAAA-MM}
-  // Retour d'Iloh Khurdan (iloh/{id}/months/{ym}) : remplace les jours de ce mois.
+  // Retour d'Iloh Khurdan (iloh/{id}/months/{ym}) ou de S9 Interact' (s9/{id}/months/{ym}) : remplace les jours de ce mois.
   applyIloh: (id, ym, data) => {
-    const m = (ILOH_BACK[id] ||= {});
+    const m = (ILOH_BACK[id] ||= {}), where = destOf(id)?.where;
     Object.keys(m).filter(k => k.startsWith(ym + ':')).forEach(k => delete m[k]);
-    Object.entries(data || {}).forEach(([d, x]) => { m[ym + ':' + d] = x; });
+    Object.entries(data || {}).forEach(([d, x]) => { m[ym + ':' + d] = { ...x, where }; });
   },
-  applyIlohNames: d => setIlohOnly(d?.chars),
+  applyIlohNames: (d, coll = 'iloh') => coll === 's9' ? setS9Only(d?.chars) : setIlohOnly(d?.chars),
   ilohIds: () => C.filter(c => sendsToIloh(c.id)).map(c => c.id),
+  // Collection du retour pour chaque personnage recopié (iloh ou s9), et collections des listes de noms.
+  backColl: id => destOf(id)?.coll || 'iloh',
+  backColls: () => Object.values(DESTS).map(d => d.coll),
   applyMonth: (id, ym, data, withToday) => {
     const [y, m] = ym.split('-').map(Number);
     const h = HISTORY[id] ||= {};

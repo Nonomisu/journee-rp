@@ -1142,7 +1142,13 @@ const ILOH_ONLY = { shiruun:'Shiruun', djokhodthai:'Djokhodthai', buyan:'Buyan',
 const setIlohOnly = chars => { if (!chars || typeof chars !== 'object' || !Object.keys(chars).length) return;
   Object.keys(ILOH_ONLY).forEach(k => delete ILOH_ONLY[k]);
   Object.entries(chars).forEach(([k, v]) => { if (!isChar(k) && typeof v?.name === 'string') ILOH_ONLY[k] = v.name; }); };
-const isIlohOnly = x => typeof x === 'string' && !isChar(x) && Object.hasOwn(ILOH_ONLY, x);
+// Personnages propres à S9 Interact' (Joy, Tala, Aaron, Yololo) : proposés sur les fiches d'Echo et Prism.
+// Liste tenue à jour par le service s9-miroir (s9/_noms/months/liste) ; celle-ci sert en attendant.
+const S9_ONLY = { joy:'Joy', tala:'Tala', aaron:'Aaron', yololo:'Yololo' };
+const setS9Only = chars => { if (!chars || typeof chars !== 'object' || !Object.keys(chars).length) return;
+  Object.keys(S9_ONLY).forEach(k => delete S9_ONLY[k]);
+  Object.entries(chars).forEach(([k, v]) => { if (!isChar(k) && typeof v?.name === 'string') S9_ONLY[k] = v.name; }); };
+const isIlohOnly = x => typeof x === 'string' && !isChar(x) && (Object.hasOwn(ILOH_ONLY, x) || Object.hasOwn(S9_ONLY, x));
 const withOf = (wa, l) => (wa?.[l] || []).filter(x => isChar(x) || isIlohOnly(x));
 const andList = a => a.length < 2 ? a.join('') : a.slice(0, -1).join(', ') + ' et ' + a[a.length - 1];
 const withTxt = (wa, l) => (w => w.length ? ' avec ' + andList(w.map(nameOf)) : '')(withOf(wa, l));
@@ -1195,13 +1201,13 @@ const withPickHtml = (id, label) => { const ids = withOf(state[id].withActs, lab
     ${withGroups(id).map(g => `${g.h ? `<p class="with-h">${g.h}</p>` : ''}<div class="place-list subs" role="group" aria-label="${g.h || 'Personnages présents'}">${g.list
       .map(x => `<button type="button" data-share-act="${esc(label)}" data-share="${x.id}" aria-pressed="${ids.includes(x.id)}">${esc(x.name)}</button>`).join('')}</div>`).join('')}</details>`; };
 // Choix proposés, par cercle : les personnages recopiés dans Iloh (Khurdans et Davaajav) entre eux, plus ceux propres à Iloh ;
-// Echo et Prism ensemble ; Viggo et Khopses ensemble ; les personnages principaux entre eux.
+// Echo et Prism ensemble, plus ceux propres à S9 Interact' ; Viggo et Khopses ensemble ; les personnages principaux entre eux.
 const WITH_CIRCLES = () => [ILOH_MIRROR, ['echo', 'prism'], ['viggo', 'khopses'], ['eoor', 'unegen', 'yasmeen', 'hokkyoku']];
 const withGroups = id => {
   const byName = (a, b) => a.name.localeCompare(b.name, 'fr'), circle = WITH_CIRCLES().find(k => k.includes(id));
   const here = C.filter(x => x.id !== id && (!circle || circle.includes(x.id))).sort(byName);
-  const iloh = sendsToIloh(id) ? Object.entries(ILOH_ONLY).map(([k, name]) => ({ id: k, name })).sort(byName) : [];
-  return iloh.length ? [{ h: '', list: here }, { h: "Personnages de l'Iloh", list: iloh }] : [{ h: '', list: here }];
+  const dst = destOf(id), iloh = dst ? Object.entries(dst.only).map(([k, name]) => ({ id: k, name })).sort(byName) : [];
+  return iloh.length ? [{ h: '', list: here }, { h: dst.group, list: iloh }] : [{ h: '', list: here }];
 };
 // Activités où un autre personnage (fiche validée) a mentionné celui-ci aujourd'hui.
 const sharedActsOf = id => C.filter(x => x.id !== id && state[x.id]?.done).flatMap(x => [
@@ -1714,7 +1720,7 @@ const setNight = (id, hot, w) => {
   if (old && isChar(old) && state[old] && nightOf(old).with !== id) state[old].shell = false;
   checkRisk(id);
 };
-const nameOf = id => C.find(x => x.id === id)?.name ?? ILOH_ONLY[id] ?? id;
+const nameOf = id => C.find(x => x.id === id)?.name ?? ILOH_ONLY[id] ?? S9_ONLY[id] ?? id;
 // Journée jouée en RP : cochée par binôme (les deux fiches comptent comme remplies, même sans activités).
 const rpPlayed = {};   // id → id du partenaire de jeu, ou 'pnj' (seul·e ou avec des PNJ)
 const setRp = (id, on, w) => {
@@ -2049,11 +2055,20 @@ const allActs = c => Object.values(c.acts).flat();
 // Ces personnages sont recopiés chaque jour dans Iloh Khurdan par le service du VPS. Une activité peut y être masquée :
 // ce jour-là (s.hideIloh, sur la fiche du jour) ou toujours (ILOH_HIDE_ALWAYS, réglé dans le mode gestion de la liste).
 const ILOH_MIRROR = ['tamachag', 'khokkutsai', 'ankhbayar', 'tengis', 'taiga', 'inkaraa', 'khubunjin', 'ogloo', 'javkhaanhun', 'davaajav'];
-const sendsToIloh = id => ILOH_MIRROR.includes(id);
+// ---------- S9 Interact' (appli de groupe de Solution 9) : Echo et Prism, recopiés par le service s9-miroir ----------
+// Même principe qu'Iloh : activité masquée ce jour-là (s.hideS9) ou toujours (S9_HIDE_ALWAYS) ; retour dans s9/{personnage}/months.
+const S9_MIRROR = ['echo', 'prism'];
+// Applis de groupe : chaque personnage recopié l'est dans une seule appli.
+const DESTS = {
+  iloh: { name: 'Iloh Khurdan', coll: 'iloh', mirror: ILOH_MIRROR, only: ILOH_ONLY, hideKey: 'hideIloh', group: "Personnages de l'Iloh", where: "l'Iloh Khurdan" },
+  s9:   { name: "S9 Interact'", coll: 's9', mirror: S9_MIRROR, only: S9_ONLY, hideKey: 'hideS9', group: 'Personnages de Solution 9', where: "S9 Interact'" },
+};
+const destOf = id => Object.values(DESTS).find(d => d.mirror.includes(id)) || null;
+const sendsToIloh = id => !!destOf(id);   // recopié dans une appli de groupe (Iloh Khurdan ou S9 Interact')
 // ---------- Retour d'Iloh Khurdan : activités communes acceptées dans Iloh (lecture seule) ----------
 // Écrites par le service du VPS dans iloh/{personnage}/months/{AAAA-MM} : { [jour]: { added: [activités], with: { activité: [personnages] } } }.
 // Affichées avec la fiche (récap, image Discord, historique), sans modifier la journée enregistrée ici.
-const ILOH_BACK = {};   // id → { 'AAAA-MM:J': { added, with } }
+const ILOH_BACK = {};   // id → { 'AAAA-MM:J': { added, with } } (Iloh Khurdan ou S9 Interact', selon le personnage)
 const ymKey = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}:${d.getDate()}`;
 const ilohBackOf = (id, d) => sendsToIloh(id) && d ? ILOH_BACK[id]?.[ymKey(d)] || null : null;
 const ilohName = x => isChar(x) ? nameOf(x) : x;
@@ -2062,11 +2077,15 @@ const ilohWithTxt = (b, l, own = []) => (w => w.length ? (own.length ? ' et ' : 
 // Activités ajoutées dans Iloh qui ne figurent pas déjà sur la fiche.
 const ilohAddedOf = (b, checked) => (b?.added || []).filter(l => !checked.has?.(l) && !checked.includes?.(l));
 const ilohBackHtml = (b, checked) => { const add = ilohAddedOf(b, checked); return add.length
-  ? `<div class="recap-infos iloh-back"><span>Sur l'Iloh Khurdan</span><p>${add.map(l => esc(l + ilohWithTxt(b, l))).join(' · ')}</p></div>` : ''; };
+  ? `<div class="recap-infos iloh-back"><span>Sur ${esc(b.where || "l'Iloh Khurdan")}</span><p>${add.map(l => esc(l + ilohWithTxt(b, l))).join(' · ')}</p></div>` : ''; };
 
 const ILOH_HIDE_ALWAYS = {};   // id → Set d'activités toujours masquées dans Iloh Khurdan
-const ilohAlways = (id, l) => !!ILOH_HIDE_ALWAYS[id]?.has(l);
-const ilohHidden = (id, l) => ilohAlways(id, l) || !!state[id].hideIloh?.has(l);
+const S9_HIDE_ALWAYS = {};     // id → Set d'activités toujours masquées dans S9 Interact'
+const alwaysOf = id => destOf(id)?.coll === 's9' ? S9_HIDE_ALWAYS : ILOH_HIDE_ALWAYS;
+const ilohAlways = (id, l) => !!alwaysOf(id)[id]?.has(l);
+const hideKeyOf = id => destOf(id)?.hideKey || 'hideIloh';
+const ilohHidden = (id, l) => ilohAlways(id, l) || !!state[id][hideKeyOf(id)]?.has(l);
+const destName = id => destOf(id)?.name || 'Iloh Khurdan';
 const dayRecord = (c, d) => {
   const s = state[c.id], city = defaultCity(c.id);
   const cond = city ? (() => { const tp = tempAt(city, d); return { ...cityWeather(city, tp, d), tp }; })() : null;
@@ -2407,7 +2426,7 @@ function renderHistory(id) {
           ${selRec.cond ? `<p class="where">${icon(selRec.cond.icon)}<span>${selRec.cond.label} · ${deg(selRec.cond.tp.max)} / ${deg(selRec.cond.tp.min)}</span></p>` : ''}
           ${selRec.place ? `<p class="where">${icon('pin')}<span>${esc(selRec.place)}</span></p>` : ''}
           ${(b => `${selRec.acts.length ? `<p class="where">${icon('matin')}<span>${selRec.acts.map(a => esc(a + withTxt(selRec.withActs, a) + privTxt(selRec.privWith, a) + ilohWithTxt(b, a, withOf(selRec.withActs, a)))).join(' · ')}</span></p>` : ''}
-          ${ilohAddedOf(b, selRec.acts).length ? `<p class="where">${icon('eye')}<span>Sur l'Iloh Khurdan : ${esc(ilohAddedOf(b, selRec.acts).map(l => l + ilohWithTxt(b, l)).join(' · '))}</span></p>` : ''}`)(ilohBackOf(id, sel))}
+          ${ilohAddedOf(b, selRec.acts).length ? `<p class="where">${icon('eye')}<span>Sur ${esc(b.where || "l'Iloh Khurdan")} : ${esc(ilohAddedOf(b, selRec.acts).map(l => l + ilohWithTxt(b, l)).join(' · '))}</span></p>` : ''}`)(ilohBackOf(id, sel))}
           ${selRec.nightStates?.length || selRec.nightNote || selRec.nightNotes?.['Nuit chaude'] ? `<p class="where">${icon('lips')}<span>Nuit : ${esc([nightStatesText(id, selRec.nightStates, selRec.nightNotes, selRec.calmWith), selRec.nightNote].filter(Boolean).join(' · '))}</span></p>` : ''}
           ${selRec.nefaste ? `<p class="where">${icon('warn')}<span>${esc(selRec.nefaste)}</span></p>` : ''}
           ${selRec.intime || selRec.intimeWith?.length ? `<p class="where">${icon('lips')}<span>Vie intime${selRec.intimeWith?.length ? ' avec ' + esc(selRec.intimeWith.filter(isChar).map(nameOf).join(', ')) : ''}${selRec.intime ? ' : ' + esc(selRec.intime) : ''}</span></p>` : ''}
@@ -2843,8 +2862,8 @@ function renderCharNow(id) {
     const iloh = on && sendsToIloh(id) && label !== 'Voyage' ? `<p class="act-detail iloh-row">${isPrivateAct(label)
         ? `${icon('lips')}<span>Intime : reste dans Journée RP</span>`
         : ilohAlways(id, label)
-        ? `${icon('eyeoff')}<span>Toujours masquée dans Iloh Khurdan <small>(réglé dans la liste d'activités)</small></span>`
-        : `<button type="button" class="link small ico-btn" data-iloh-hide="${esc(label)}" aria-pressed="${ilohHidden(id, label)}" title="${ilohHidden(id, label) ? 'Afficher dans Iloh Khurdan' : 'Masquer dans Iloh Khurdan (ce jour-là)'}" aria-label="${ilohHidden(id, label) ? 'Afficher' : 'Masquer'} ${esc(label)} dans Iloh Khurdan">${icon(ilohHidden(id, label) ? 'eyeoff' : 'eye')}</button><span>${ilohHidden(id, label) ? 'Masquée dans Iloh Khurdan aujourd\'hui' : 'Visible dans Iloh Khurdan'}</span>`}</p>` : '';
+        ? `${icon('eyeoff')}<span>Toujours masquée dans ${esc(destName(id))} <small>(réglé dans la liste d'activités)</small></span>`
+        : `<button type="button" class="link small ico-btn" data-iloh-hide="${esc(label)}" aria-pressed="${ilohHidden(id, label)}" title="${ilohHidden(id, label) ? 'Afficher dans ' + esc(destName(id)) : 'Masquer dans ' + esc(destName(id)) + ' (ce jour-là)'}" aria-label="${ilohHidden(id, label) ? 'Afficher' : 'Masquer'} ${esc(label)} dans ${esc(destName(id))}">${icon(ilohHidden(id, label) ? 'eyeoff' : 'eye')}</button><span>${ilohHidden(id, label) ? 'Masquée dans ' + esc(destName(id)) + ' aujourd\'hui' : 'Visible dans ' + esc(destName(id))}</span>`}</p>` : '';
     const withRow = on && canShareAct(label) ? withPickHtml(id, label) : on && canPrivWith(label) ? privPickHtml(id, label) : '';
     return `<div class="act-wrap"><label class="act ${special?'special':''}"><input type="checkbox" data-act="${esc(label)}" ${on?'checked':''}><span>${label === 'Voyage' ? icon('route') : ''}${esc(label)}</span></label>${huntRow}${drawn}${detail}${contract}${trip}${slots}${withRow}${iloh}</div>`;
   };
@@ -2974,7 +2993,7 @@ function renderCharNow(id) {
     ${prevNightBlock(id)}
     <div class="chrono-part"><h3 class="chrono-h">Activités</h3>
       ${sharedActsHtml(id, true)}
-      ${(b => b ? `<p class="reserved iloh-note">${icon('eye')}Ajouts faits sur l'Iloh Khurdan : ${esc([...ilohAddedOf(b, s.checked).map(l => l + ilohWithTxt(b, l)), ...Object.keys(b.with || {}).filter(l => s.checked.has(l)).map(l => l + ilohWithTxt(b, l))].join(' · '))}. Ils s'affichent sur le récap.</p>` : '')(ilohToday)}
+      ${(b => b ? `<p class="reserved iloh-note">${icon('eye')}Ajouts faits sur ${esc(destOf(id)?.where || "l'Iloh Khurdan")} : ${esc([...ilohAddedOf(b, s.checked).map(l => l + ilohWithTxt(b, l)), ...Object.keys(b.with || {}).filter(l => s.checked.has(l)).map(l => l + ilohWithTxt(b, l))].join(' · '))}. Ils s'affichent sur le récap.</p>` : '')(ilohToday)}
       ${cats.length ? '' : `<p class="reserved">Liste d'activités à définir. En attendant, utilise le champ « Activité spéciale » et coche « L'ajouter aussi à la liste ».</p>`}
       ${!s.manageActs && cats.length > 1 ? `<div class="fold-all"><button type="button" class="link small ico-btn" data-fold-all="1" title="Tout replier" aria-label="Tout replier">${icon('foldall')}</button><button type="button" class="link small ico-btn" data-fold-all="0" title="Tout déplier" aria-label="Tout déplier">${icon('unfoldall')}</button></div>` : ''}
       ${cats.map(k => !s.manageActs ? (list => `<details class="cat fold" data-fold="${k}" ${isFolded(id, k) ? '' : 'open'}>
@@ -2986,7 +3005,7 @@ function renderCharNow(id) {
         ? (live(k).length ? live(k).map(a => `<div class="act manage"><span>${esc(a)}</span>
             <select class="cat-move" data-act-cat="${esc(a)}" aria-label="Catégorie de ${esc(a)}">${catsOf(c).map(x => `<option value="${x}" ${x === k ? 'selected' : ''}>${esc(catLabel(c, x))}</option>`).join('')}</select>
             ${privToggle(a)}
-            ${sendsToIloh(id) ? `<button type="button" class="link small ico-btn" data-iloh-always="${esc(a)}" aria-pressed="${ilohAlways(id, a)}" title="${ilohAlways(id, a) ? 'Toujours masquée dans Iloh Khurdan : la rendre visible' : 'Toujours masquer dans Iloh Khurdan'}" aria-label="${ilohAlways(id, a) ? 'Rendre visible' : 'Toujours masquer'} ${esc(a)} dans Iloh Khurdan">${icon(ilohAlways(id, a) ? 'eyeoff' : 'eye')}</button>` : ''}
+            ${sendsToIloh(id) ? `<button type="button" class="link small ico-btn" data-iloh-always="${esc(a)}" aria-pressed="${ilohAlways(id, a)}" title="${ilohAlways(id, a) ? 'Toujours masquée dans ' + esc(destName(id)) + ' : la rendre visible' : 'Toujours masquer dans ' + esc(destName(id))}" aria-label="${ilohAlways(id, a) ? 'Rendre visible' : 'Toujours masquer'} ${esc(a)} dans ${esc(destName(id))}">${icon(ilohAlways(id, a) ? 'eyeoff' : 'eye')}</button>` : ''}
             ${s.actDel === a ? `<button type="button" class="link small danger" data-act-remove="${esc(a)}">Confirmer la suppression</button>` : `<button type="button" class="link small ico-btn" data-act-del="${esc(a)}" title="Supprimer" aria-label="Supprimer">${icon('trash')}</button>`}</div>`).join('')
           : `<p class="reserved">Catégorie vide : déplace-y des activités. <button type="button" class="link small ico-btn" data-cat-del="${k}" title="Supprimer la catégorie" aria-label="Supprimer la catégorie">${icon('trash')}</button></p>`)
         : live(k).filter(a => actAvailable(id, a)).map(a => actRow(a)).join('')}</div>`).join('')}
@@ -3001,7 +3020,7 @@ function renderCharNow(id) {
       <div class="special-row"><input type="text" id="special-${id}" placeholder="Ex. : réception à l'ambassade">
         <button type="button" class="btn" id="add-${id}">Ajouter</button></div>
       <label class="check-inline"><input type="checkbox" id="keep-${id}"> L'ajouter aussi à la liste ${deName(c.name)}</label>
-      <label class="check-inline"><input type="checkbox" id="priv-${id}"> Activité intime <small>(jamais dans Iloh Khurdan, sans « Avec… »)</small></label>
+      <label class="check-inline"><input type="checkbox" id="priv-${id}"> Activité intime <small>(jamais dans Iloh Khurdan ni S9 Interact', sans « Avec… »)</small></label>
     </div>
     ${isKhurdan(id) ? `<div class="chrono-part"><h3 class="chrono-h">Vie intime</h3>
       ${intimeFromHtml(id)}
@@ -3293,7 +3312,7 @@ function renderCharNow(id) {
       if (e.target.checked && !activeContract(id)) CONTRACTS[id] = { start: isoDay(rpDay) };
       if (!e.target.checked && CONTRACTS[id]?.start === isoDay(rpDay)) delete CONTRACTS[id]; }   // contrat créé par erreur aujourd'hui
     if (e.target.checked) { s.checked.add(l); if (!s.slots[l] && guessSlot(l)) s.slots[l] = [...guessSlot(l)]; if (RANDOM_ACTS[l] && !s.details?.[l]) (s.details ||= {})[l] = l === JUNK_ACT && JUNK_DUO.includes(id) && junkShared.dish || drawFor(l); }
-    else { s.checked.delete(l); delete s.slots[l]; clearWith(id, l); clearPrivWith(id, l); if (RANDOM_ACTS[l] && s.details) delete s.details[l]; if (s.huntSet) delete s.huntSet[l]; s.hideIloh?.delete(l); }
+    else { s.checked.delete(l); delete s.slots[l]; clearWith(id, l); clearPrivWith(id, l); if (RANDOM_ACTS[l] && s.details) delete s.details[l]; if (s.huntSet) delete s.huntSet[l]; s.hideIloh?.delete(l); s.hideS9?.delete(l); }
     if (l === JUNK_ACT && JUNK_DUO.includes(id)) setJunk(e.target.checked ? s.details[l] : null);
     renderChar(id);
   }));
@@ -3350,11 +3369,11 @@ function renderCharNow(id) {
   document.querySelectorAll('[data-special-remove]').forEach(b => b.addEventListener('click', () => {
     const l = b.dataset.specialRemove; s.actDel = null; s.specials = s.specials.filter(x => x !== l); s.checked.delete(l); delete s.slots[l]; renderChar(id); }));
   document.querySelectorAll('[data-act-del]').forEach(b => b.addEventListener('click', () => { s.actDel = b.dataset.actDel; renderChar(id); }));
-  // Iloh Khurdan : masquer une activité ce jour-là, ou toujours
+  // Iloh Khurdan ou S9 Interact' : masquer une activité ce jour-là, ou toujours
   document.querySelectorAll('[data-iloh-hide]').forEach(b => b.addEventListener('click', () => {
-    const l = b.dataset.ilohHide; s.hideIloh ||= new Set(); s.hideIloh.has(l) ? s.hideIloh.delete(l) : s.hideIloh.add(l); renderChar(id); }));
+    const l = b.dataset.ilohHide, k = hideKeyOf(id); s[k] ||= new Set(); s[k].has(l) ? s[k].delete(l) : s[k].add(l); renderChar(id); }));
   document.querySelectorAll('[data-iloh-always]').forEach(b => b.addEventListener('click', () => {
-    const l = b.dataset.ilohAlways, set = ILOH_HIDE_ALWAYS[id] ||= new Set(); set.has(l) ? set.delete(l) : set.add(l); renderChar(id); }));
+    const l = b.dataset.ilohAlways, set = alwaysOf(id)[id] ||= new Set(); set.has(l) ? set.delete(l) : set.add(l); renderChar(id); }));
   document.querySelectorAll('[data-priv]').forEach(b => b.addEventListener('click', () => {
     setPrivAct(b.dataset.priv, b.getAttribute('aria-pressed') !== 'true'); renderChar(id); }));
   // « Activité intime » cochée d'office selon les mots tapés, tant que le joueur n'a pas touché la case.
