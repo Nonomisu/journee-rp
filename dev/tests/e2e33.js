@@ -26,21 +26,25 @@ const ok = (c, l) => { console.log((c ? '  ok  ' : '  ÉCHEC ') + l); if (!c) pr
   await elle.evaluate(() => document.querySelector('[data-nefp-ctx="Température glaciale"]').click()); await elle.waitForTimeout(300);
   await elle.evaluate(() => document.querySelector('[data-nefp-host="Prise de ses cachets"]').click()); await elle.waitForTimeout(1500);
   const e = (await elle.evaluate(() => JSON.parse(localStorage.getItem('mockdb'))))[`days/hokkyoku/months/${pym}`][pday];
-  ok(e.nefaste === "Manifestation : Température glaciale · Prise de ses cachets, Injection d'Unegen", 'texte enregistré sur la journée d\'hier (historique)');
+  ok(e.nefaste === 'Manifestation : Température glaciale · Prise de ses cachets', 'texte enregistré sur la journée d\'hier d\'Hokkyoku (sans l\'injection)');
+  ok(await elle.locator('[data-nefp-inj]').count() === 0 && (await elle.textContent('.nefaste')).includes("Injection d'Unegen : oui"), 'Hokkyoku voit l\'injection sans pouvoir la cocher');
   ok(e.nefPrev?.on && e.done === true && e.night?.with === 'unegen', 'détail enregistré, le reste de la journée d\'hier intact');
   ok(await elle.evaluate(() => NEWS.some(n => n.key.startsWith('nef:') && n.charId === 'unegen' && n.text.includes('la nuit dernière'))), 'nouvelle pour Unegen');
   await elle.click('#prev-done-hokkyoku'); await elle.waitForTimeout(200);
   ok((await elle.textContent('#view')).includes('Manifestation : Température glaciale'), 'résumé de la nuit précédente avec la manifestation');
-  // Décocher l'injection
-  await elle.click('#prev-edit-hokkyoku'); await elle.waitForTimeout(200);
-  await elle.evaluate(() => document.querySelector('[data-nefp-inj]').click()); await elle.waitForTimeout(1200);
-  ok(!(await elle.evaluate(() => JSON.parse(localStorage.getItem('mockdb'))))[`days/hokkyoku/months/${pym}`][pday].nefaste.includes('Injection'), 'injection décochée');
   // Nono, fiche d'Unegen : la manifestation de la nuit dernière
   const nono = await open('f1', process.env.NONO_EMAIL);
   await nono.evaluate(() => go('unegen')); await nono.waitForTimeout(300);
   if (await nono.locator('#prev-edit-unegen').count()) { await nono.click('#prev-edit-unegen'); await nono.waitForTimeout(200); }
   ok((await nono.textContent('#view')).includes('Manifestation : Température glaciale'), 'Unegen : manifestation de la nuit dernière affichée');
-  ok(await nono.locator('#nefp-on').count() === 0, 'Unegen ne la coche pas lui-même');
+  ok(await nono.locator('#nefp-on').count() === 0, 'Unegen ne coche pas la manifestation lui-même');
+  ok(await nono.locator('[data-nefp-inj]').count() === 1, 'Unegen : case « Injection d\'Unegen » sur sa fiche');
+  await nono.evaluate(() => document.querySelector('[data-nefp-inj]').click()); await nono.waitForTimeout(1200);
+  const u = (await nono.evaluate(() => JSON.parse(localStorage.getItem('mockdb'))))[`days/unegen/months/${pym}`]?.[pday] || {};
+  ok(u.nefInj === false && u.nefaste === 'Manifestation : Température glaciale · Prise de ses cachets', 'injection décochée, enregistrée sur la journée d\'hier d\'Unegen');
+  await elle.reload(); await elle.waitForTimeout(400); if (await elle.isVisible('#login-btn')) await elle.click('#login-btn'); await elle.waitForTimeout(1500);
+  await elle.evaluate(() => go('hokkyoku')); await elle.waitForTimeout(300); if (await elle.locator('#prev-edit-hokkyoku').count()) { await elle.click('#prev-edit-hokkyoku'); await elle.waitForTimeout(200); }
+  ok((await elle.textContent('.nefaste')).includes("Injection d'Unegen : non"), 'Hokkyoku voit l\'injection décochée par Unegen');
   // Retirer la manifestation
   await elle.evaluate(() => document.getElementById('nefp-on').click()); await elle.waitForTimeout(1200);
   const e2 = (await elle.evaluate(() => JSON.parse(localStorage.getItem('mockdb'))))[`days/hokkyoku/months/${pym}`][pday];

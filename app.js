@@ -1013,13 +1013,14 @@ const nefTextOf = m => !m?.on ? '' : ['Manifestation' + (m.ctx.length ? ' : ' + 
 const nefText = () => nefActive() ? nefTextOf(nefaste) : '';
 // Nuit précédente : Manifestation ajoutée après coup par Hokkyoku, enregistrée sur sa journée d'hier
 // (nefPrev, détaillé ; nefaste, le texte repris dans l'historique). Seulement si la nuit d'hier était avec Unegen.
-const nefPrevOf = () => { const e = prevEntry(NEF.host);
-  if (e?.nefPrev) return { on: false, ctx: [], host: [], inj: true, ...e.nefPrev };
-  const t = e?.nefaste || '';   // manifestation déjà notée hier, en direct : relue depuis son texte
-  return { on: !!t, ctx: NEF_CTX.filter(x => t.includes(x)), host: NEF_HOST.filter(x => t.includes(x)), inj: !t || t.includes(NEF_INJ) }; };
+// L'injection reste une réaction d'Unegen : cochée seulement sur sa fiche (nefInj sur sa journée d'hier).
+const nefPrevOf = () => { const e = prevEntry(NEF.host), u = prevEntry(NEF.partner), t = e?.nefaste || '';
+  const m = e?.nefPrev ? { on: false, ctx: [], host: [], ...e.nefPrev }   // manifestation déjà notée hier, en direct : relue depuis son texte
+    : { on: !!t, ctx: NEF_CTX.filter(x => t.includes(x)), host: NEF_HOST.filter(x => t.includes(x)) };
+  return { ...m, inj: typeof u?.nefInj === 'boolean' ? u.nefInj : e?.nefPrev ? true : (!t || t.includes(NEF_INJ)) }; };   // cochée par défaut
 const nefPrevTogether = () => { const n = prevNight(NEF.host); return n.hot?.with === NEF.partner || n.calmWith === NEF.partner; };
 const nefPrevText = id => [NEF.host, NEF.partner].includes(id) && nefPrevTogether() ? nefTextOf(nefPrevOf()) : '';
-const setNefPrev = m => { setPrev(NEF.host, { nefPrev: { on: m.on, ctx: [...m.ctx], host: [...m.host], inj: m.inj }, nefaste: nefTextOf(m) || null });
+const setNefPrev = m => { setPrev(NEF.host, { nefPrev: { on: m.on, ctx: [...m.ctx], host: [...m.host] }, nefaste: nefTextOf({ ...m, inj: false }) || null });
   const k = 'nef:' + keyOf(prevDay());
   if (m.on) notify(NEF.host, NEF.partner, `Manifestation chez ${nameOf(NEF.host)} la nuit dernière : l'esprit s'est réveillé.`, k); else dropNews([k]); };
 const nefPrevBlock = id => {
@@ -1029,7 +1030,11 @@ const nefPrevBlock = id => {
     <label class="act night"><input type="checkbox" id="nefp-on" ${m.on ? 'checked' : ''}>${icon('warn')}<span>Manifestation</span></label>
     ${m.on ? `<h4 class="chrono-sub">Contexte</h4>${NEF_CTX.map(x => box('data-nefp-ctx', x, m.ctx.includes(x))).join('')}
       <h4 class="chrono-sub">Réactions</h4>${NEF_HOST.map(x => box('data-nefp-host', x, m.host.includes(x))).join('')}
-      ${box('data-nefp-inj', NEF_INJ, m.inj)}` : ''}</div>`; };
+      <p class="where">${icon('warn')}<span>${esc(NEF_INJ)} : ${m.inj ? 'oui' : 'non'} <small>(cochée sur la fiche ${deName(nameOf(NEF.partner))})</small></span></p>` : ''}</div>`; };
+// Fiche d'Unegen : la manifestation de la nuit dernière (lecture seule) et son injection, à cocher ici seulement.
+const nefPrevPartnerBlock = id => { if (id !== NEF.partner || !nefPrevTogether()) return ''; const m = nefPrevOf(); if (!m.on) return '';
+  return `<div class="nefaste"><p class="where">${icon('warn')}<span>${esc(nefTextOf({ ...m, inj: false }))} <small>(indiquée sur la fiche ${deName(nameOf(NEF.host))})</small></span></p>
+    <label class="act night"><input type="checkbox" data-nefp-inj="${esc(NEF_INJ)}" ${m.inj ? 'checked' : ''}>${icon('warn')}<span>${esc(NEF_INJ)}</span></label></div>`; };
 const nefLine = id => [NEF.host, NEF.partner].includes(id) && nefActive() ? `<p class="where">${icon('warn')}<span>${esc(nefText())}</span></p>` : '';
 const nefBlock = id => {
   if (![NEF.host, NEF.partner].includes(id) || !nefTogether()) return '';
@@ -2014,7 +2019,7 @@ const prevNightBlock = id => {
   return `<div class="chrono-part">${head}
     ${nightChips(id, new Set(n.states), 'data-prev-night', hotHtml + hotNote, 'Comment s\'est passée la nuit ?', n.hot ? 'Nuit chaude' + (n.hot.with ? ' avec ' + whoLabel(n.hot.with) : '') : '', '', n.notes)}
     ${nefPrevBlock(id)}
-    ${id === NEF.partner && nefPrevText(id) ? `<p class="where">${icon('warn')}<span>${esc(nefPrevText(id))} <small>(indiquée sur la fiche ${deName(nameOf(NEF.host))})</small></span></p>` : ''}
+    ${nefPrevPartnerBlock(id)}
     ${filled ? `<button type="button" class="link small ico-btn" id="prev-done-${id}" title="Terminé" aria-label="Terminé">${icon('check')}</button>` : ''}</div>`;
 };
 const statesBlock = id => { const s = state[id]; s.phys ||= new Set(); s.mental ||= new Set(); s.stateNotes ||= {};
@@ -2640,7 +2645,8 @@ function renderCharNow(id) {
   document.getElementById('nefp-on')?.addEventListener('change', e => nefPrevEdit(m => { m.on = e.target.checked; if (m.on && !m.ctx.length && !m.host.length) m.inj = true; }));
   document.querySelectorAll('[data-nefp-ctx]').forEach(b => b.addEventListener('change', () => nefPrevToggle('ctx', b.dataset.nefpCtx)));
   document.querySelectorAll('[data-nefp-host]').forEach(b => b.addEventListener('change', () => nefPrevToggle('host', b.dataset.nefpHost)));
-  document.querySelectorAll('[data-nefp-inj]').forEach(b => b.addEventListener('change', e => nefPrevEdit(m => { m.inj = e.target.checked; })));
+  document.querySelectorAll('[data-nefp-inj]').forEach(b => b.addEventListener('change', e => { if (id !== NEF.partner) return;
+    const m = { ...nefPrevOf(), inj: e.target.checked }; s.prevEdit = true; setPrev(NEF.partner, { nefInj: m.inj, nefaste: nefTextOf(m) || null }); renderChar(id); }));
   const pickCalm = (scope, w) => {
     if (scope === 'next') setCalm(id, true, w);
     else { s.prevEdit = true; setPrev(id, { calmWith: w || null }); }
