@@ -548,7 +548,7 @@ const setWith = (id, l, other, on, quiet = false) => {
   if (on && !quiet) notify(id, other, `${nameOf(id)} a noté « ${l} » avec ${nameOf(other)}.`, withKey(id, other, l));
   else if (!on) dropNews([withKey(id, other, l)]);
 };
-const clearWith = (id, l) => { const s = state[id]; withOf(s.withActs, l).forEach(o => dropNews([withKey(id, o, l)])); if (s.withActs) delete s.withActs[l]; };
+const clearWith = (id, l) => { const s = state[id]; withOf(s.withActs, l).forEach(o => dropNews([withKey(id, o, l)])); if (s.withActs) delete s.withActs[l]; if (s.withFrom) delete s.withFrom[l]; };
 const withPickHtml = (id, label) => { const ids = withOf(state[id].withActs, label);
   return `<details class="with-pick" data-with-fold="${esc(label)}" ${withOpen.has(id + ':' + label) ? 'open' : ''}>
     <summary>${icon('users')}<span>${ids.length ? 'Avec ' + esc(andList(ids.map(nameOf))) : 'Avec d\'autres personnages ?'}</span></summary>
@@ -565,9 +565,9 @@ const withGroups = id => {
 };
 // Activités où un autre personnage (fiche validée) a mentionné celui-ci aujourd'hui.
 const sharedActsOf = id => C.filter(x => x.id !== id && state[x.id]?.done).flatMap(x => [
-  ...Object.entries(state[x.id].withActs || {}).filter(([l, ids]) => ids.includes(id) && state[x.id].checked?.has(l))
+  ...Object.entries(state[x.id].withActs || {}).filter(([l, ids]) => ids.includes(id) && state[x.id].checked?.has(l) && !state[x.id].withFrom?.[l])
     .map(([l, ids]) => ({ from: x.id, act: l, others: ids.filter(o => o !== id && isChar(o)) })),
-  ...Object.entries(state[x.id].privWith || {}).filter(([l, ids]) => Array.isArray(ids) && ids.includes(id) && state[x.id].checked?.has(l))
+  ...Object.entries(state[x.id].privWith || {}).filter(([l, ids]) => Array.isArray(ids) && ids.includes(id) && state[x.id].checked?.has(l) && !state[x.id].withFrom?.[l])
     .map(([l, ids]) => ({ from: x.id, act: l, priv: true, others: ids.filter(o => o !== id) }))]);
 const sharedActsHtml = (id, canJoin) => {
   const L = sharedActsOf(id); if (!L.length) return '';
@@ -592,11 +592,14 @@ const joinAct = (id, from, l) => {
   if (!s.slots[l] && state[from].slots?.[l]?.length) s.slots[l] = [...state[from].slots[l]];
   if (isPrivateAct(l)) {   // activité intime : seulement le personnage qui l'a notée (et ses autres partenaires)
     const told = new Set([playerOf(id)]);
-    [from, ...privOf(state[from].privWith, l).filter(o => o !== id && !skip.has(o))].forEach(o => { setPrivWith(id, l, o, true, told.has(playerOf(o))); if (isChar(o)) told.add(playerOf(o)); });
+    (s.withFrom ||= {})[l] = from;
+    [from, ...privOf(state[from].privWith, l).filter(o => o !== id && !skip.has(o))].forEach(o => { setPrivWith(id, l, o, true, o !== from || told.has(playerOf(o))); if (isChar(o)) told.add(playerOf(o)); });
     window.RP_SYNC?.save?.(); return;
   }
   const told = new Set([playerOf(id)]);   // une seule nouvelle par joueur
-  [from, ...withOf(state[from].withActs, l).filter(o => o !== id && !skip.has(o))].forEach(o => { setWith(id, l, o, true, told.has(playerOf(o))); told.add(playerOf(o)); });
+  // Reprise : seul l'auteur est prévenu ; les autres personnages ont déjà eu la proposition de l'auteur (pas de nouvelle proposition).
+  (s.withFrom ||= {})[l] = from;
+  [from, ...withOf(state[from].withActs, l).filter(o => o !== id && !skip.has(o))].forEach(o => { setWith(id, l, o, true, o !== from || told.has(playerOf(o))); told.add(playerOf(o)); });
   window.RP_SYNC?.save?.();
 };
 const pairKeys = (a, b) => { const d = keyOf(rpDay); return ['night:' + d + ':' + [a, b].sort().join('+'), 'risk:' + d + ':' + a + ':' + b, 'risk:' + d + ':' + b + ':' + a]; };
@@ -2847,7 +2850,7 @@ initPlaces();
 
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
-const ENTRY_KEYS = ['mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
+const ENTRY_KEYS = ['withFrom', 'mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
   'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'hideS9', 'withActs', 'privWith', 'reopens'];
 const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{}, nightStates:new Set() });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
