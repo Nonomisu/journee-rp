@@ -572,21 +572,31 @@ const sharedActsOf = id => C.filter(x => x.id !== id && state[x.id]?.done).flatM
 const sharedActsHtml = (id, canJoin) => {
   const L = sharedActsOf(id); if (!L.length) return '';
   return `<div class="shared-acts"><p class="shared-h">${icon('users')}Activités communes du jour</p>${L.map(a => `<div class="shared-item"><span>${esc(nameOf(a.from))} a noté « ${esc(a.act)} » avec ${esc(andList([nameOf(id), ...a.others.map(whoLabel)]))}.</span>
-    ${canJoin ? state[id].checked.has(a.act) ? '<small class="joined">✓ Sur la fiche</small>' : `<button type="button" class="join-btn" data-join-from="${a.from}" data-join-act="${esc(a.act)}">${icon('plus')}L'ajouter à la fiche ${deName(nameOf(id))}</button>` : ''}</div>`).join('')}</div>`;
+    ${canJoin ? state[id].checked.has(a.act) ? '<small class="joined">✓ Sur la fiche</small>' : `${joinPickHtml(id, a)}<button type="button" class="join-btn" data-join-from="${a.from}" data-join-act="${esc(a.act)}">${icon('plus')}L'ajouter à la fiche ${deName(nameOf(id))}</button>` : ''}</div>`).join('')}</div>`;
 };
 // Reprend l'activité d'un autre personnage : cochée (en activité spéciale si elle n'est pas dans la liste), mêmes moments, mêmes personnages.
+// Avant de reprendre une activité commune, on peut retirer des personnages proposés (l'auteur reste toujours).
+const joinSkip = {};   // 'personnage|auteur|activité' → personnages retirés
+const joinSkipOf = (id, from, l) => joinSkip[id + '|' + from + '|' + l] ||= new Set();
+const joinPickHtml = (id, a) => { if (!a.others.length) return ''; const skip = joinSkipOf(id, a.from, a.act);
+  return `<div class="join-pick" role="group" aria-label="Avec qui ?"><small>Avec :</small><span class="join-fixed">${esc(nameOf(a.from))}</span>${a.others.map(o =>
+    `<button type="button" data-jp-who="${esc(o)}" data-jp-from="${a.from}" data-jp-act="${esc(a.act)}" aria-pressed="${!skip.has(o)}">${esc(whoLabel(o))}</button>`).join('')}</div>`; };
+document.addEventListener('click', e => { const b = e.target.closest('[data-jp-who]'); if (!b || !isChar(current)) return;
+  const skip = joinSkipOf(current, b.dataset.jpFrom, b.dataset.jpAct), w = b.dataset.jpWho; skip.has(w) ? skip.delete(w) : skip.add(w);
+  const y = window.scrollY; renderChar(current); window.scrollTo({ top: y }); });
 const joinAct = (id, from, l) => {
+  const skip = joinSkipOf(id, from, l);
   const s = state[id], c = C.find(x => x.id === id);
   if (!allActs(c).includes(l) && !s.specials.includes(l)) s.specials.push(l);
   s.checked.add(l);
   if (!s.slots[l] && state[from].slots?.[l]?.length) s.slots[l] = [...state[from].slots[l]];
   if (isPrivateAct(l)) {   // activité intime : seulement le personnage qui l'a notée (et ses autres partenaires)
     const told = new Set([playerOf(id)]);
-    [from, ...privOf(state[from].privWith, l).filter(o => o !== id)].forEach(o => { setPrivWith(id, l, o, true, told.has(playerOf(o))); if (isChar(o)) told.add(playerOf(o)); });
+    [from, ...privOf(state[from].privWith, l).filter(o => o !== id && !skip.has(o))].forEach(o => { setPrivWith(id, l, o, true, told.has(playerOf(o))); if (isChar(o)) told.add(playerOf(o)); });
     window.RP_SYNC?.save?.(); return;
   }
   const told = new Set([playerOf(id)]);   // une seule nouvelle par joueur
-  [from, ...withOf(state[from].withActs, l).filter(o => o !== id)].forEach(o => { setWith(id, l, o, true, told.has(playerOf(o))); told.add(playerOf(o)); });
+  [from, ...withOf(state[from].withActs, l).filter(o => o !== id && !skip.has(o))].forEach(o => { setWith(id, l, o, true, told.has(playerOf(o))); told.add(playerOf(o)); });
   window.RP_SYNC?.save?.();
 };
 const pairKeys = (a, b) => { const d = keyOf(rpDay); return ['night:' + d + ':' + [a, b].sort().join('+'), 'risk:' + d + ':' + a + ':' + b, 'risk:' + d + ':' + b + ':' + a]; };
@@ -619,6 +629,31 @@ const newsHour = n => new Date(n.at).toLocaleTimeString('fr-FR', { hour: '2-digi
 const canEdit = id => C.find(c => c.id === id)?.player === me;
 const shown = c => (filter === 'all' || c.player === filter) && (groupFilter === 'all' || c.groups.includes(groupFilter));
 const root = document.documentElement;
+// ---------- Boutons flèches : remonter tout en haut, descendre tout en bas (au-dessus du menu sur téléphone) ----------
+const initScrollBtns = () => {
+  if (document.querySelector('.scroll-btns')) return;
+  const box = document.createElement('div'); box.className = 'scroll-btns';
+  const arrow = d => `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="${d}"/></svg>`;
+  box.innerHTML = `<button type="button" id="scroll-top" title="Tout en haut" aria-label="Remonter tout en haut">${arrow('M12 19V5M5 12l7-7 7 7')}</button>
+    <button type="button" id="scroll-bottom" title="Tout en bas" aria-label="Descendre tout en bas">${arrow('M12 5v14M5 12l7 7 7-7')}</button>`;
+  document.body.appendChild(box);
+  const up = box.querySelector('#scroll-top'), down = box.querySelector('#scroll-bottom');
+  const fast = matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth';
+  up.addEventListener('click', () => window.scrollTo({ top: 0, behavior: fast }));
+  down.addEventListener('click', () => window.scrollTo({ top: document.documentElement.scrollHeight, behavior: fast }));
+  let t = 0;
+  const update = () => { cancelAnimationFrame(t); t = requestAnimationFrame(() => {
+    const nav = document.querySelector('.nav'), r = nav?.getBoundingClientRect();
+    const atBottom = r && r.height && r.bottom >= innerHeight - 2 && r.width >= innerWidth * .9;   // menu en bas (téléphone)
+    box.style.setProperty('--fab-bottom', `${(atBottom ? r.height : 0) + 12}px`);
+    const y = window.scrollY, max = document.documentElement.scrollHeight - innerHeight;
+    up.hidden = y < 300; down.hidden = max - y < 300;
+  }); };
+  addEventListener('scroll', update, { passive: true }); addEventListener('resize', update);
+  new MutationObserver(update).observe(document.body, { childList: true, subtree: true });
+  update();
+};
+document.readyState === 'loading' ? document.addEventListener('DOMContentLoaded', initScrollBtns) : initScrollBtns();
 const esc = s => s.replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
 const vars = t => `--c-bg:${t.bg};--c-gold:${t.gold};--c-text:${t.text};--c-dim:${t.dim};--c-rule:${t.rule};--c-display:${t.display}`;
 // La journée RP bascule à 5 h : avant 5 h, on est encore « hier ».

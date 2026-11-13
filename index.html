@@ -627,6 +627,22 @@ button.link.danger { color: #e0a24d; }
 .recap-intime .intime-from { margin-top: .5rem; text-align: left; }
 .card.soon { opacity: .5; cursor: default; border-style: dashed; }
 
+.join-pick { display: flex; flex-wrap: wrap; align-items: center; gap: .3rem; margin: .35rem 0 .1rem; }
+.join-pick small { color: var(--dim); margin-right: .1rem; }
+.join-pick .join-fixed, .join-pick button { font: inherit; font-size: .85rem; padding: .15rem .6rem; border-radius: 999px; border: 1px solid var(--rule); }
+.join-pick .join-fixed { color: var(--text); opacity: .8; }
+.join-pick button { background: none; color: var(--dim); cursor: pointer; text-decoration: line-through; }
+.join-pick button[aria-pressed="true"] { color: var(--text); border-color: currentColor; text-decoration: none; }
+/* ---------- Boutons flèches : tout en haut / tout en bas de la page ---------- */
+.scroll-btns { position: fixed; right: max(12px, env(safe-area-inset-right, 0px)); bottom: var(--fab-bottom, 16px); z-index: 30;
+  display: flex; flex-direction: column; gap: .45rem; pointer-events: none; }
+.scroll-btns button { pointer-events: auto; width: 2.6rem; height: 2.6rem; border-radius: 50%; display: grid; place-items: center;
+  border: 1px solid var(--rule); background: color-mix(in srgb, var(--bar, var(--bg)) 88%, transparent); color: var(--text);
+  backdrop-filter: blur(6px); box-shadow: 0 2px 8px rgba(0, 0, 0, .25); cursor: pointer; transition: opacity .2s; padding: 0; }
+.scroll-btns button svg { width: 1.2rem; height: 1.2rem; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+.scroll-btns button[hidden] { display: none; }
+@media print { .scroll-btns { display: none; } }
+
 /* Connexion */
 .login { position: fixed; inset: 0; z-index: 50; display: grid; place-items: center; padding: 24px 16px;
   background: radial-gradient(ellipse at 50% 20%, #2a1c18, #0e0b0a 70%); color: #e9dcc4; text-align: center; }
@@ -670,6 +686,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=7b86611363" charset="utf-8"></script>
+<script src="app.js?v=2e30fcc1dd" charset="utf-8"></script>
 <script type="module" src="sync.js?v=c6885ad51d"></script>
 
