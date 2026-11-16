@@ -464,10 +464,12 @@ const WORKDAYS = { khopses: new Set() };   // 1 = lundi … 7 = dimanche
 const DAY_NAMES = ['Lun', 'Mar', 'Mer', 'Jeu', 'Ven', 'Sam', 'Dim'];
 const weekday = d => (d.getDay() + 6) % 7 + 1;
 const worksTonight = id => !!WORKDAYS[id]?.has(weekday(rpDay));
-const blockedWith = (id, w) => w && isChar(w) && CLIENT_PARTNER[w] === id && worksTonight(w);   // Viggo → Khopses un jour de travail
+// Un jour de travail de Khopses, ni Viggo ni Khopses ne peuvent cocher leur nuit ensemble (dans les deux sens).
+const busyOf = (id, w) => !w || !isChar(w) ? null : CLIENT_PARTNER[w] === id && worksTonight(w) ? w : CLIENT_PARTNER[id] === w && worksTonight(id) ? id : null;
+const blockedWith = (id, w) => !!busyOf(id, w);
 const workdaysBlock = id => !WORKDAYS[id] ? '' : `<section><h2>Jours de travail</h2>
   <div class="place-list" role="group" aria-label="Jours de travail récurrents">${DAY_NAMES.map((d, i) => `<button type="button" data-workday="${i + 1}" aria-pressed="${WORKDAYS[id].has(i + 1)}">${d}</button>`).join('')}</div>
-  <p class="reserved">${worksTonight(id) ? `${nameOf(id)} travaille ce soir : ${nameOf(CLIENT_PARTNER[id])} ne pourra pas cocher sa nuit avec elle.` : `Ces soirs-là, ${nameOf(CLIENT_PARTNER[id])} ne pourra pas cocher sa nuit avec elle.`}</p>
+  <p class="reserved">${worksTonight(id) ? `${nameOf(id)} travaille ce soir : pas de nuit possible avec ${nameOf(CLIENT_PARTNER[id])}.` : `Ces soirs-là, pas de nuit possible avec ${nameOf(CLIENT_PARTNER[id])}.`}</p>
 </section>`;
 const isKhurdan = id => isChar(id) && C.find(c => c.id === id).groups.includes('Khurdans');
 const nightLinesFor = (a, b) => [...NIGHT_LINES, ...(isKhurdan(a) && isKhurdan(b) ? NIGHT_LINES_KHURDAN : [])];
@@ -2467,10 +2469,10 @@ function renderCharNow(id) {
       ${nightChips(id, s.nightStates, 'data-next-night', `
       <label class="act night"><input type="checkbox" id="hot-${id}" ${n.hot ? 'checked' : ''}>${icon('lips')}<span>Nuit chaude</span></label><!--hot-opts-->
       ${n.hot ? nightNoteInput(id, 'next', 'Nuit chaude', s.nightNotes?.['Nuit chaude']) : ''}
-      ${blockedWith(id, n.partner) ? `<p class="reserved">${nameOf(n.partner)} travaille ce soir (jour de travail récurrent).</p>` : ''}
+      ${blockedWith(id, n.partner) ? `<p class="reserved">${busyOf(id, n.partner) === id ? `${nameOf(id)} travaille ce soir (jour de travail récurrent) : pas de nuit avec ${nameOf(n.partner)}.` : `${nameOf(n.partner)} travaille ce soir (jour de travail récurrent).`}</p>` : ''}
       ${n.partnerAway ? `<p class="reserved">${nameOf(n.partner)} était avec ${esc(whoLabel(n.partnerAway))}${n.partnerAway === 'client' && state[n.partner].returnHour != null ? ` (retour à ${state[n.partner].returnHour} h)` : ''} cette nuit.</p>` : ''}
       ${n.hot ? `<div class="place-list" role="group" aria-label="Avec qui ?">
-          ${[...new Set([n.partner, ...loversOf(id), ...(id === 'khopses' ? ['client'] : []), ...(id === DJ.partner && djLate() && state[id].wait === 'livre' && state[id].door === 'occupee' ? [DELIVERY_GUY] : [])].filter(Boolean))].map(w => `<span class="with-chip"><button type="button" data-with="${esc(w)}" aria-pressed="${n.with === w}" ${blockedWith(id, w) ? `disabled title="${esc(whoLabel(w))} travaille ce soir"` : ''}>${icon('lips')}${esc(w === 'client' ? 'Un client' : whoLabel(w))}</button>${loversOf(id).includes(w) ? `<button type="button" class="link small" data-lover-del="${esc(w)}" aria-label="Retirer ${esc(whoLabel(w))}">×</button>` : ''}</span>`).join('')}
+          ${[...new Set([n.partner, ...loversOf(id), ...(id === 'khopses' ? ['client'] : []), ...(id === DJ.partner && djLate() && state[id].wait === 'livre' && state[id].door === 'occupee' ? [DELIVERY_GUY] : [])].filter(Boolean))].map(w => `<span class="with-chip"><button type="button" data-with="${esc(w)}" aria-pressed="${n.with === w}" ${blockedWith(id, w) ? `disabled title="${esc(whoLabel(busyOf(id, w)))} travaille ce soir"` : ''}>${icon('lips')}${esc(w === 'client' ? 'Un client' : whoLabel(w))}</button>${loversOf(id).includes(w) ? `<button type="button" class="link small" data-lover-del="${esc(w)}" aria-label="Retirer ${esc(whoLabel(w))}">×</button>` : ''}</span>`).join('')}
         </div>
         <div class="special-row"><input type="text" id="lover-new-${id}" enterkeyhint="done" autocapitalize="words" placeholder="Nom d'un personnage ou d'un PNJ"><button type="button" class="btn" id="lover-add-${id}">Ajouter</button></div>
         ${loverMsg ? `<p class="reserved lover-msg">${esc(loverMsg)}</p>` : ''}
@@ -2879,11 +2881,11 @@ const entryOf = id => {
   if (FILM_PAIR.includes(id)) { o.film = isFilmed(id); o.filmLivreur = o.film && withDelivery(id); }
   o.rp = rpPlayed[id] || null;
   o.calmWith = calmBy[id]?.with || null;
-  if (id === NEF.host || id === NEF.partner) o.nefaste = nefText() || null;
+  if (id === NEF.host || id === NEF.partner) o.nefaste = nefText() || null;   // présence néfaste (texte, pour l'historique)                              // nuit calme : avec qui                                        // journée jouée en RP (et avec qui)                  // vidéo publiée (wrap d'Echo et Prism)
   // Nouvelles en attente de la validation : gardées avec la fiche, pour qu'un rechargement de l'appli avant
   // « J'ai terminé » ne les perde pas (elles ne vivaient qu'en mémoire jusque-là).
   const pend = NEWS.filter(x => x.src === id && !x.sent && !newsReady(x));
-  if (pend.length) o.pendingNews = pend.map(x => ({ to: x.to, text: x.text, charId: x.charId, key: x.key, at: x.at || null }));   // présence néfaste (texte, pour l'historique)                              // nuit calme : avec qui                                        // journée jouée en RP (et avec qui)                  // vidéo publiée (wrap d'Echo et Prism)
+  if (pend.length) o.pendingNews = pend.map(x => ({ to: x.to, text: x.text, charId: x.charId, key: x.key, at: x.at || null }));
   return enc(o);
 };
 const isEmptyVal = v => v === '' || v === false || v === null || v === undefined || (Array.isArray(v) && !v.length)
