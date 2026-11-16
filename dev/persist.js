@@ -31,6 +31,10 @@ const entryOf = id => {
   o.rp = rpPlayed[id] || null;
   o.calmWith = calmBy[id]?.with || null;
   if (id === NEF.host || id === NEF.partner) o.nefaste = nefText() || null;   // présence néfaste (texte, pour l'historique)                              // nuit calme : avec qui                                        // journée jouée en RP (et avec qui)                  // vidéo publiée (wrap d'Echo et Prism)
+  // Nouvelles en attente de la validation : gardées avec la fiche, pour qu'un rechargement de l'appli avant
+  // « J'ai terminé » ne les perde pas (elles ne vivaient qu'en mémoire jusque-là).
+  const pend = NEWS.filter(x => x.src === id && !x.sent && !newsReady(x));
+  if (pend.length) o.pendingNews = pend.map(x => ({ to: x.to, text: x.text, charId: x.charId, key: x.key, at: x.at || null }));
   return enc(o);
 };
 const isEmptyVal = v => v === '' || v === false || v === null || v === undefined || (Array.isArray(v) && !v.length)
@@ -40,6 +44,8 @@ const applyEntry = (id, e) => {
   const s = state[id];
   ENTRY_KEYS.forEach(k => delete s[k]);
   const d = dec(e || {}); delete d.night; delete d.film; delete d.filmLivreur; delete d.rp; delete d.calmWith; delete d.nefaste;
+  const pend = d.pendingNews; delete d.pendingNews;
+  if (owns(id)) (pend || []).forEach(n => { if (n?.key && !NEWS.some(x => x.key === n.key)) NEWS.unshift({ ...n, at: n.at || Date.now(), read: false, src: id }); });
   Object.assign(s, freshEntry(), d);
   // Anciennes fiches : le moral était rangé avec l'état physique.
   MORAL.forEach(m => { if (s.phys?.has?.(m)) { s.phys.delete(m); s.mental.add(m); } });
@@ -158,7 +164,7 @@ window.RP_APP = {
       entries: Object.fromEntries(mine.map(c => [c.id, entryOf(c.id)])),
       chars: Object.fromEntries(mine.map(c => [c.id, charDocOf(c)])),
       today: Object.fromEntries(mine.map(c => [c.id, todayOf(c.id)])),
-      news: NEWS.filter(newsReady).map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read })),
+      news: NEWS.filter(newsReady).map(n => { n.sent = true; return n; }).map(n => ({ to: n.to, text: n.text, charId: n.charId, key: n.key, read: !!n.read })),
     };
   },
   rerender,
