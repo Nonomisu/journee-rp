@@ -1161,7 +1161,7 @@ const dropNews = keys => { for (let i = NEWS.length - 1; i >= 0; i--) if (keys.i
 // Personnages propres à Iloh Khurdan (sans fiche ici) : proposés sur les fiches recopiées dans Iloh.
 // Liste tenue à jour par le service du VPS (iloh/_noms/months/liste) ; celle-ci sert en attendant.
 const ILOH_ONLY = { shiruun:'Shiruun', djokhodthai:'Djokhodthai', buyan:'Buyan', cheyenne:'Cheyenne', taivan:'Taivan',
-  altan:'Altan', henbilee:'Henbilee', boroo:'Boroo', reaksa:'Reaksa', tsewang:'Tsewang', sheyen:'Sheyen' };
+  altan:'Altan', henbilee:'Henbilee', boroo:'Boroo', reaksa:'Reaksa', tsewang:'Tsewang', sheyen:'Sheyen', qaikagan:'Qaikagan' };
 const setIlohOnly = chars => { if (!chars || typeof chars !== 'object' || !Object.keys(chars).length) return;
   Object.keys(ILOH_ONLY).forEach(k => delete ILOH_ONLY[k]);
   Object.entries(chars).forEach(([k, v]) => { if (!isChar(k) && typeof v?.name === 'string') ILOH_ONLY[k] = v.name; }); };
