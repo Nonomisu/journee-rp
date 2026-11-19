@@ -3066,7 +3066,16 @@ const recapBlob = async () => {
 // Un salon par joueur : shared/discord → webhooks.corentin / webhooks.elle (l'ancien « webhook » unique sert de secours).
 const hookFor = player => window.RP_DISCORD.webhooks?.[player] || window.RP_DISCORD.webhook || null;
 const anyHook = () => !!(window.RP_DISCORD.webhook || Object.values(window.RP_DISCORD.webhooks || {}).some(Boolean));
-const sendDiscord = async id => {
+// Un seul envoi à la fois par fiche : un second appel pendant l'envoi (reprise de vie intime juste après « J'ai terminé »…)
+// attend la fin du premier puis met à jour le même message, au lieu d'en poster un deuxième.
+const discordBusy = {};
+const sendDiscord = id => {
+  if (discordBusy[id]) { discordBusy[id].again = true; return discordBusy[id].p; }
+  const run = { again: false };
+  run.p = (async () => { do { run.again = false; await sendDiscordOnce(id); } while (run.again); delete discordBusy[id]; })();
+  discordBusy[id] = run; return run.p;
+};
+const sendDiscordOnce = async id => {
   const hook = hookFor(C.find(x => x.id === id)?.player);
   if (!hook || !owns(id) || !state[id].done) return;
   discordState[id] = 'sending'; if (current === id) rerender();
@@ -3081,6 +3090,9 @@ const sendDiscord = async id => {
     form.append('files[0]', blob, 'recap.png');
     const prev = state[id].discordMsg;
     let res = prev ? await fetch(`${hook}/messages/${prev}`, { method: 'PATCH', body: form }) : null;
+    // Nouveau message seulement si l'ancien a été supprimé (404) : une autre erreur (Discord surchargé, réseau…) ne crée
+    // jamais de doublon, la fiche affiche « Réessayer ».
+    if (res && !res.ok && res.status !== 404) throw new Error('Discord ' + res.status);
     if (!res || !res.ok) {
       const f2 = new FormData(); f2.append('payload_json', JSON.stringify(payload)); f2.append('files[0]', blob, 'recap.png');
       res = await fetch(`${hook}?wait=true`, { method: 'POST', body: f2 });
@@ -3089,7 +3101,7 @@ const sendDiscord = async id => {
     const msg = await res.json().catch(() => null);
     if (msg?.id) state[id].discordMsg = msg.id;
     discordState[id] = 'sent';
-    window.RP_SYNC?.save();
+    (window.RP_SYNC?.saveNow || window.RP_SYNC?.save)?.();   // tout de suite : une appli fermée juste après ne perd pas le n° du message
   } catch (e) { console.error(e); discordState[id] = 'error'; }
   if (current === id) rerender();
 };
