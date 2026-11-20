@@ -3022,6 +3022,34 @@ window.RP_APP = {
   start: () => { if (!openFromLink()) go('home'); },
 };
 
+// ---------- Mise à jour de l'appli : un téléphone qui la garde ouverte des jours entiers charge quand même la dernière version ----------
+// En revenant sur l'appli (et toutes les 10 min), on relit index.html : si app.js a changé, on recharge
+// (au retour sur l'appli, sauf texte en cours de saisie) ou on propose « Mettre à jour » dans un bandeau.
+(() => {
+  const mine = () => document.querySelector('script[src*="app.js?v="]')?.getAttribute('src');
+  let shown = false, last = 0;
+  const typing = () => { const a = document.activeElement;
+    return !!a && (a.tagName === 'TEXTAREA' || (a.tagName === 'INPUT' && !['checkbox', 'radio', 'button', 'submit'].includes(a.type))) && !!a.value; };
+  const reload = async () => { try { await window.RP_SYNC?.saveNow?.(); } catch {} location.reload(); };
+  const check = async wake => {
+    if (Date.now() - last < 60e3) return; last = Date.now();
+    const cur = mine(); if (!cur) return;
+    let html; try { html = await (await fetch('index.html?maj=' + Date.now(), { cache: 'no-store' })).text(); } catch { return; }
+    const m = html.match(/src="(app\.js\?v=[^"]+)"/); if (!m || m[1] === cur) return;
+    if (wake && !typing()) return reload();
+    if (shown) return; shown = true;
+    const bar = document.createElement('div'); bar.className = 'update-bar'; bar.setAttribute('role', 'status');
+    bar.style.cssText = 'position:fixed;z-index:9999;top:calc(env(safe-area-inset-top,0px) + 8px);left:50%;transform:translateX(-50%);width:max-content;max-width:calc(100vw - 24px);display:flex;flex-wrap:wrap;gap:.5rem;align-items:center;justify-content:center;padding:.55rem .9rem;border-radius:12px;background:#1b2333;color:#f0e6d6;border:1px solid #c9ae8f;box-shadow:0 6px 18px rgba(0,0,0,.45);font-size:.92rem;text-align:center';
+    bar.innerHTML = '<span>Une nouvelle version de l’appli est disponible.</span><button type="button" style="font:inherit;font-weight:600;color:#1b2333;background:#c9ae8f;border:0;border-radius:999px;padding:.35rem .8rem;cursor:pointer">Mettre à jour</button>';
+    bar.querySelector('button').addEventListener('click', reload); document.body.appendChild(bar);
+  };
+  window.RP_UPDATE = { check: w => { last = 0; return check(w); } };   // pour les tests
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible') check(true); });
+  addEventListener('pageshow', e => { if (e.persisted) check(true); });
+  setInterval(() => check(false), 10 * 60e3);
+  setTimeout(() => check(false), 30e3);
+})();
+
 // ---------- Discord : un embed par journée validée, avec l'image du récap ----------
 // L'adresse du webhook n'est pas dans le code public : elle est rangée dans Firestore (shared/discord),
 // lisible seulement par les deux joueurs. Un message par personnage et par jour ; revalider le même jour
