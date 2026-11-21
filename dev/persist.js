@@ -2,7 +2,7 @@
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['withFrom', 'mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'hideS9', 'withActs', 'privWith', 'reopens'];
+  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'hideS9', 'withActs', 'privWith', 'reopens', 'ilohOps', 'joinedOf', 'huntCrew'];
 const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{}, nightStates:new Set() });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }
@@ -139,6 +139,7 @@ window.RP_APP = {
     Object.keys(m).filter(k => k.startsWith(ym + ':')).forEach(k => delete m[k]);
     Object.entries(data || {}).forEach(([d, x]) => { m[ym + ':' + d] = { ...x, where }; });
   },
+  applyIlohLive: d => { ILOH_LIVE = d; ilohApplyJoins(); },
   applyIlohNames: (d, coll = 'iloh') => coll === 's9' ? setS9Only(d?.chars) : setIlohOnly(d?.chars),
   ilohIds: () => C.filter(c => sendsToIloh(c.id)).map(c => c.id),
   // Collection du retour pour chaque personnage recopié (iloh ou s9), et collections des listes de noms.

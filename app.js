@@ -1517,6 +1517,116 @@ const ilohAddedOf = (b, checked) => (b?.added || []).filter(l => !checked.has?.(
 const ilohBackHtml = (b, checked) => { const add = ilohAddedOf(b, checked); return add.length
   ? `<div class="recap-infos iloh-back"><span>Sur ${esc(b.where || "l'Iloh Khurdan")}</span><p>${add.map(l => esc(l + ilohWithTxt(b, l))).join(' · ')}</p></div>` : ''; };
 
+// ---------- L'Iloh depuis Journée RP : remplir entièrement les fiches Khurdans sans ouvrir Iloh Khurdan ----------
+// Le service du VPS (iloh-miroir, pont.js) dépose le résumé de l'Iloh du jour dans iloh/_live/months/{AAAA-MM-JJ} :
+// événements (dont l'événement du jour et ses actions), activités communes notées dans l'Iloh avec nos personnages,
+// fiches validées de la tribu, demandes « J'y participe aussi », messages et demandes de logistique en attente.
+// Nos gestes (s'inscrire, proposer, demander, répondre) sont notés sur la fiche du jour du personnage (s.ilohOps,
+// jamais recopiée) : le service les exécute dans l'Iloh, avec les mêmes nouvelles que dans l'appli.
+let ILOH_LIVE = null;
+const ILOH_APP = 'https://nonomisu.github.io/khurdan/';
+const ILOH_PLAYER = { corentin: 'nono', elle: 'jynette' };
+const ilohLiveFor = id => ILOH_MIRROR.includes(id) && canEdit(id) && ILOH_LIVE?.iso === isoDay(rpDay);
+const iN = x => ILOH_LIVE?.names?.[x] || (isChar(x) ? nameOf(x) : whoLabel(x));
+const ilohView = { act: '', open: new Set(), draft: {} };
+const ilohOp = (id, o) => { const k = Date.now().toString(36) + Math.random().toString(36).slice(2, 5);
+  (state[id].ilohOps ||= {})[k] = { ...o, at: Date.now(), day: isoDay(rpDay) }; window.RP_SYNC?.save?.(); return k; };
+// Gestes pas encore traités par le service (affichés tout de suite, en attente).
+const ilohPend = (id, f) => Object.entries(state[id]?.ilohOps || {}).filter(([k, o]) => !(k in (ILOH_LIVE?.ops || {})) && f(o)).map(([, o]) => o);
+const ilohFail = id => { const ops = state[id]?.ilohOps || {}, last = Object.entries(ops).sort((a, b) => b[1].at - a[1].at).find(([k]) => k in (ILOH_LIVE?.ops || {}));
+  return last && ILOH_LIVE.ops[last[0]] !== 'ok' && Date.now() - last[1].at < 10 * 60e3 ? ILOH_LIVE.ops[last[0]] : ''; };
+const ilohRefresh = () => { const y = window.scrollY, h = fullH(); renderChar(current); holdHeight(h); window.scrollTo({ top: y }); holdPlace(null, y); };
+// Fiche (déjà validée) modifiée par un geste de l'Iloh : republiée sur Discord, une fois affichée (l'image est prise à l'écran).
+const ilohRepostIds = new Set();
+const ilohRepost = id => { if (!state[id]?.done) return; if (current === id) { ilohRepostIds.delete(id); setTimeout(() => window.RP_DISCORD?.send?.(id), 400); } else ilohRepostIds.add(id); };
+const ilohAddAct = (id, l, others, from, slots) => { const s = state[id], c = C.find(x => x.id === id);
+  if (!allActs(c).includes(l) && !s.specials.includes(l)) s.specials.push(l);
+  s.checked.add(l);
+  if (!s.slots[l]?.length && slots?.length) s.slots[l] = [...slots];
+  if (from) (s.withFrom ||= {})[l] = from;   // reprise : pas de nouvelle proposition aux autres
+  others.filter(o => o !== id).forEach(o => setWith(id, l, o, true, true)); };
+// 1. Activités communes de l'Iloh : celles où l'on a noté ce personnage, l'événement du jour, les événements où il est inscrit.
+const ilohSharedHtml = id => { const L = ILOH_LIVE.shared?.[id] || [], s = state[id]; if (!L.length) return '';
+  return `<div class="shared-acts iloh-shared"><p class="shared-h">${icon('users')}Activités communes de l'Iloh</p>${L.map((x, i) => `<div class="shared-item"><span>${
+    x.kind === 'with' ? `${esc(iN(x.from))} a noté « ${esc(x.act)} » avec ${esc(andList([nameOf(id), ...x.others.map(iN)]))}.`
+    : x.kind === 'evday' ? `Événement du jour « ${esc(x.evText)} » : ${esc(x.text)}${x.others.length ? ` avec ${esc(andList(x.others.map(iN)))}` : ''}.`
+    : `Événement de l'Iloh : « ${esc(x.evText)} »${x.others.length ? ` avec ${esc(andList(x.others.map(iN)))}` : ''}.`}</span>
+    ${s.checked.has(x.act) ? '<small class="joined">✓ Sur la fiche</small>' : `<button type="button" class="join-btn" data-iloh-add="${i}">${icon('plus')}L'ajouter à la fiche ${deName(nameOf(id))}</button>`}</div>`).join('')}</div>`; };
+// 2. Événements de l'Iloh : participer, rejoindre ou proposer une action de l'événement du jour.
+const ilohWhen = iso => iso === isoDay(rpDay) ? "aujourd'hui" : 'le ' + new Date(iso + 'T12:00:00').toLocaleDateString('fr-FR', { weekday: 'long', day: 'numeric', month: 'long' });
+const ilohEventsHtml = id => { const E = ILOH_LIVE.events || []; if (!E.length) return '';
+  const today = isoDay(rpDay);
+  return `<div class="iloh-events"><p class="shared-h">${icon('flag')}Événements de l'Iloh</p>${E.map(e => {
+    if (!e.daily) { const pend = ilohPend(id, o => o.op === 'evGo' && o.ev === e.id).at(-1), on = pend ? pend.on : e.going.includes(id);
+      const others = e.going.filter(o => o !== id);
+      return `<div class="iloh-ev"><b>${esc(e.label)}</b><span>${esc(e.text)}</span><small>${esc(ilohWhen(e.date))} · annoncé par ${esc(e.by)}${others.length ? ` · ${esc(andList(others.map(iN)))}` : ''}</small>
+        <div class="place-list subs" role="group" aria-label="Participer"><button type="button" data-iloh-go="${esc(e.id)}" aria-pressed="${on}">${esc(nameOf(id))} participe</button>${pend ? '<small class="iloh-wait">envoi…</small>' : ''}</div></div>`; }
+    const acts = e.acts.map(a => { const pend = ilohPend(id, o => o.op === 'evdayWho' && o.ev === e.id && o.aid === a.id).at(-1), on = pend ? pend.on : a.who.includes(id);
+      return `<div class="iloh-act"><span>${esc(a.text)} <small>· ${esc(andList(a.who.map(iN)))}</small></span>${a.by === id ? '<small>proposée par ' + esc(nameOf(id)) + '</small>'
+        : `<button type="button" class="link small" data-iloh-who="${esc(e.id)}:${esc(a.id)}" aria-pressed="${on}">${on ? '✓ ' + esc(nameOf(id)) + ' y participe' : 'Y participer'}</button>${pend ? '<small class="iloh-wait">envoi…</small>' : ''}`}</div>`; }).join('');
+    const proposed = ilohPend(id, o => o.op === 'evdayAct' && o.ev === e.id).map(o => `<div class="iloh-act"><span>${esc(o.text)}</span><small class="iloh-wait">envoi…</small></div>`).join('');
+    return `<div class="iloh-ev daily"><b>Événement du jour · ${esc(e.label)}</b><span>${esc(e.text)}</span><small>${esc(ilohWhen(e.date))} · annoncé par ${esc(e.by)}</small>
+      ${acts || proposed ? `<div class="iloh-acts">${acts}${proposed}</div>` : '<small>Aucune action pour l\'instant.</small>'}
+      ${e.date >= today ? `<div class="special-row"><input type="text" maxlength="120" data-iloh-text="${esc(e.id)}" value="${esc(ilohView.draft[e.id] || '')}" placeholder="Proposer une action (ex. : Apporter les fleurs)" enterkeyhint="send">
+        <button type="button" class="btn" data-iloh-propose="${esc(e.id)}">Proposer</button></div>` : ''}</div>`; }).join('')}</div>`; };
+// 3. « J'y participe aussi » sur les fiches validées des autres joueurs, et demandes reçues sur cette fiche.
+const ilohJoinsHtml = id => { const my = ILOH_PLAYER[me], J = ILOH_LIVE.joins || [];
+  const recv = J.filter(j => j.host === id && j.status === 'asked' && !ilohPend(id, o => o.op === 'joinAnswer' && o.jid === j.id).length);
+  const mine = J.filter(j => j.chars.includes(id) && j.p === my);
+  const F = Object.entries(ILOH_LIVE.fiches || {}).filter(([x, f]) => x !== id && f.player !== my);
+  const asked = (host, act) => mine.some(j => j.host === host && j.act === act && j.status === 'asked') || ilohPend(id, o => o.op === 'joinAsk' && o.host === host && o.act === act).length;
+  return `${recv.length ? `<div class="shared-acts iloh-recv"><p class="shared-h">${icon('users')}Ils y ont participé aussi</p>${recv.map(j => `<div class="shared-item"><span>${esc(ILOH_LIVE.players?.[j.p] || j.p)} : ${esc(andList(j.chars.map(iN)))} ${j.chars.length > 1 ? 'ont' : 'a'} aussi participé à « ${esc(j.act)} ».</span>
+      <span class="join-ans"><button type="button" class="btn small" data-iloh-jok="${esc(j.id)}">Accepter</button><button type="button" class="link small" data-iloh-jno="${esc(j.id)}">Refuser</button></span></div>`).join('')}
+      <p class="reserved">Accepter ajoute ${recv.length > 1 ? 'ces personnages' : 'ce personnage'} sur la fiche sans la rouvrir et la republie sur Discord. Les tirages restent les mêmes.</p></div>` : ''}
+    ${F.length ? `<details class="iloh-join" data-iloh-fold="join"${ilohView.open.has(id + ':join') ? ' open' : ''}><summary>${icon('plus')}J'y participe aussi <small>(fiches validées de la tribu)</small></summary>
+      ${F.map(([x, f]) => `<div class="iloh-fiche"><b>${esc(iN(x))}</b>${f.acts.map(a => { const st = mine.find(j => j.host === x && j.act === a.act && j.status !== 'asked');
+        return `<div class="iloh-act"><span>${esc(a.act)}${a.with.length ? ` <small>avec ${esc(andList(a.with.map(iN)))}</small>` : ''}</span>${a.with.includes(id) ? '<small class="joined">✓ ' + esc(nameOf(id)) + ' y est</small>'
+          : st ? `<small>${st.status === 'ok' ? '✓ accepté' : 'non retenu'}</small>` : asked(x, a.act) ? `<small class="iloh-wait">en attente</small>${(j => j ? ` <button type="button" class="link small" data-iloh-jcancel="${esc(j.id)}">Annuler</button>` : '')(mine.find(j => j.host === x && j.act === a.act && j.status === 'asked'))}`
+          : `<button type="button" class="link small" data-iloh-jask="${esc(x)}" data-iloh-jact="${esc(a.act)}">${esc(nameOf(id))} y était aussi</button>`}</div>`; }).join('')}</div>`).join('')}</details>` : ''}`; };
+// 4. Javkhaanhun et Khokkutsai : ce qui attend leur joueur dans l'Iloh (le nombre seulement, le contenu reste dans l'appli).
+const ilohTodoHtml = id => { const t = ILOH_LIVE.todo || {};
+  if (id === 'javkhaanhun') return `<p class="iloh-todo">${icon('bell')}<span>${t.mail ? `<b>${t.mail} nouveau${t.mail > 1 ? 'x' : ''} message${t.mail > 1 ? 's' : ''}</b> dans la boîte aux lettres.` : 'Aucun nouveau message dans la boîte aux lettres.'}</span> <a href="${ILOH_APP}?tableau" target="_blank" rel="noopener">Ouvrir le tableau</a></p>`;
+  if (id === 'khokkutsai') return `<p class="iloh-todo">${icon('route')}<span>${t.logi ? `<b>${t.logi} demande${t.logi > 1 ? 's' : ''} de logistique</b> en cours.` : 'Aucune demande de logistique en cours.'}</span> <a href="${ILOH_APP}?logistique" target="_blank" rel="noopener">Ouvrir la logistique</a></p>`;
+  return ''; };
+const ilohLiveHtml = id => { if (!ilohLiveFor(id)) return '';
+  const fail = ilohFail(id);
+  return `<section class="iloh-live"><h3 class="chrono-h">${icon('star')}Iloh Khurdan <small>· aujourd'hui</small></h3>
+    ${fail ? `<p class="proj-err reserved">Dernier geste non transmis : ${esc(fail)}.</p>` : ''}
+    ${ilohTodoHtml(id)}${ilohSharedHtml(id)}${ilohEventsHtml(id)}${ilohJoinsHtml(id)}</section>`; };
+// Une demande acceptée (faite depuis Journée RP) : l'activité s'ajoute ici, sans tirage (la prise reste sur la fiche d'origine).
+const ilohApplied = new Set();
+const ilohApplyJoins = () => { if (!ILOH_LIVE || ILOH_LIVE.iso !== isoDay(rpDay)) return; const my = ILOH_PLAYER[me];
+  (ILOH_LIVE.joins || []).forEach(j => { if (j.via !== 'jrp' || j.p !== my || j.status !== 'ok' || j.applied || ilohApplied.has(j.id)) return;
+    if (ilohPend(j.chars[0], o => o.op === 'joinApplied' && o.jid === j.id).length || !canEdit(j.chars[0])) return;
+    ilohApplied.add(j.id);
+    j.chars.filter(c => canEdit(c) && state[c]).forEach(c => { ilohAddAct(c, j.act, [j.host], j.host, ILOH_LIVE.fiches?.[j.host]?.acts?.find(a => a.act === j.act)?.slots);
+      (state[c].joinedOf ||= {})[j.act] = j.host; ilohRepost(c); });
+    ilohOp(j.chars[0], { op: 'joinApplied', jid: j.id });
+  }); };
+document.addEventListener('toggle', e => { const d = e.target; if (!d.matches?.('[data-iloh-fold]') || !isChar(current)) return;
+  const k = current + ':' + d.dataset.ilohFold; d.open ? ilohView.open.add(k) : ilohView.open.delete(k); }, true);
+document.addEventListener('input', e => { const t = e.target.closest?.('[data-iloh-text]'); if (t) ilohView.draft[t.dataset.ilohText] = t.value; });
+document.addEventListener('keydown', e => { const t = e.target.closest?.('[data-iloh-text]'); if (t && e.key === 'Enter') { e.preventDefault(); document.querySelector(`[data-iloh-propose="${CSS.escape(t.dataset.ilohText)}"]`)?.click(); } });
+document.addEventListener('click', e => { const t = e.target, id = current; if (!isChar(id) || !ilohLiveFor(id)) return;
+  const ad = t.closest('[data-iloh-add]'); if (ad) { const x = ILOH_LIVE.shared?.[id]?.[+ad.dataset.ilohAdd]; if (!x) return;
+    ilohAddAct(id, x.act, x.kind === 'with' ? [x.from, ...x.others] : x.others, x.kind === 'with' ? x.from : x.others[0] || null, x.slots);
+    window.RP_SYNC?.save?.(); ilohRepost(id); return ilohRefresh(); }
+  const eg = t.closest('[data-iloh-go]'); if (eg) { ilohOp(id, { op: 'evGo', ev: eg.dataset.ilohGo, on: eg.getAttribute('aria-pressed') !== 'true' }); return ilohRefresh(); }
+  const wh = t.closest('[data-iloh-who]'); if (wh) { const [ev, aid] = wh.dataset.ilohWho.split(':'); ilohOp(id, { op: 'evdayWho', ev, aid, on: wh.getAttribute('aria-pressed') !== 'true' }); return ilohRefresh(); }
+  const pr = t.closest('[data-iloh-propose]'); if (pr) { const ev = pr.dataset.ilohPropose, f = document.querySelector(`[data-iloh-text="${CSS.escape(ev)}"]`), v = (f?.value || '').trim().replace(/\s+/g, ' ');
+    if (!v) return f?.focus(); ilohOp(id, { op: 'evdayAct', ev, text: v }); ilohView.draft[ev] = ''; return ilohRefresh(); }
+  const ja = t.closest('[data-iloh-jask]'); if (ja) { ilohOp(id, { op: 'joinAsk', host: ja.dataset.ilohJask, act: ja.dataset.ilohJact }); return ilohRefresh(); }
+  const jc = t.closest('[data-iloh-jcancel]'); if (jc) { ilohOp(id, { op: 'joinCancel', jid: jc.dataset.ilohJcancel }); return ilohRefresh(); }
+  const jo = t.closest('[data-iloh-jok]'), jn = t.closest('[data-iloh-jno]');
+  if (jo || jn) { const j = (ILOH_LIVE.joins || []).find(x => x.id === (jo || jn).dataset[jo ? 'ilohJok' : 'ilohJno']); if (!j) return;
+    if (jo && state[id].checked.has(j.act)) {
+      const s = state[id];
+      // La chasse est déjà tirée : ses chasseurs d'origine sont figés avant d'ajouter les nouveaux (le tirage ne change pas).
+      if (HUNTS[id]?.acts?.[j.act]) { s.huntCrew ||= {}; if (!(j.act in s.huntCrew)) s.huntCrew[j.act] = withOf(s.withActs, j.act); }
+      j.chars.forEach(c => setWith(id, j.act, c, true, true)); ilohRepost(id); }
+    ilohOp(id, { op: 'joinAnswer', jid: j.id, ok: !!jo && state[id].checked.has(j.act) }); return ilohRefresh(); }
+});
+
 const ILOH_HIDE_ALWAYS = {};   // id → Set d'activités toujours masquées dans Iloh Khurdan
 const S9_HIDE_ALWAYS = {};     // id → Set d'activités toujours masquées dans S9 Interact'
 const alwaysOf = id => destOf(id)?.coll === 's9' ? S9_HIDE_ALWAYS : ILOH_HIDE_ALWAYS;
@@ -1972,8 +2082,9 @@ const HUNTS = Object.fromEntries(['ankhbayar', 'taiga', 'tamachag', 'khokkutsai'
 HUNTS.ankhbayar = { ...KHURDAN_HUNT, odds: { solo: .9, group: .95 } };
 // Chasseurs expérimentés : leur présence dans une chasse de groupe (chasseur ou personnage noté « avec ») rend le mammouth plus probable.
 const EXPERT_HUNTERS = ['ankhbayar'];
-const huntWith = (id, label, day) => (sameDay(day, rpDay) ? state[id]?.withActs?.[label]
-  : typeof HISTORY !== 'undefined' ? HISTORY[id]?.[keyOf(day)]?.withActs?.[label] : null) || [];
+// Chasseurs pris en compte pour le tirage : ceux d'origine (huntCrew, figés quand d'autres se sont joints après coup), sinon les « avec ».
+const huntWith = (id, label, day) => { const e = sameDay(day, rpDay) ? state[id] : typeof HISTORY !== 'undefined' ? HISTORY[id]?.[keyOf(day)] : null;
+  return e?.huntCrew?.[label] || e?.withActs?.[label] || []; };
 // Tableau de chasse de l'année (wrap).
 const huntYear = (c, x) => {
   const outs = x.filled.flatMap(([d, r]) => r.acts.filter(a => HUNTS[c.id]?.acts[a]).map(a => huntFor(c.id, a, d)));
@@ -2002,6 +2113,8 @@ const huntManual = (id, label, day) => sameDay(day, rpDay) ? state[id]?.huntSet?
 const huntGame = (id, label) => { const h = HUNTS[id], mode = h?.acts[label]; return !mode ? [] : h.game.filter(g => mode === 'group' || !g.group).map(g => g.name); };
 const huntFor = (id, label, day = rpDay) => {
   const h = HUNTS[id], mode = h?.acts[label]; if (!mode) return null;
+  // Personnage qui s'est joint à la chasse d'un autre (« J'y participe aussi ») : pas de tirage, la prise est sur la fiche d'origine.
+  const je = sameDay(day, rpDay) ? state[id] : typeof HISTORY !== 'undefined' ? HISTORY[id]?.[keyOf(day)] : null; if (je?.joinedOf?.[label]) return null;
   const man = huntManual(id, label, day);
   if (Array.isArray(man)) return { mode, manual: true, catches: man.map(x => ({ name: x.name, qty: Math.max(1, +x.qty || 1) })) };
   const k = keyOf(day) + ':' + id + ':' + label;
@@ -2353,6 +2466,7 @@ function renderCharNow(id) {
     document.getElementById('view').innerHTML = `
     ${tabsHtml(id)}
     ${sharedActsHtml(id, !readOnly)}
+    ${ilohLiveHtml(id)}
     ${!readOnly && intimeFromOthers(id).some(o => !intimeTaken(id, o)) ? `<div class="shared-acts recap-intime"><p class="shared-h">${icon('lips')}Vie intime proposée</p>${intimeFromHtml(id)}</div>` : ''}
     ${readOnly ? `<p class="readonly-note">${icon('eye')}Fiche de ${PLAYER_NAME[c.player]} : lecture seule.</p>` : ''}
     <article class="recap">
@@ -2429,6 +2543,7 @@ function renderCharNow(id) {
     ${prevNightBlock(id)}
     <div class="chrono-part"><h3 class="chrono-h">Activités</h3>
       ${sharedActsHtml(id, true)}
+      ${ilohLiveHtml(id)}
       ${(b => b ? `<p class="reserved iloh-note">${icon('eye')}Ajouts faits sur ${esc(destOf(id)?.where || "l'Iloh Khurdan")} : ${esc([...ilohAddedOf(b, s.checked).map(l => l + ilohWithTxt(b, l)), ...Object.keys(b.with || {}).filter(l => s.checked.has(l)).map(l => l + ilohWithTxt(b, l))].join(' · '))}. Ils s'affichent sur le récap.</p>` : '')(ilohToday)}
       ${cats.length ? '' : `<p class="reserved">Liste d'activités à définir. En attendant, utilise le champ « Activité spéciale » et coche « L'ajouter aussi à la liste ».</p>`}
       ${!s.manageActs && cats.length > 1 ? `<div class="fold-all"><button type="button" class="link small ico-btn" data-fold-all="1" title="Tout replier" aria-label="Tout replier">${icon('foldall')}</button><button type="button" class="link small ico-btn" data-fold-all="0" title="Tout déplier" aria-label="Tout déplier">${icon('unfoldall')}</button></div>` : ''}
@@ -2826,7 +2941,7 @@ function renderCharNow(id) {
   document.getElementById('done-'+id).addEventListener('click', () => { s.done = true; s.doneAt ??= Date.now(); renderNav(); renderChar(id); window.RP_SYNC?.saveNow(); window.RP_DISCORD?.send(id); });
 }
 
-function go(id) { resetSpacer(); lastPage = null; current = id; renderNav(); id === 'home' ? renderHome() : renderChar(id); window.scrollTo({ top:0 }); }
+function go(id) { resetSpacer(); lastPage = null; current = id; renderNav(); id === 'home' ? renderHome() : renderChar(id); window.scrollTo({ top:0 }); if (ilohRepostIds.has(id)) ilohRepost(id); }
 document.addEventListener('click', e => { const b = e.target.closest('[data-go]'); if (b) go(b.dataset.go); });
 document.addEventListener('click', async e => {
   const b = e.target.closest('[data-wrap-open]'); if (!b) return;
@@ -2853,7 +2968,7 @@ initPlaces();
 // ---------- Persistance : ce que sync.js lit et enregistre dans Firestore ----------
 // Journée d'un personnage (champs enregistrés ; le reste de state[id] ne sert qu'à l'affichage).
 const ENTRY_KEYS = ['withFrom', 'mood', 'checked', 'specials', 'slots', 'places', 'region', 'zone', 'trip', 'done', 'doneAt', 'phys', 'physNote',
-  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'hideS9', 'withActs', 'privWith', 'reopens'];
+  'details', 'mental', 'stateNotes', 'nightStates', 'nightNote', 'nightNotes', 'intime', 'intimeWith', 'huntSet', 'faits', 'dayEvents', 'infos', 'violet', 'jais', 'set', 'setLate', 'lateAt', 'wait', 'door', 'callPartner', 'returnHour', 'contractOff', 'discordMsg', 'hideIloh', 'hideS9', 'withActs', 'privWith', 'reopens', 'ilohOps', 'joinedOf', 'huntCrew'];
 const freshEntry = () => ({ mood:'', checked:new Set(), specials:[], slots:{}, places:new Set(), done:false, phys:new Set(), mental:new Set(), stateNotes:{}, nightStates:new Set() });
 // Firestore ne connaît ni les Set ni les Date : on les encode.
 const enc = v => v instanceof Set ? { $set: [...v].map(enc) } : v instanceof Date ? { $date: v.toISOString() }
@@ -2990,6 +3105,7 @@ window.RP_APP = {
     Object.keys(m).filter(k => k.startsWith(ym + ':')).forEach(k => delete m[k]);
     Object.entries(data || {}).forEach(([d, x]) => { m[ym + ':' + d] = { ...x, where }; });
   },
+  applyIlohLive: d => { ILOH_LIVE = d; ilohApplyJoins(); },
   applyIlohNames: (d, coll = 'iloh') => coll === 's9' ? setS9Only(d?.chars) : setIlohOnly(d?.chars),
   ilohIds: () => C.filter(c => sendsToIloh(c.id)).map(c => c.id),
   // Collection du retour pour chaque personnage recopié (iloh ou s9), et collections des listes de noms.

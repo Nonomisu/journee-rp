@@ -217,6 +217,8 @@ function listen() {
     list.forEach(n => base.news.set(n.key, !!n.read));
     A.applyNews(list); A.rerender();
   });
+  // Résumé de l'Iloh du jour (déposé par le service du VPS) : événements, activités communes, demandes « J'y participe aussi ».
+  onSnapshot(doc(db, 'iloh', '_live', 'months', A.iso), s => { A.applyIlohLive(s.data() || null); A.rerender(); }, () => {});
   A.ilohIds().forEach(id => onSnapshot(ilohRef(id, A.ym), s => { A.applyIloh(id, A.ym, s.data() || {}); A.rerender(); }, () => {}));
   A.ids.forEach(id => onSnapshot(monthRef(id, A.ym), s => {
     if (s.metadata.hasPendingWrites) return;
