@@ -2003,10 +2003,22 @@ const INTIME_HOT_PLUS = [
   (a, b) => `${b} a tenu ${a} par les hanches et l'a prise en levrette jusqu'à la faire crier. Ses reins s'en souviennent.`,
   (a, b) => `${a} a reçu une faciale de ${b}, les lèvres entrouvertes et le regard brûlant. Elle a souri en léchant ses lèvres.`,
 ];
+// Et cinq plus générales, pour Inkaraa → Khokkutsai et Khubunjin → Ankhbayar seulement.
+const INTIME_HOT_MORE = [
+  (a, b) => `${a} et ${b} ne se sont pas lâchés de la journée. La yourte sent encore leurs corps.`,
+  (a, b) => `${b} a fait jouir ${a} jusqu'à lui faire oublier son propre nom.`,
+  (a, b) => `${a} a griffé le dos de ${b} pendant qu'il la prenait. Il porte ses marques avec fierté.`,
+  (a, b) => `Peau contre peau, ${a} et ${b} se sont aimés jusqu'à l'épuisement. Elle en frissonne encore.`,
+  (a, b) => `${a} a ouvert son corps à ${b} sans retenue. Il en a profité jusqu'au bout de la nuit.`,
+];
+const INTIME_20 = [...INTIME_HOT, ...INTIME_HOT_PLUS], INTIME_25 = [...INTIME_20, ...INTIME_HOT_MORE];
 const INTIME_LINES = {
   'taiga>davaajav': INTIME_HOT,
-  'inkaraa>khokkutsai': [...INTIME_HOT, ...INTIME_HOT_PLUS],
-  'khubunjin>ankhbayar': [...INTIME_HOT, ...INTIME_HOT_PLUS],
+  'inkaraa>khokkutsai': INTIME_25,
+  'khubunjin>ankhbayar': INTIME_25,
+  'taiga>tamachag': INTIME_20,
+  'taiga>khokkutsai': INTIME_20,
+  'javkhaanhun>davaajav': INTIME_20,
 };
 const intimeNewsText = (id, x) => { const L = INTIME_LINES[id + '>' + x]; return L ? pickLine(L, intimeKey(id, x))(nameOf(id), nameOf(x)) : "Vie intime active aujourd'hui !"; };
 // Personnage cité dans le texte de la vie intime : son bouton « Personnages concernés » se coche tout seul (sauf s'il a été
