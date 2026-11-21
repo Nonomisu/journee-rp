@@ -2011,14 +2011,29 @@ const INTIME_HOT_MORE = [
   (a, b) => `Peau contre peau, ${a} et ${b} se sont aimés jusqu'à l'épuisement. Elle en frissonne encore.`,
   (a, b) => `${a} a ouvert son corps à ${b} sans retenue. Il en a profité jusqu'au bout de la nuit.`,
 ];
+// Gémissements et orgasme : pour tous les duos.
+const INTIME_MOAN = [
+  (a, b) => `Les gémissements de ${a} ont résonné jusqu'aux yourtes voisines. ${b} n'a rien fait pour les étouffer.`,
+  (a, b) => `${b} a fait gémir ${a} si fort qu'elle a dû mordre les fourrures.`,
+  (a, b) => `${a} a gémi à chaque coup de reins de ${b}, de plus en plus fort, de plus en plus aigu.`,
+  (a, b) => `${b} a posé la main sur la bouche de ${a} pour étouffer ses gémissements. Ça n'a servi à rien.`,
+  (a, b) => `${a} a joui sous ${b} en se cambrant, tout son corps secoué de spasmes.`,
+  (a, b) => `${b} a senti ${a} se resserrer autour de lui quand elle a joui. Il l'a suivie dans la seconde.`,
+  (a, b) => `${a} a joui si fort que ses cuisses ont tremblé longtemps après. ${b}, lui, souriait.`,
+  (a, b) => `${b} n'a pas arrêté avant que ${a} jouisse une troisième fois. Elle ne sent plus ses jambes.`,
+  (a, b) => `L'orgasme a traversé ${a} comme un orage sur la steppe. ${b} l'a regardée s'abandonner.`,
+  (a, b) => `${a} a joui en plantant ses ongles dans le dos de ${b}. Il en porte encore les marques.`,
+  (a, b) => `Les gémissements de ${a} se sont changés en cri quand l'orgasme l'a prise. ${b} s'est vidé en elle au même moment.`,
+  (a, b) => `${a} a gémi, supplié, puis joui sous ${b}, encore et encore, jusqu'à s'effondrer.`,
+];
 const INTIME_20 = [...INTIME_HOT, ...INTIME_HOT_PLUS], INTIME_25 = [...INTIME_20, ...INTIME_HOT_MORE];
 const INTIME_LINES = {
-  'taiga>davaajav': INTIME_HOT,
-  'inkaraa>khokkutsai': INTIME_25,
-  'khubunjin>ankhbayar': INTIME_25,
-  'taiga>tamachag': INTIME_20,
-  'taiga>khokkutsai': INTIME_20,
-  'javkhaanhun>davaajav': INTIME_20,
+  'taiga>davaajav': [...INTIME_HOT, ...INTIME_MOAN],
+  'inkaraa>khokkutsai': [...INTIME_25, ...INTIME_MOAN],
+  'khubunjin>ankhbayar': [...INTIME_25, ...INTIME_MOAN],
+  'taiga>tamachag': [...INTIME_20, ...INTIME_MOAN],
+  'taiga>khokkutsai': [...INTIME_20, ...INTIME_MOAN],
+  'javkhaanhun>davaajav': [...INTIME_20, ...INTIME_MOAN],
 };
 const intimeNewsText = (id, x) => { const L = INTIME_LINES[id + '>' + x]; return L ? pickLine(L, intimeKey(id, x))(nameOf(id), nameOf(x)) : "Vie intime active aujourd'hui !"; };
 // Personnage cité dans le texte de la vie intime : son bouton « Personnages concernés » se coche tout seul (sauf s'il a été
