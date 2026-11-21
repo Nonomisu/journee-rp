@@ -2030,6 +2030,10 @@ const INTIME_MOAN = [
   (a, b) => `${a} a guidé la main de ${b} entre ses cuisses. Il a compris le message, et bien plus.`,
 ];
 const INTIME_20 = [...INTIME_HOT, ...INTIME_HOT_PLUS], INTIME_25 = [...INTIME_20, ...INTIME_HOT_MORE];
+// Mêmes 40 phrases hors de l'Iloh (sans steppe, yourtes, fourrures ni chevaux : les fourrures deviennent des draps).
+const INTIME_CITY_WORDS = [[/sur les fourrures/g, 'sur les draps'], [/aux fourrures/g, 'aux draps'], [/les fourrures/g, 'les draps'], [/contre le poteau de la yourte/g, 'contre le mur'],
+  [/jusqu'aux yourtes voisines/g, 'jusque chez les voisins'], [/comme un orage sur la steppe/g, 'comme une vague brûlante'], [/La yourte sent/g, 'La chambre sent']];
+const intimeCity = list => list.map(f => (a, b) => INTIME_CITY_WORDS.reduce((t, [r, w]) => t.replace(r, w), f(a, b)));
 const INTIME_LINES = {
   'taiga>davaajav': [...INTIME_HOT, ...INTIME_MOAN],
   'inkaraa>khokkutsai': [...INTIME_25, ...INTIME_MOAN],
@@ -2037,8 +2041,12 @@ const INTIME_LINES = {
   'taiga>tamachag': [...INTIME_20, ...INTIME_MOAN],
   'taiga>khokkutsai': [...INTIME_20, ...INTIME_MOAN],
   'javkhaanhun>davaajav': [...INTIME_20, ...INTIME_MOAN],
+  'hokkyoku>unegen': intimeCity([...INTIME_25, ...INTIME_MOAN]),
+  'yasmeen>eoor': intimeCity([...INTIME_25, ...INTIME_MOAN]),
 };
-const intimeNewsText = (id, x) => { const L = INTIME_LINES[id + '>' + x]; return L ? pickLine(L, intimeKey(id, x))(nameOf(id), nameOf(x)) : "Vie intime active aujourd'hui !"; };
+// Élision devant un prénom qui commence par une voyelle : « d'Unegen », « qu'Inkaraa ».
+const elide = t => t.replace(/\b(de|que) ([AEIOUYÉÈÊÂÎ])/g, (m, w, c) => (w === 'de' ? "d'" : "qu'") + c);
+const intimeNewsText = (id, x) => { const L = INTIME_LINES[id + '>' + x]; return L ? elide(pickLine(L, intimeKey(id, x))(nameOf(id), nameOf(x))) : "Vie intime active aujourd'hui !"; };
 // Personnage cité dans le texte de la vie intime : son bouton « Personnages concernés » se coche tout seul (sauf s'il a été
 // décoché à la main), et sa nouvelle partira à la validation.
 const intimeOff = new Set();
