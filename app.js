@@ -1293,6 +1293,37 @@ const intimeOptions = id => {
   return [...new Set([...(p && isChar(p) ? [p] : []), ...out])];
 };
 const intimeKey = (id, x) => 'intime:' + keyOf(rpDay) + ':' + id + ':' + x;
+// Vie intime : une nouvelle pour le joueur de chaque personnage concerné (une par personnage, à la validation de la fiche).
+// Phrases personnalisées pour certains duos (vie intime de la 1re, personnage cité en 2e) ; sinon la nouvelle générique.
+const INTIME_LINES = {
+  'taiga>davaajav': [
+    (a, b) => `Les cuisses de ${a} ont chauffé sous les assauts de ${b}. Son vagin s'en souvient.`,
+    (a, b) => `${a} a écarté les cuisses pour ${b}, et elle ne les a refermées qu'une fois pleine de lui.`,
+    (a, b) => `${b} a pris ${a} jusqu'à la faire trembler. Elle sent encore chaque coup de reins.`,
+    (a, b) => `${a} a gémi le nom de ${b} pendant qu'il la remplissait. Elle en redemande déjà.`,
+    (a, b) => `Le sexe de ${a} porte encore la marque de ${b} : il l'a prise sans ménagement, et elle a adoré.`,
+    (a, b) => `À quatre pattes sur les fourrures, ${a} a offert ses fesses à ${b}. Il ne s'est pas fait prier.`,
+    (a, b) => `${b} a joui au fond de ${a}. Elle garde ce souvenir, et un peu plus, entre ses cuisses.`,
+    (a, b) => `${a} a chevauché ${b} jusqu'à ce qu'il crie grâce. Ses hanches s'en souviennent.`,
+    (a, b) => `La bouche de ${a} a fait perdre la tête à ${b}… avant qu'il ne la retourne pour la prendre.`,
+    (a, b) => `${a} a mouillé les fourrures sous les doigts de ${b}, puis sous tout le reste.`,
+    (a, b) => `Les seins de ${a} portent les traces des mains de ${b}. Le reste de son corps aussi.`,
+    (a, b) => `${b} a plaqué ${a} contre le poteau de la yourte et l'a prise debout. Ses jambes tremblent encore.`,
+    (a, b) => `${a} a supplié ${b} d'aller plus fort. Il l'a exaucée, encore et encore.`,
+    (a, b) => `${a} a gardé ${b} en elle jusqu'à la dernière goutte. Elle sourit encore en y pensant.`,
+    (a, b) => `${a} a joui deux fois sous ${b} avant qu'il ne se vide en elle. Son ventre s'en souvient.`,
+  ],
+};
+const intimeNewsText = (id, x) => { const L = INTIME_LINES[id + '>' + x]; return L ? pickLine(L, intimeKey(id, x))(nameOf(id), nameOf(x)) : "Vie intime active aujourd'hui !"; };
+// Personnage cité dans le texte de la vie intime : son bouton « Personnages concernés » se coche tout seul (sauf s'il a été
+// décoché à la main), et sa nouvelle partira à la validation.
+const intimeOff = new Set();
+const foldTxt = t => String(t || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+const intimeDetect = id => { const s = state[id], t = foldTxt(s.intime), added = [];
+  intimeOptions(id).forEach(x => { if (s.intimeWith?.has(x) || intimeOff.has(id + ':' + x)) return;
+    const n = foldTxt(nameOf(x)).replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    if (new RegExp(`(^|[^a-z0-9])${n}($|[^a-z0-9])`).test(t)) { (s.intimeWith ||= new Set()).add(x); notify(id, x, intimeNewsText(id, x), intimeKey(id, x)); added.push(x); } });
+  return added; };
 const intimeWithText = id => [...(state[id].intimeWith || [])].map(nameOf).join(', ');
 // Khurdans : « Détails et précisions » sous chaque choix de nuit coché (scope : 'next' ou 'prev').
 // Vie intime réciproque : ce qu'un autre personnage a noté AVEC celui-ci (fiche validée) peut être repris sur sa propre fiche,
@@ -2578,7 +2609,7 @@ function renderCharNow(id) {
       <textarea id="intime-${id}" rows="3" placeholder="Ce qui s'est passé dans la vie intime ${deName(c.name)} aujourd'hui (facultatif)">${esc(s.intime || '')}</textarea>
       <p class="reserved">Avec :</p>
       <div class="place-list" role="group" aria-label="Personnages concernés">${intimeOptions(id).map(x => `<button type="button" data-intime-with="${x}" aria-pressed="${!!s.intimeWith?.has(x)}">${esc(nameOf(x))}</button>`).join('')}</div>
-      ${s.intimeWith?.size ? `<p class="reserved">${[...s.intimeWith].some(x => playerOf(x) !== c.player) ? 'Une notification « Vie intime active aujourd\'hui ! » partira à la validation de la fiche.' : ''}</p>` : ''}</div>` : ''}
+      ${s.intimeWith?.size ? `<p class="reserved">${[...s.intimeWith].some(x => playerOf(x) !== c.player) ? 'Une nouvelle pour chaque personnage de l\'autre joueur partira à la validation de la fiche.' : ''}</p>` : ''}</div>` : ''}
     ${(n => `<div class="chrono-part"><h3 class="chrono-h">Nuit à venir</h3>
       ${isKhurdan(id) ? `<label class="act"><input type="checkbox" id="violet-${id}" ${s.violet ? 'checked' : ''}>${icon('cloth')}<span>A porté du violet</span></label>` : ''}
       ${nightChips(id, s.nightStates, 'data-next-night', `
@@ -2651,12 +2682,14 @@ function renderCharNow(id) {
   document.getElementById('mood-'+id).addEventListener('input', e => s.mood = e.target.value);
   document.getElementById('infos-'+id)?.addEventListener('input', e => s.infos = e.target.value);
   document.getElementById('faits-'+id)?.addEventListener('input', e => s.faits = e.target.value);
-  document.getElementById('intime-'+id)?.addEventListener('input', e => s.intime = e.target.value);
+  document.getElementById('intime-'+id)?.addEventListener('input', e => { s.intime = e.target.value;
+    if (intimeDetect(id).length) document.querySelectorAll('[data-intime-with]').forEach(b => b.setAttribute('aria-pressed', !!s.intimeWith?.has(b.dataset.intimeWith))); });
+  document.getElementById('intime-'+id)?.addEventListener('change', () => { if (s.intimeWith?.size) renderChar(id); });
   bindIntimeTake(id);
   document.querySelectorAll('[data-intime-with]').forEach(b => b.addEventListener('click', () => {
     const x = b.dataset.intimeWith; s.intimeWith ||= new Set();
-    if (s.intimeWith.has(x)) { s.intimeWith.delete(x); dropNews([intimeKey(id, x)]); }
-    else { s.intimeWith.add(x); notify(id, x, "Vie intime active aujourd'hui !", intimeKey(id, x)); }
+    if (s.intimeWith.has(x)) { s.intimeWith.delete(x); intimeOff.add(id + ':' + x); dropNews([intimeKey(id, x)]); }
+    else { s.intimeWith.add(x); intimeOff.delete(id + ':' + x); notify(id, x, intimeNewsText(id, x), intimeKey(id, x)); }
     renderChar(id);
   }));
   document.getElementById('dayev-add-'+id)?.addEventListener('click', () => { const v = document.getElementById('dayev-'+id).value.trim(); if (!v) return; (s.dayEvents ||= []).push(v); renderChar(id); });
