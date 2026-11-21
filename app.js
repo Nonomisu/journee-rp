@@ -1294,9 +1294,8 @@ const intimeOptions = id => {
 };
 const intimeKey = (id, x) => 'intime:' + keyOf(rpDay) + ':' + id + ':' + x;
 // Vie intime : une nouvelle pour le joueur de chaque personnage concerné (une par personnage, à la validation de la fiche).
-// Phrases personnalisées pour certains duos (vie intime de la 1re, personnage cité en 2e) ; sinon la nouvelle générique.
-const INTIME_LINES = {
-  'taiga>davaajav': [
+// Phrases personnalisées pour certains duos (vie intime de la 1re, personnage cité en 2e ; de Jynette vers Nono) ; sinon la nouvelle générique.
+const INTIME_HOT = [
     (a, b) => `Les cuisses de ${a} ont chauffé sous les assauts de ${b}. Son vagin s'en souvient.`,
     (a, b) => `${a} a écarté les cuisses pour ${b}, et elle ne les a refermées qu'une fois pleine de lui.`,
     (a, b) => `${b} a pris ${a} jusqu'à la faire trembler. Elle sent encore chaque coup de reins.`,
@@ -1304,7 +1303,7 @@ const INTIME_LINES = {
     (a, b) => `Le vagin de ${a} porte encore la marque de ${b} : il l'a prise sans ménagement, et elle a adoré.`,
     (a, b) => `À quatre pattes sur les fourrures, ${a} a offert ses fesses à ${b}. Il ne s'est pas fait prier.`,
     (a, b) => `${b} a joui au fond de ${a}. Elle garde ce souvenir, et un peu plus, au creux de son utérus.`,
-    (a, b) => `${a} a chevauché ${b} jusqu'à ce qu'il crie grâce. Ses hanches s'en souviennent.`,
+    (a, b) => `Assise sur ${b}, ${a} a ondulé des hanches jusqu'à le faire jouir. Elle a continué un peu, pour elle.`,
     (a, b) => `La bouche de ${a} a fait perdre la tête à ${b}… avant qu'il ne la retourne pour la prendre.`,
     (a, b) => `${a} a mouillé les fourrures sous les doigts de ${b}, puis sous tout le reste.`,
     (a, b) => `Les seins de ${a} portent les traces des mains de ${b}. Le reste de son corps aussi.`,
@@ -1312,7 +1311,19 @@ const INTIME_LINES = {
     (a, b) => `${a} a supplié ${b} d'aller plus fort. Il l'a exaucée, encore et encore.`,
     (a, b) => `${a} a gardé ${b} en elle jusqu'à la dernière goutte. Elle sourit encore en y pensant.`,
     (a, b) => `${a} a joui deux fois sous ${b} avant qu'il ne se vide en elle. Son ventre s'en souvient.`,
-  ],
+];
+// Cinq de plus pour Inkaraa → Khokkutsai et Khubunjin → Ankhbayar : fellation, levrette, faciale.
+const INTIME_HOT_PLUS = [
+  (a, b) => `À genoux devant ${b}, ${a} l'a pris dans sa bouche jusqu'à le sentir durcir contre sa langue. Elle ne l'a pas lâché avant la fin.`,
+  (a, b) => `${a} a avalé ${b} jusqu'au fond de sa gorge, les yeux levés vers lui. Il en a perdu la voix.`,
+  (a, b) => `Penchée en avant, ${a} s'est fait prendre en levrette par ${b}, ses mains agrippées aux fourrures. Elle en redemandait à chaque coup.`,
+  (a, b) => `${b} a tenu ${a} par les hanches et l'a prise en levrette jusqu'à la faire crier. Ses reins s'en souviennent.`,
+  (a, b) => `${a} a reçu une faciale de ${b}, les lèvres entrouvertes et le regard brûlant. Elle a souri en léchant ses lèvres.`,
+];
+const INTIME_LINES = {
+  'taiga>davaajav': INTIME_HOT,
+  'inkaraa>khokkutsai': [...INTIME_HOT, ...INTIME_HOT_PLUS],
+  'khubunjin>ankhbayar': [...INTIME_HOT, ...INTIME_HOT_PLUS],
 };
 const intimeNewsText = (id, x) => { const L = INTIME_LINES[id + '>' + x]; return L ? pickLine(L, intimeKey(id, x))(nameOf(id), nameOf(x)) : "Vie intime active aujourd'hui !"; };
 // Personnage cité dans le texte de la vie intime : son bouton « Personnages concernés » se coche tout seul (sauf s'il a été
