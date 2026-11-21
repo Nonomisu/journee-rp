@@ -1328,7 +1328,7 @@ const INTIME_HOT_MORE = [
   (a, b) => `Peau contre peau, ${a} et ${b} se sont aimés jusqu'à l'épuisement. Elle en frissonne encore.`,
   (a, b) => `${a} a ouvert son corps à ${b} sans retenue. Il en a profité jusqu'au bout de la nuit.`,
 ];
-// Gémissements et orgasme : pour tous les duos.
+// Gémissements et orgasme (et trois de plus) : pour tous les duos.
 const INTIME_MOAN = [
   (a, b) => `Les gémissements de ${a} ont résonné jusqu'aux yourtes voisines. ${b} n'a rien fait pour les étouffer.`,
   (a, b) => `${b} a fait gémir ${a} si fort qu'elle a dû mordre les fourrures.`,
@@ -1342,6 +1342,9 @@ const INTIME_MOAN = [
   (a, b) => `${a} a joui en plantant ses ongles dans le dos de ${b}. Il en porte encore les marques.`,
   (a, b) => `Les gémissements de ${a} se sont changés en cri quand l'orgasme l'a prise. ${b} s'est vidé en elle au même moment.`,
   (a, b) => `${a} a gémi, supplié, puis joui sous ${b}, encore et encore, jusqu'à s'effondrer.`,
+  (a, b) => `${a} a attiré ${b} sous les fourrures et ne l'a pas laissé ressortir avant qu'il l'ait fait jouir.`,
+  (a, b) => `${b} a goûté chaque recoin du corps de ${a}, lentement, jusqu'à ce qu'elle le supplie de la prendre.`,
+  (a, b) => `${a} a guidé la main de ${b} entre ses cuisses. Il a compris le message, et bien plus.`,
 ];
 const INTIME_20 = [...INTIME_HOT, ...INTIME_HOT_PLUS], INTIME_25 = [...INTIME_20, ...INTIME_HOT_MORE];
 const INTIME_LINES = {
