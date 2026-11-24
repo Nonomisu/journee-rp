@@ -80,6 +80,9 @@ window.RP_SYNC = {
   hasMonth: (y, m) => loaded.has(ymOf(y, m)),
   loadMonth: (y, m) => loadMonth(ymOf(y, m)),
   save: () => schedule(),
+  // Capture du jour, à côté de la fiche (document à part : la fiche du mois reste légère).
+  saveShot: (id, img) => (img ? setDoc(doc(db, 'days', id, 'months', A.iso + '~shot'), { img, at: Date.now() })
+    : deleteDoc(doc(db, 'days', id, 'months', A.iso + '~shot'))).catch(report),
   saveNow: () => flush(),
   // Nuit précédente : complète la journée d'hier (même nuit) sur la fiche du personnage.
   patchPast: (id, d, patch) => {
@@ -218,6 +221,8 @@ function listen() {
     A.applyNews(list); A.rerender();
   });
   // Résumé de l'Iloh du jour (déposé par le service du VPS) : événements, activités communes, demandes « J'y participe aussi ».
+  A.ids.forEach(id => onSnapshot(doc(db, 'days', id, 'months', A.iso + '~shot'), s => { if (s.metadata.hasPendingWrites) return;
+    A.applyShot(id, s.data()?.img || null); A.rerender(); }, () => {}));
   onSnapshot(doc(db, 'iloh', '_live', 'months', A.iso), s => { A.applyIlohLive(s.data() || null); A.rerender(); }, () => {});
   A.ilohIds().forEach(id => onSnapshot(ilohRef(id, A.ym), s => { A.applyIloh(id, A.ym, s.data() || {}); A.rerender(); }, () => {}));
   A.ids.forEach(id => onSnapshot(monthRef(id, A.ym), s => {

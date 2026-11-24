@@ -1707,6 +1707,18 @@ document.addEventListener('click', e => { const t = e.target, id = current; if (
     ilohOp(id, { op: 'joinAnswer', jid: j.id, ok: !!jo && state[id].checked.has(j.act) }); return ilohRefresh(); }
 });
 
+// ---------- Capture du jour : enregistrée (compressée) à côté de la fiche, dans days/{perso}/months/{AAAA-MM-JJ}~shot ----------
+// Ainsi elle reste après un rechargement, et le service du VPS la recopie dans Iloh Khurdan (fiche publiée et image Discord).
+const SHOTS = {};
+const shotOf = id => SHOTS[id] || null;
+// Plus grand côté 1400 px, JPEG ; on réduit jusqu'à rester sous ~600 Ko (une fiche Firestore est limitée à 1 Mo).
+const compressShot = file => new Promise((ok, ko) => { const url = URL.createObjectURL(file), im = new Image();
+  im.onload = () => { URL.revokeObjectURL(url); let side = 1400, q = .8, out = '';
+    for (let i = 0; i < 8; i++) { const k = Math.min(1, side / Math.max(im.width, im.height)), cv = document.createElement('canvas');
+      cv.width = Math.round(im.width * k); cv.height = Math.round(im.height * k); cv.getContext('2d').drawImage(im, 0, 0, cv.width, cv.height);
+      out = cv.toDataURL('image/jpeg', q); if (out.length < 600e3) break; side *= .8; q = Math.max(.55, q - .07); }
+    ok(out); };
+  im.onerror = () => { URL.revokeObjectURL(url); ko(new Error('image')); }; im.src = url; });
 const ILOH_HIDE_ALWAYS = {};   // id → Set d'activités toujours masquées dans Iloh Khurdan
 const S9_HIDE_ALWAYS = {};     // id → Set d'activités toujours masquées dans S9 Interact'
 const alwaysOf = id => destOf(id)?.coll === 's9' ? S9_HIDE_ALWAYS : ILOH_HIDE_ALWAYS;
@@ -2262,7 +2274,7 @@ const statesBlock = id => { const s = state[id]; s.phys ||= new Set(); s.mental 
   return group('État physique', PHYS, s.phys, 'data-phys') + group('État mental', MENTAL, s.mental, 'data-mental'); };
 const shotSection = id => { const s = state[id];
   return `<section><h2>Capture du jour</h2>
-    ${s.shot ? `<figure class="shot"><img src="${s.shot}" alt="Capture du jour de ${esc(C.find(x => x.id === id).name)}"><figcaption><button type="button" class="link ico-btn" id="shot-off-${id}" title="Retirer la capture" aria-label="Retirer la capture">${icon('minus')}</button></figcaption></figure>`
+    ${shotOf(id) ? `<figure class="shot"><img src="${shotOf(id)}" alt="Capture du jour de ${esc(C.find(x => x.id === id).name)}"><figcaption><button type="button" class="link ico-btn" id="shot-off-${id}" title="Retirer la capture" aria-label="Retirer la capture">${icon('minus')}</button></figcaption></figure>`
       : `<label class="btn file-btn">${icon('camera')}Joindre une capture<input type="file" id="shot-${id}" accept="image/*" hidden></label>`}
   </section>`; };
 const arcsSection = id => {
@@ -2302,9 +2314,9 @@ const bindDaySections = id => {
   document.querySelectorAll('[data-state-note]').forEach(i => i.addEventListener('input', () => { s.stateNotes[i.dataset.stateNote] = i.value.trim(); }));
   document.getElementById('shot-' + id)?.addEventListener('change', e => {
     const f = e.target.files[0]; if (!f) return;
-    const rd = new FileReader(); rd.onload = () => { s.shot = rd.result; renderChar(id); }; rd.readAsDataURL(f);
+    compressShot(f).then(img => { SHOTS[id] = img; window.RP_SYNC?.saveShot?.(id, img); renderChar(id); }, () => alert("Image illisible : essaie une capture en JPEG ou PNG."));
   });
-  document.getElementById('shot-off-' + id)?.addEventListener('click', () => { s.shot = null; renderChar(id); });
+  document.getElementById('shot-off-' + id)?.addEventListener('click', () => { SHOTS[id] = null; window.RP_SYNC?.saveShot?.(id, null); renderChar(id); });
   document.getElementById('arc-add-' + id)?.addEventListener('click', () => {
     const v = document.getElementById('arc-new-' + id).value.trim(); if (!v) return;
     list.push({ id:'arc-' + (arcSeq++), title:v, done:false, steps:[] }); renderChar(id);
@@ -2578,7 +2590,7 @@ function renderCharNow(id) {
       ${ilohBackHtml(ilohToday, s.checked)}
       ${s.faits?.trim() ? `<div class="recap-infos"><span>Faits notoires</span><p>${esc(s.faits.trim())}</p></div>` : ''}
       ${s.infos?.trim() ? `<div class="recap-infos"><span>Informations</span><p>${esc(s.infos.trim())}</p></div>` : ''}
-      ${s.shot ? `<img class="recap-shot" src="${s.shot}" alt="Capture du jour">` : ''}
+      ${shotOf(id) ? `<img class="recap-shot" src="${shotOf(id)}" alt="Capture du jour">` : ''}
       ${readOnly ? `<footer class="recap-foot"><span>${s.done ? '✓ Journée terminée' : 'Journée en cours'}</span></footer>` : `<footer class="recap-foot"><span>✓ Journée validée${window.RP_DISCORD ? RP_DISCORD.status(id) : ''}</span>
         <span class="foot-btns"><button type="button" class="btn" id="png-${id}">${icon('camera')}Image du récap</button>
         <button type="button" class="btn" id="edit-${id}">Modifier la journée</button></span></footer>`}
@@ -3187,6 +3199,7 @@ window.RP_APP = {
     Object.keys(m).filter(k => k.startsWith(ym + ':')).forEach(k => delete m[k]);
     Object.entries(data || {}).forEach(([d, x]) => { m[ym + ':' + d] = { ...x, where }; });
   },
+  applyShot: (id, img) => { SHOTS[id] = img || null; },
   applyIlohLive: d => { ILOH_LIVE = d; ilohApplyJoins(); },
   applyIlohNames: (d, coll = 'iloh') => coll === 's9' ? setS9Only(d?.chars) : setIlohOnly(d?.chars),
   ilohIds: () => C.filter(c => sendsToIloh(c.id)).map(c => c.id),
