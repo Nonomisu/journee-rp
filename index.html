@@ -425,6 +425,20 @@ button.link { background: none; border: 0; padding: 0; color: var(--gold); text-
 .priv-btn[aria-pressed="false"] .ico { opacity: .35; }
 .priv-btn[aria-pressed="true"] { color: var(--heart); }
 .with-pick .with-h { margin: .6rem 0 0; font-size: .75rem; color: var(--dim); text-transform: uppercase; letter-spacing: .05em; }
+.proj-cats { display: grid; gap: .35rem; }
+.proj-cat { border-left: 3px solid var(--gold); padding: .1rem 0 .3rem .6rem; background: color-mix(in srgb, var(--gold) 6%, transparent); border-radius: 0 6px 6px 0; text-align: left; }
+.proj-cat > summary h3 { color: var(--gold); }
+.proj-cat-in { display: grid; gap: .35rem; padding-right: .5rem; }
+.proj-bar { position: relative; height: .7rem; border-radius: 999px; background: color-mix(in srgb, var(--text) 10%, transparent); overflow: hidden; }
+.proj-bar > i { position: absolute; inset: 0 auto 0 0; border-radius: 999px; background: linear-gradient(90deg, var(--accent), var(--gold)); }
+.proj-bar > em { position: absolute; top: 0; bottom: 0; width: 2px; margin-left: -1px; background: var(--bg); opacity: .8; }
+.proj-cat-now { display: flex; gap: .35rem; align-items: flex-start; margin: 0; font-size: .85rem; color: var(--dim); overflow-wrap: anywhere; }
+.proj-cat-now .ico { flex: none; width: .95rem; height: .95rem; margin-top: .15rem; }
+.proj-act span small { margin-left: .45rem; font-size: .75rem; color: var(--dim); font-style: italic; }
+.proj-act.locked { opacity: .55; }
+.proj-act input:disabled { cursor: not-allowed; }
+.proj-act .ico { width: .9rem; height: .9rem; vertical-align: -1px; margin-right: .3rem; }
+.proj-cat .reserved { margin: 0; font-size: .82rem; }
 .iloh-live { display: grid; gap: .6rem; margin: .8rem 0; padding: .7rem .8rem; border: 1px solid var(--rule); border-radius: 10px; text-align: left; }
 .iloh-live .chrono-h { margin: 0; }
 .iloh-events, .iloh-join { display: grid; gap: .5rem; }
@@ -702,6 +716,6 @@ button.link.danger { color: #e0a24d; }
 <div class="sync-state" id="sync-state" aria-live="polite"></div>
 </div>
 
-<script src="app.js?v=16512a25ac" charset="utf-8"></script>
+<script src="app.js?v=5f39624e0a" charset="utf-8"></script>
 <script type="module" src="sync.js?v=6816bfa6c6"></script>
 
